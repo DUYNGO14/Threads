@@ -19,11 +19,17 @@ const userSchema = mongoose.Schema(
     password: {
       type: String,
       minLength: 6,
-      required: true,
+      required: function () {
+        return !this.googleId && !this.facebookId;
+      },
     },
     profilePic: {
       type: String,
       default: "",
+    },
+    dob: {
+      type: Date,
+      default: null,
     },
     followers: {
       type: [String],
@@ -41,6 +47,16 @@ const userSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    resetPasswordToken: String,
+    resetPasswordExpiresAt: Date,
+    verificationOTP: String,
+    verificationOTPExpiresAt: Date,
+    googleId: { type: String, unique: true, sparse: true },
+    facebookId: { type: String, unique: true, sparse: true },
   },
   {
     timestamps: true,

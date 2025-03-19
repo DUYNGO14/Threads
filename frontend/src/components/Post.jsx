@@ -1,5 +1,8 @@
-import { Avatar, Image, Box, Flex, Text } from "@chakra-ui/react";
+import { Avatar, Flex, Text } from "@chakra-ui/react";
 import { Link, useNavigate } from "react-router-dom";
+import "swiper/css";
+import "swiper/css/navigation";
+import "swiper/css/pagination";
 import Actions from "./Actions";
 import { useEffect, useState } from "react";
 import useShowToast from "../hooks/useShowToast";
@@ -8,7 +11,9 @@ import { DeleteIcon } from "@chakra-ui/icons";
 import { useRecoilState, useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
 import postsAtom from "../atoms/postsAtom";
-import { PropTypes } from 'prop-types';
+import { PropTypes } from "prop-types";
+import Carousels from "./Carousels";
+
 const Post = ({ post, postedBy }) => {
     const [user, setUser] = useState(null);
     const showToast = useShowToast();
@@ -61,7 +66,7 @@ const Post = ({ post, postedBy }) => {
             <Flex gap={3} mb={4} py={5}>
                 <Flex flexDirection={"column"} alignItems={"center"}>
                     <Avatar
-                        size='md'
+                        size="md"
                         name={user.name}
                         src={user?.profilePic}
                         onClick={(e) => {
@@ -69,45 +74,6 @@ const Post = ({ post, postedBy }) => {
                             navigate(`/${user.username}`);
                         }}
                     />
-                    <Box w='1px' h={"full"} bg='gray.light' my={2}></Box>
-                    <Box position={"relative"} w={"full"}>
-                        {post.replies.length === 0 && <Text textAlign={"center"}>🥱</Text>}
-                        {post.replies[0] && (
-                            <Avatar
-                                size='xs'
-                                name='John doe'
-                                src={post.replies[0].userProfilePic}
-                                position={"absolute"}
-                                top={"0px"}
-                                left='15px'
-                                padding={"2px"}
-                            />
-                        )}
-
-                        {post.replies[1] && (
-                            <Avatar
-                                size='xs'
-                                name='John doe'
-                                src={post.replies[1].userProfilePic}
-                                position={"absolute"}
-                                bottom={"0px"}
-                                right='-5px'
-                                padding={"2px"}
-                            />
-                        )}
-
-                        {post.replies[2] && (
-                            <Avatar
-                                size='xs'
-                                name='John doe'
-                                src={post.replies[2].userProfilePic}
-                                position={"absolute"}
-                                bottom={"0px"}
-                                left='4px'
-                                padding={"2px"}
-                            />
-                        )}
-                    </Box>
                 </Flex>
                 <Flex flex={1} flexDirection={"column"} gap={2}>
                     <Flex justifyContent={"space-between"} w={"full"}>
@@ -122,7 +88,6 @@ const Post = ({ post, postedBy }) => {
                             >
                                 {user?.username}
                             </Text>
-                            <Image src='/verified.png' w={4} h={4} ml={1} />
                         </Flex>
                         <Flex gap={4} alignItems={"center"}>
                             <Text fontSize={"xs"} width={36} textAlign={"right"} color={"gray.light"}>
@@ -134,12 +99,11 @@ const Post = ({ post, postedBy }) => {
                     </Flex>
 
                     <Text fontSize={"sm"}>{post.text}</Text>
-                    {post.img && (
-                        <Box borderRadius={6} overflow={"hidden"} border={"1px solid"} borderColor={"gray.light"}>
-                            <Image src={post.img} w={"full"} />
-                        </Box>
-                    )}
 
+                    {/* Hiển thị ảnh/video theo dạng lưới */}
+                    {post.media?.length > 0 && (
+                        <Carousels medias={post.media} />
+                    )}
                     <Flex gap={3} my={1}>
                         <Actions post={post} />
                     </Flex>

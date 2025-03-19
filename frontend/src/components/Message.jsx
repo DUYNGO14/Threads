@@ -87,12 +87,9 @@ const Message = ({ ownMessage, message }) => {
         </>
     );
 };
+
 Message.propTypes = {
-    message: PropTypes.shape({
-        text: PropTypes.string,
-        img: PropTypes.string,
-        seen: PropTypes.bool,
-    }).isRequired,
     ownMessage: PropTypes.bool.isRequired,
+    message: PropTypes.object.isRequired,
 };
 export default Message;

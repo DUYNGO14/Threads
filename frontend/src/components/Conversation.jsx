@@ -1,15 +1,29 @@
-import { Avatar, AvatarBadge, Box, Flex, Image, Stack, Text, useColorMode, useColorModeValue, WrapItem } from "@chakra-ui/react"
-import PropTypes from 'prop-types';
+import {
+    Avatar,
+    AvatarBadge,
+    Box,
+    Flex,
+    Image,
+    Stack,
+    Text,
+    WrapItem,
+    useColorMode,
+    useColorModeValue,
+} from "@chakra-ui/react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
 import { BsCheck2All, BsFillImageFill } from "react-icons/bs";
 import { selectedConversationAtom } from "../atoms/messagesAtom";
+import PropTypes from 'prop-types';
+
 const Conversation = ({ conversation, isOnline }) => {
     const user = conversation.participants[0];
     const currentUser = useRecoilValue(userAtom);
     const lastMessage = conversation.lastMessage;
     const [selectedConversation, setSelectedConversation] = useRecoilState(selectedConversationAtom);
     const colorMode = useColorMode();
+
+    console.log("selectedConverstion", selectedConversation);
     return (
         <Flex
             gap={4}
@@ -43,11 +57,7 @@ const Conversation = ({ conversation, isOnline }) => {
                     }}
                     src={user.profilePic}
                 >
-                    {isOnline ? (
-                        <AvatarBadge boxSize='1em' bg='green.400' />
-                    ) : (
-                        <AvatarBadge boxSize='1em' bg='red.400' />
-                    )}
+                    {isOnline ? <AvatarBadge boxSize='1em' bg='green.500' /> : <AvatarBadge boxSize='1em' bg='red.500' />}
                 </Avatar>
             </WrapItem>
 
@@ -73,23 +83,7 @@ const Conversation = ({ conversation, isOnline }) => {
 };
 
 Conversation.propTypes = {
-    conversation: PropTypes.shape({
-        _id: PropTypes.string.isRequired,
-        participants: PropTypes.arrayOf(
-            PropTypes.shape({
-                _id: PropTypes.string.isRequired,
-                username: PropTypes.string.isRequired,
-                profilePic: PropTypes.string,
-                online: PropTypes.bool.isRequired,
-            }),
-        ).isRequired,
-        lastMessage: PropTypes.shape({
-            text: PropTypes.string.isRequired,
-            sender: PropTypes.string.isRequired,
-            seen: PropTypes.bool.isRequired,
-        }).isRequired,
-        mock: PropTypes.bool, // Add this line
-    }).isRequired,
+    conversation: PropTypes.object.isRequired,
     isOnline: PropTypes.bool.isRequired,
 };
-export default Conversation
+export default Conversation;

@@ -11,9 +11,12 @@ const postSchema = mongoose.Schema(
       type: String,
       maxLength: 500,
     },
-    img: {
-      type: String,
-    },
+    media: [
+      {
+        url: { type: String, required: true }, // URL của file
+        type: { type: String, enum: ["image", "video"], required: true }, // Kiểu file
+      },
+    ],
     likes: {
       // array of user ids
       type: [mongoose.Schema.Types.ObjectId],

@@ -12,7 +12,10 @@ import {
     Text,
     useColorModeValue,
     Link,
+    Divider,
 } from '@chakra-ui/react';
+import { FcGoogle } from "react-icons/fc";
+import { FaSquareFacebook } from "react-icons/fa6";
 import { useState } from 'react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import { useSetRecoilState } from 'recoil';
@@ -24,7 +27,7 @@ import userAtom from '../atoms/userAtom';
 const LoginCard = () => {
     const [state, setState] = useState({
         showPassword: false,
-        username: "",
+        emailOrUsername: "",
         password: "",
         isLoading: false,
     });
@@ -48,16 +51,16 @@ const LoginCard = () => {
     };
 
     const handleLogin = async () => {
-        if (!state.username || !state.password) {
-            return showToast("Error", "Please enter username and password", "error");
+        if (!state.emailOrUsername || !state.password) {
+            return showToast("Error", "Please enter email and password", "error");
         }
 
         try {
             setState((prev) => ({ ...prev, isLoading: true }));
-            const res = await fetch("/api/users/login", {
+            const res = await fetch("/api/auth/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username: state.username.trim(), password: state.password.trim() }),
+                body: JSON.stringify({ emailOrUsername: state.emailOrUsername.trim(), password: state.password.trim() }),
             });
 
             const data = await res.json();
@@ -71,7 +74,9 @@ const LoginCard = () => {
             setState((prev) => ({ ...prev, isLoading: false }));
         }
     };
-
+    const handleOAuthLogin = (type) => {
+        window.open(`/api/auth/${type}`, "_self");
+    }
     return (
         <Flex align={'center'} justify={'center'}>
             <Stack spacing={8} mx={'auto'} maxW={'lg'} py={12} px={6}>
@@ -87,11 +92,11 @@ const LoginCard = () => {
                 >
                     <Stack spacing={4}>
                         <FormControl isRequired>
-                            <FormLabel>Username</FormLabel>
+                            <FormLabel>Username or Email</FormLabel>
                             <Input
                                 type="text"
-                                name="username"
-                                defaultValue={state.username}
+                                name="emailOrUsername"
+                                defaultValue={state.emailOrUsername}
                                 onChange={handleChange}
                             />
                         </FormControl>
@@ -111,6 +116,9 @@ const LoginCard = () => {
                                 </InputRightElement>
                             </InputGroup>
                         </FormControl>
+                        <Text fontSize="sm" color="blue.500" textAlign="right" cursor="pointer" onClick={() => setAuthScreen("forgot-password")}>
+                            Forgot Password?
+                        </Text>
                         <Stack spacing={10} pt={2}>
                             <Button
                                 isLoading={state.isLoading}
@@ -123,6 +131,30 @@ const LoginCard = () => {
                                 Login
                             </Button>
                         </Stack>
+                        <Box position='relative' my={4}>
+                            <Divider />
+                            <Box position="absolute" top="50%" left="50%" transform="translate(-50%, -50%)">
+                                OR
+                            </Box>
+                        </Box>
+                        <Stack spacing={4}>
+                            <Button
+                                leftIcon={<FcGoogle />}
+                                onClick={() => handleOAuthLogin("google")}
+                                variant="outline"
+                                w="full"
+                            >
+                                Login with Google
+                            </Button>
+                            <Button
+                                leftIcon={<FaSquareFacebook />}
+                                onClick={() => handleOAuthLogin("facebook")}
+                                variant="outline"
+                                w="full"
+                            >
+                                Login with Facebook
+                            </Button>
+                        </Stack>
                         <Stack pt={6}>
                             <Text align={'center'}>
                                 Don&apos;t have an account?{' '}
@@ -131,10 +163,11 @@ const LoginCard = () => {
                                 </Link>
                             </Text>
                         </Stack>
+
                     </Stack>
                 </Box>
-            </Stack>
-        </Flex>
+            </Stack >
+        </Flex >
     );
 };
 

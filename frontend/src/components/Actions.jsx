@@ -4,6 +4,10 @@ import {
     Flex,
     FormControl,
     Input,
+    Menu,
+    MenuButton,
+    MenuItem,
+    MenuList,
     Modal,
     ModalBody,
     ModalCloseButton,
@@ -11,6 +15,7 @@ import {
     ModalFooter,
     ModalHeader,
     ModalOverlay,
+    Portal,
     Text,
     useDisclosure,
 } from "@chakra-ui/react";
@@ -104,6 +109,13 @@ const Actions = ({ post }) => {
             setIsReplying(false);
         }
     };
+    const copyURL = () => {
+        const postURL = `${window.location.origin}/post/${post._id}`;
+        console.log(postURL);
+        navigator.clipboard.writeText(postURL).then(() => {
+            showToast("Success", "Post link copied.", "success");
+        });
+    };
 
     return (
         <Flex flexDirection='column'>
@@ -146,7 +158,19 @@ const Actions = ({ post }) => {
                 </svg>
 
                 <RepostSVG />
-                <ShareSVG />
+                <Menu>
+                    <MenuButton>
+                        <ShareSVG />
+                    </MenuButton>
+                    <Portal>
+                        <MenuList bg={"gray.dark"}>
+                            <MenuItem bg={"gray.dark"} onClick={copyURL}>
+                                Copy link
+                            </MenuItem>
+                        </MenuList>
+                    </Portal>
+                </Menu>
+
             </Flex>
 
             <Flex gap={2} alignItems={"center"}>

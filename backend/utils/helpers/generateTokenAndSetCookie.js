@@ -3,6 +3,9 @@ const generateTokenAndSetCookie = (userId, res) => {
   const token = jwt.sign({ userId }, process.env.JWT_SECRET, {
     expiresIn: "7d",
   });
+  const refreshToken = jwt.sign({ userId }, process.env.JWT_SECRET_REFRESH, {
+    expiresIn: "30d",
+  });
   res.cookie("jwt", token, {
     httpOnly: true, // more secure
     //secure: process.env.NODE_ENV !== "development",

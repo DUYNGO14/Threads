@@ -1,9 +1,9 @@
 import Conversation from "../models/conversationModel.js";
 import Message from "../models/messageModel.js";
-import { getRecipientSocketId } from "../sockets/socket.js";
-import { io } from "../sockets/socket.js";
+import { getRecipientSocketId, io } from "../sockets/socket.js";
 import { v2 as cloudinary } from "cloudinary";
-const sendMessage = async (req, res) => {
+
+async function sendMessage(req, res) {
   try {
     const { recipientId, message } = req.body;
     let { img } = req.body;
@@ -23,10 +23,12 @@ const sendMessage = async (req, res) => {
       });
       await conversation.save();
     }
+
     if (img) {
       const uploadedResponse = await cloudinary.uploader.upload(img);
       img = uploadedResponse.secure_url;
     }
+
     const newMessage = new Message({
       conversationId: conversation._id,
       sender: senderId,
@@ -40,7 +42,6 @@ const sendMessage = async (req, res) => {
         lastMessage: {
           text: message,
           sender: senderId,
-          seen: false,
         },
       }),
     ]);
@@ -49,30 +50,34 @@ const sendMessage = async (req, res) => {
     if (recipientSocketId) {
       io.to(recipientSocketId).emit("newMessage", newMessage);
     }
-    res.status(201).json({ message: "Message sent successfully" });
+
+    res.status(201).json(newMessage);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-};
+}
 
-const getMessages = async (req, res) => {
+async function getMessages(req, res) {
   const { otherUserId } = req.params;
   const userId = req.user._id;
   try {
     const conversation = await Conversation.findOne({
       participants: { $all: [userId, otherUserId] },
     });
+
     if (!conversation) {
       return res.status(404).json({ error: "Conversation not found" });
     }
-    const message = await Message.find({
+
+    const messages = await Message.find({
       conversationId: conversation._id,
     }).sort({ createdAt: 1 });
-    res.status(200).json(message);
+
+    res.status(200).json(messages);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-};
+}
 
 async function getConversations(req, res) {
   const userId = req.user._id;
@@ -81,7 +86,7 @@ async function getConversations(req, res) {
       participants: userId,
     }).populate({
       path: "participants",
-      select: "username profilePic online",
+      select: "username profilePic",
     });
 
     // remove the current user from the participants array
@@ -90,16 +95,10 @@ async function getConversations(req, res) {
         (participant) => participant._id.toString() !== userId.toString()
       );
     });
-    //remove the curent user from the participants array
-    conversations.forEach((conversation) => {
-      conversation.participants = conversation.participants.filter(
-        (participant) => participant._id.toString() !== userId.toString()
-      );
-    });
-
     res.status(200).json(conversations);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 }
+
 export { sendMessage, getMessages, getConversations };

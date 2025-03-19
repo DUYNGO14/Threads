@@ -20,7 +20,8 @@ import { conversationsAtom, selectedConversationAtom } from "../atoms/messagesAt
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { BsFillImageFill } from "react-icons/bs";
 import usePreviewImg from "../hooks/usePreviewImg";
-import PropTypes from "prop-types";
+import PropTypes from 'prop-types';
+
 const MessageInput = ({ setMessages }) => {
     const [messageText, setMessageText] = useState("");
     const showToast = useShowToast();
@@ -128,9 +129,9 @@ const MessageInput = ({ setMessages }) => {
         </Flex>
     );
 };
+
 MessageInput.propTypes = {
     setMessages: PropTypes.func.isRequired,
-}
+};
 
 export default MessageInput;
-

@@ -11,6 +11,9 @@ import UpdateProfilePage from "./pages/UpdateProfilePage"
 import CreatePost from "./components/CreatePost"
 import ChatPage from "./pages/ChatPage"
 import { SettingsPage } from "./pages/SettingsPage"
+import OAuthSuccess from "./components/OAuthSuccess"
+import OAuthFailure from "./components/OAuthFailure"
+import ResetPasswordCard from "./components/ResetPasswordCard"
 function App() {
   const user = useRecoilValue(userAtom);
   const { pathname } = useLocation();
@@ -34,6 +37,9 @@ function App() {
           <Route path='/:username/post/:pid' element={<PostPage />} />
           <Route path='/chat' element={user ? <ChatPage /> : <Navigate to={"/auth"} />} />
           <Route path='/settings' element={user ? <SettingsPage /> : <Navigate to={"/auth"} />} />
+          <Route path="/oauth-success" element={<OAuthSuccess />} />
+          <Route path="/oauth-failure" element={<OAuthFailure />} />
+          <Route path="/reset-password/:token" element={<ResetPasswordCard />} />
         </Routes>
       </Container>
     </Box>

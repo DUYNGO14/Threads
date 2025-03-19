@@ -20,7 +20,6 @@ import { useSetRecoilState } from 'recoil';
 import { useDebouncedCallback } from 'use-debounce';
 import authScreenAtom from '../atoms/authAtom';
 import useShowToast from '../hooks/useShowToast';
-import userAtom from '../atoms/userAtom';
 
 const SignupCard = () => {
     const [state, setState] = useState({
@@ -29,13 +28,12 @@ const SignupCard = () => {
         username: "",
         email: "",
         password: "",
+        dob: "",
         isLoading: false,
     });
 
     const setAuthScreen = useSetRecoilState(authScreenAtom);
-    const setUser = useSetRecoilState(userAtom);
     const showToast = useShowToast();
-
     // Debounce input để giảm số lần cập nhật state khi gõ phím
     const debouncedSetInputs = useDebouncedCallback((name, value) => {
         setState((prev) => ({ ...prev, [name]: value }));
@@ -57,7 +55,7 @@ const SignupCard = () => {
 
         try {
             setState((prev) => ({ ...prev, isLoading: true }));
-            const res = await fetch("/api/users/signup", {
+            const res = await fetch("/api/auth/signup", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -65,14 +63,15 @@ const SignupCard = () => {
                     username: state.username.trim(),
                     email: state.email.trim(),
                     password: state.password.trim(),
+                    dob: state.dob.trim(),
                 }),
             });
 
             const data = await res.json();
             if (data.error) throw new Error(data.error);
-
-            localStorage.setItem("user-threads", JSON.stringify(data));
-            setUser(data);
+            localStorage.setItem("email-for-verification", state.email.trim());
+            showToast("Success", "Account created! Check your email for OTP.", "success");
+            setAuthScreen("verifyOtp");
         } catch (error) {
             showToast("Error", error.message || "Something went wrong", "error");
         } finally {
@@ -141,6 +140,15 @@ const SignupCard = () => {
                                     </Button>
                                 </InputRightElement>
                             </InputGroup>
+                        </FormControl>
+                        <FormControl>
+                            <FormLabel>Date of Birth</FormLabel>
+                            <Input
+                                type="date"
+                                name="dob"
+                                value={state.dob}
+                                onChange={handleChange}
+                            />
                         </FormControl>
                         <Stack spacing={10} pt={2}>
                             <Button

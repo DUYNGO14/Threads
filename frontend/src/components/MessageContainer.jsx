@@ -1,12 +1,12 @@
-import { Avatar, Divider, Flex, Image, Skeleton, SkeletonCircle, Text, useColorModeValue } from "@chakra-ui/react"
-import MessageInput from "./MessageInput";
+import { Avatar, Divider, Flex, Image, Skeleton, SkeletonCircle, Text, useColorModeValue } from "@chakra-ui/react";
 import Message from "./Message";
+import MessageInput from "./MessageInput";
 import { useEffect, useRef, useState } from "react";
 import useShowToast from "../hooks/useShowToast";
-import { useRecoilValue, useSetRecoilState } from "recoil";
 import { conversationsAtom, selectedConversationAtom } from "../atoms/messagesAtom";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import userAtom from "../atoms/userAtom";
-import { useSocket } from "../context/SocketContext";
+import { useSocket } from "../context/SocketContext.jsx";
 import messageSound from "../assets/sounds/message.mp3";
 const MessageContainer = () => {
     const showToast = useShowToast();
@@ -51,29 +51,30 @@ const MessageContainer = () => {
     }, [socket, selectedConversation, setConversations]);
 
     useEffect(() => {
-        const lastMessageIsFromOtherUser = messages[messages.length - 1]?.sender !== currentUser._id;
+        const lastMessageIsFromOtherUser = messages.length && messages[messages.length - 1].sender !== currentUser._id;
         if (lastMessageIsFromOtherUser) {
-            socket?.emit("markMessageAsSeen", {
+            socket.emit("markMessagesAsSeen", {
                 conversationId: selectedConversation._id,
-                userId: selectedConversation.userId
+                userId: selectedConversation.userId,
             });
         }
-        socket.on("messageSeen", ({ conversationId }) => {
-            if (conversationId === selectedConversation._id) {
+
+        socket.on("messagesSeen", ({ conversationId }) => {
+            if (selectedConversation._id === conversationId) {
                 setMessages((prev) => {
-                    const updateMessage = prev.map((message) => {
+                    const updatedMessages = prev.map((message) => {
                         if (!message.seen) {
                             return {
                                 ...message,
-                                seen: true
-                            }
+                                seen: true,
+                            };
                         }
                         return message;
-                    })
-                    return updateMessage;
-                })
+                    });
+                    return updatedMessages;
+                });
             }
-        })
+        });
     }, [socket, currentUser._id, messages, selectedConversation]);
 
     useEffect(() => {
@@ -81,9 +82,9 @@ const MessageContainer = () => {
     }, [messages]);
 
     useEffect(() => {
-        setLoadingMessages(true);
-        setMessages([]);
         const getMessages = async () => {
+            setLoadingMessages(true);
+            setMessages([]);
             try {
                 if (selectedConversation.mock) return;
                 const res = await fetch(`/api/messages/${selectedConversation.userId}`);
@@ -98,13 +99,11 @@ const MessageContainer = () => {
             } finally {
                 setLoadingMessages(false);
             }
-        }
-        getMessages();
-    }, [selectedConversation.userId, showToast, selectedConversation.mock]);
+        };
 
-    useEffect(() => {
-        messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages]);
+        getMessages();
+    }, [showToast, selectedConversation.userId, selectedConversation.mock]);
+
     return (
         <Flex
             flex='70'
@@ -161,4 +160,4 @@ const MessageContainer = () => {
     );
 };
 
-export default MessageContainer
+export default MessageContainer;

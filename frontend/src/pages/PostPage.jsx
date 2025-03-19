@@ -1,4 +1,4 @@
-import { Avatar, Box, Button, Divider, Flex, Image, Spinner, Text } from "@chakra-ui/react";
+import { Avatar, Button, Divider, Flex, Image, Spinner, Text } from "@chakra-ui/react";
 import Actions from "../components/Actions";
 import { useEffect } from "react";
 import Comment from "../components/Comment";
@@ -10,6 +10,7 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
 import { DeleteIcon } from "@chakra-ui/icons";
 import postsAtom from "../atoms/postsAtom";
+import Carousels from "../components/Carousels";
 
 const PostPage = () => {
     const { user, loading } = useGetUserProfile();
@@ -67,8 +68,6 @@ const PostPage = () => {
     }
 
     if (!currentPost) return null;
-    console.log("currentPost", currentPost);
-
     return (
         <>
             <Flex>
@@ -94,10 +93,8 @@ const PostPage = () => {
 
             <Text my={3}>{currentPost.text}</Text>
 
-            {currentPost.img && (
-                <Box borderRadius={6} overflow={"hidden"} border={"1px solid"} borderColor={"gray.light"}>
-                    <Image src={currentPost.img} w={"full"} />
-                </Box>
+            {currentPost.media?.length > 0 && (
+                <Carousels medias={currentPost.media} />
             )}
 
             <Flex gap={3} my={3}>
