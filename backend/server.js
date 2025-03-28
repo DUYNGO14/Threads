@@ -13,8 +13,10 @@ import session from "express-session";
 import { v2 as cloudinary } from "cloudinary";
 import "./config/passport.js";
 import { server, app } from "./sockets/socket.js";
+import job from "./cron/cron.js";
 dotenv.config();
 connectDB();
+job.start();
 
 const PORT = process.env.PORT || 5000;
 const __dirname = path.resolve();
@@ -53,14 +55,14 @@ app.use("/api/messages", messageRouters);
 
 // http://localhost:5000 => backend,frontend
 
-// if (process.env.NODE_ENV === "production") {
-//   app.use(express.static(path.join(__dirname, "/frontend/dist")));
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "/frontend/dist")));
 
-//   // react app
-//   app.get("*", (req, res) => {
-//     res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"));
-//   });
-// }
+  // react app
+  app.get("*", (req, res) => {
+    res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"));
+  });
+}
 
 server.listen(PORT, () => {
   console.log(`Server started on port ${PORT}!`);
