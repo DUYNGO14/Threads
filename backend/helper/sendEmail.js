@@ -1,4 +1,4 @@
-import resendEmail from "../config/resendEmail.js";
+import resendEmail from "../config/resendmail.js";
 import {
   PASSWORD_RESET_REQUEST_TEMPLATE,
   VERIFICATION_EMAIL_TEMPLATE,
