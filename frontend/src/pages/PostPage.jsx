@@ -1,6 +1,6 @@
 import { Avatar, Button, Divider, Flex, Image, Spinner, Text } from "@chakra-ui/react";
 import Actions from "../components/Actions";
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import Comment from "../components/Comment";
 import useGetUserProfile from "../hooks/useGetUserProfile";
 import useShowToast from "../hooks/useShowToast";
@@ -21,6 +21,11 @@ const PostPage = () => {
     const navigate = useNavigate();
 
     const currentPost = posts[0];
+
+    const handlePostUpdate = useCallback((updatedPost) => {
+        if (!updatedPost) return;
+        setPosts([updatedPost]);
+    }, [setPosts]);
 
     useEffect(() => {
         const getPost = async () => {
@@ -98,17 +103,7 @@ const PostPage = () => {
             )}
 
             <Flex gap={3} my={3}>
-                <Actions post={currentPost} />
-            </Flex>
-
-            <Divider my={4} />
-
-            <Flex justifyContent={"space-between"}>
-                <Flex gap={2} alignItems={"center"}>
-                    <Text fontSize={"2xl"}>👋</Text>
-                    <Text color={"gray.light"}>Get the app to like, reply and post.</Text>
-                </Flex>
-                <Button>Get</Button>
+                <Actions post={currentPost} onPostUpdate={handlePostUpdate} />
             </Flex>
 
             <Divider my={4} />

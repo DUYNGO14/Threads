@@ -35,7 +35,7 @@ passport.use(
           if (existingUser.facebookId) {
             console.log("⚠ Lỗi: Email đã được đăng ký bằng Facebook.");
             return done(null, false, {
-              message: "Email đã được đăng ký bằng Facebook.",
+              message: "Email đã được đăng ký.",
             });
           }
 

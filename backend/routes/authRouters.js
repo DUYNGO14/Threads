@@ -2,6 +2,7 @@ import express from "express";
 import passport from "passport";
 import generateTokenAndSetCookie from "../utils/helpers/generateTokenAndSetCookie.js";
 import {
+  changePassword,
   forgotPassword,
   loginUser,
   logoutUser,
@@ -10,7 +11,7 @@ import {
   signupUser,
   verifyEmail,
 } from "../controllers/authController.js";
-
+import protectRoute from "../middlewares/protectRoute.js";
 const router = express.Router();
 //passport login google
 router.get(
@@ -47,7 +48,6 @@ router.get("/google/callback", (req, res, next) => {
           )}`
         );
       }
-
       generateTokenAndSetCookie(user._id, res);
       res.cookie("userData", JSON.stringify(user), {
         httpOnly: false,
@@ -124,4 +124,5 @@ router.post("/verify-account", verifyEmail);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password/:resetToken", resetPassword);
 router.post("/resend-otp", resendOTP);
+router.put("/change-password", protectRoute, changePassword);
 export default router;

@@ -2,6 +2,10 @@ import User from "../models/userModel.js";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import generateTokenAndSetCookie from "../utils/helpers/generateTokenAndSetCookie.js";
+import {
+  sendPasswordResetEmail,
+  sendVerificationEmail,
+} from "../helper/sendEmail.js";
 const generateOTP = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
 const signupUser = async (req, res) => {
@@ -36,7 +40,7 @@ const signupUser = async (req, res) => {
     // Tạo token và gửi cookie
 
     //send email verification
-    //await sendVerificationEmail(user.email, verificationToken);
+    await sendVerificationEmail(email, verificationOTP);
 
     // Trả về thông tin user (loại bỏ mật khẩu)
     res.status(201).json({
@@ -127,9 +131,8 @@ const resendOTP = async (req, res) => {
     user.verificationOTPExpiresAt = Date.now() + 60 * 1000; // 1 phút
 
     await user.save();
-
-    // Gửi email chứa OTP mới (giả sử có hàm sendOTPEmail)
-    //await sendOTPEmail(user.email, newOTP);
+    //send email verification
+    await sendVerificationEmail(email, newOTP);
 
     res.json({ success: true, message: "OTP has been resent" });
   } catch (error) {
@@ -188,33 +191,36 @@ const forgotPassword = async (req, res) => {
     if (!user) {
       return res.status(400).json({ success: false, error: "User not found" });
     }
-    console.log(user);
-    // Generate reset token
-    const resetToken = crypto.randomBytes(20).toString("hex");
-    const resetTokenExpiresAt = Date.now() + 1 * 60 * 60 * 1000; // 1 hour
+    if (!user.password) {
+      return res.status(400).json({
+        success: false,
+        error: "This account was registered with Google or Facebook.",
+      });
+    }
 
-    user.resetPasswordToken = resetToken;
-    user.resetPasswordExpiresAt = resetTokenExpiresAt;
+    // Tạo token gốc và token hash
+    const resetToken = crypto.randomBytes(20).toString("hex");
+    const hashedToken = await bcrypt.hash(resetToken, 10); // Mã hóa token trước khi lưu
+
+    user.resetPasswordToken = hashedToken;
+    user.resetPasswordExpiresAt = Date.now() + 5 * 60 * 1000; // 5 phút
 
     await user.save();
+
     console.log(
-      "resetToken : ",
+      "resetToken:",
       `${process.env.CLIENT_URL}/reset-password/${resetToken}`
     );
-    // send email
-    // await sendPasswordResetEmail(
-    //   user.email,
-    //   `${process.env.CLIENT_URL}/reset-password/${resetToken}`
-    // );
+
+    // Gửi email chứa token gốc
+    await sendPasswordResetEmail(
+      user.email,
+      `${process.env.CLIENT_URL}/reset-password/${resetToken}`
+    );
 
     res.status(200).json({
       success: true,
       message: "Password reset link sent to your email",
-      data: {
-        resetToken,
-        resetTokenExpiresAt,
-        resetLink: `${process.env.CLIENT_URL}/reset-password/${resetToken}`,
-      },
     });
   } catch (error) {
     console.log("Error in forgotPassword ", error);
@@ -235,7 +241,6 @@ const resetPassword = async (req, res) => {
     }
 
     const user = await User.findOne({
-      resetPasswordToken: resetToken,
       resetPasswordExpiresAt: { $gt: Date.now() },
     });
 
@@ -245,21 +250,41 @@ const resetPassword = async (req, res) => {
         .json({ success: false, error: "Invalid or expired reset token" });
     }
 
-    // Hash mật khẩu mới và lưu vào DB
+    // Kiểm tra token bằng cách hash lại và so sánh với DB
+    const isMatch = await bcrypt.compare(resetToken, user.resetPasswordToken);
+    if (!isMatch) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Invalid reset token" });
+    }
+
+    // Hash mật khẩu mới và cập nhật DB
     user.password = await bcrypt.hash(newPassword, 10);
     user.resetPasswordToken = undefined;
     user.resetPasswordExpiresAt = undefined;
-
     await user.save();
-
-    // Gửi email thông báo đặt lại mật khẩu thành công
-    // await sendResetSuccessEmail(user.email);
-
     res
       .status(200)
       .json({ success: true, message: "Password reset successful" });
   } catch (error) {
     console.error("Error in resetPassword:", error);
+    res.status(500).json({ success: false, error: "Internal Server Error" });
+  }
+};
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const user = await User.findById(req.user._id);
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch)
+      return res.status(400).json({ error: "Invalid current password" });
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    res
+      .status(200)
+      .json({ success: true, message: "Password changed successfully" });
+  } catch (error) {
+    console.error("Error in changePassword:", error);
     res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 };
@@ -272,4 +297,5 @@ export {
   resetPassword,
   logoutUser,
   resendOTP,
+  changePassword,
 };

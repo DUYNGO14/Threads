@@ -2,8 +2,9 @@ import Post from "../models/postModel.js";
 import User from "../models/userModel.js";
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs/promises";
+import mongoose from "mongoose";
 
-const MAX_FILES = 5;
+const MAX_FILES = 20;
 
 const createPost = async (req, res) => {
   try {
@@ -55,17 +56,79 @@ const createPost = async (req, res) => {
     const newPost = new Post({ postedBy, text, media: mediaFiles });
     await newPost.save();
 
-    res.status(201).json(newPost);
+    // Populate thông tin người đăng trước khi trả về
+    const populatedPost = await Post.findById(newPost._id).populate(
+      "postedBy",
+      "_id username name profilePic"
+    );
+
+    res.status(201).json(populatedPost);
   } catch (err) {
     console.error("Lỗi tạo bài viết:", err.message);
     res.status(500).json({ error: err.message });
   }
 };
 
-const getPost = async (req, res) => {
+const updatePost = async (req, res) => {
   try {
     const id = req.params.id;
     const post = await Post.findById(id);
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    if (post.postedBy.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ error: "Unauthorized to update post" });
+    }
+
+    if (req.body.text) {
+      post.text = req.body.text;
+    }
+
+    if (req.files && req.files.length > 0) {
+      const uploadPromises = req.files.map(async (file) => {
+        try {
+          const resourceType = file.mimetype.startsWith("video")
+            ? "video"
+            : "image";
+
+          const uploadedResponse = await cloudinary.uploader.upload(file.path, {
+            resource_type: resourceType,
+          });
+
+          // Xóa file tạm sau khi upload thông
+          await fs.unlink(file.path);
+
+          return { url: uploadedResponse.secure_url, type: resourceType };
+        } catch (err) {
+          console.error("Lỗi upload:", err);
+          return null;
+        }
+      }); // Đợi tất cả file được upload xong
+
+      const mediaFiles = (await Promise.all(uploadPromises)).filter(
+        (file) => file !== null
+      );
+
+      post.media = post.media.concat(mediaFiles);
+    }
+
+    await post.save();
+
+    res.status(200).json(post);
+  } catch (error) {
+    res.status(500).json({ error: "Internal Server Error" });
+    console.log("Error in updatePost: ", error.message);
+  }
+};
+
+const getPost = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const post = await Post.findById(id).populate(
+      "postedBy",
+      "_id username name profilePic"
+    );
     if (!post) {
       return res.status(404).json({ error: "Post not found" });
     }
@@ -77,25 +140,66 @@ const getPost = async (req, res) => {
 };
 const deletePost = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id);
-    if (!post) {
-      return res.status(404).json({ error: "Post not found" });
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const post = await Post.findById(req.params.id).populate(
+        "postedBy",
+        "_id username name profilePic"
+      );
+      if (!post) {
+        return res.status(404).json({ error: "Post not found" });
+      }
+
+      if (post.postedBy._id.toString() !== req.user._id.toString()) {
+        return res.status(401).json({ error: "Unauthorized to delete post" });
+      }
+
+      // Xóa tất cả media files trên Cloudinary
+      if (post.media && post.media.length > 0) {
+        const deletePromises = post.media.map(async (media) => {
+          const publicId = media.url.split("/").pop().split(".")[0];
+          try {
+            await cloudinary.uploader.destroy(publicId, {
+              resource_type: media.type === "video" ? "video" : "image",
+            });
+          } catch (error) {
+            console.error("Error deleting media from Cloudinary:", error);
+          }
+        });
+        await Promise.all(deletePromises);
+      }
+
+      // Xóa post ID khỏi mảng reposts của tất cả users đã repost
+      if (post.repostedBy && post.repostedBy.length > 0) {
+        await User.updateMany(
+          { _id: { $in: post.repostedBy } },
+          { $pull: { reposts: post._id } },
+          { session }
+        );
+      }
+
+      // Xóa bài viết
+      await Post.findByIdAndDelete(post._id, { session });
+
+      await session.commitTransaction();
+      res.status(200).json({
+        message: "Post deleted successfully",
+        post: {
+          _id: post._id,
+          postedBy: post.postedBy,
+        },
+      });
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
     }
-
-    if (post.postedBy.toString() !== req.user._id.toString()) {
-      return res.status(401).json({ error: "Unauthorized to delete post" });
-    }
-
-    if (post.img) {
-      const imgId = post.img.split("/").pop().split(".")[0];
-      await cloudinary.uploader.destroy(imgId);
-    }
-
-    await Post.findByIdAndDelete(req.params.id);
-
-    res.status(200).json({ message: "Post deleted successfully" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Error in deletePost:", err);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
@@ -175,7 +279,8 @@ const getFeedPosts = async (req, res) => {
     })
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .populate("postedBy", "_id username name profilePic");
 
     // Tổng số bài viết (chỉ tính bài từ người khác)
     const totalPosts = await Post.countDocuments({
@@ -196,23 +301,27 @@ const getFeedPosts = async (req, res) => {
 
 const getAllPosts = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    let page = parseInt(req.query.page, 10) || 1;
+    let limit = parseInt(req.query.limit, 10) || 10;
+
+    if (limit > 50) limit = 50; // Giới hạn max tránh tải quá nhiều dữ liệu
     const skip = (page - 1) * limit;
+    let query = {};
 
-    let filter = {}; // Mặc định lấy tất cả bài viết
-
-    // 🟢 Kiểm tra nếu user đăng nhập, loại bỏ bài viết của chính họ
+    // Nếu có user đăng nhập, loại trừ bài viết của họ
     if (req.user && req.user._id) {
-      filter.postedBy = { $ne: req.user._id };
+      query.postedBy = { $ne: req.user._id };
     }
 
-    const posts = await Post.find(filter)
+    // Lấy tất cả bài viết
+    const posts = await Post.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .populate("postedBy", "_id username name profilePic");
 
-    const totalPosts = await Post.countDocuments(filter);
+    // Đếm tổng số bài viết theo query
+    const totalPosts = await Post.countDocuments(query);
 
     res.status(200).json({
       page,
@@ -235,15 +344,81 @@ const getUserPosts = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const posts = await Post.find({ postedBy: user._id }).sort({
-      createdAt: -1,
-    });
+    const posts = await Post.find({ postedBy: user._id })
+      .sort({
+        createdAt: -1,
+      })
+      .populate("postedBy", "_id username name profilePic");
 
     res.status(200).json(posts);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
+const repost = async (req, res) => {
+  try {
+    const { id: postId } = req.params;
+    const userId = req.user._id;
+
+    // Kiểm tra xem bài viết có tồn tại không
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    // Bắt đầu transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const hasReposted = post.repostedBy.includes(userId);
+
+      if (hasReposted) {
+        // Nếu đã repost thì xóa (unrepost)
+        await Post.findByIdAndUpdate(
+          postId,
+          { $pull: { repostedBy: userId } },
+          { session }
+        );
+
+        await User.findByIdAndUpdate(
+          userId,
+          { $pull: { reposts: postId } },
+          { session }
+        );
+
+        await session.commitTransaction();
+        res.status(200).json({ message: "Post unreposted successfully" });
+      } else {
+        // Nếu chưa repost thì thêm mới
+        await Post.findByIdAndUpdate(
+          postId,
+          { $push: { repostedBy: userId } },
+          { session }
+        );
+
+        await User.findByIdAndUpdate(
+          userId,
+          { $push: { reposts: postId } },
+          { session }
+        );
+
+        await session.commitTransaction();
+        res.status(200).json({ message: "Post reposted successfully" });
+      }
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  } catch (err) {
+    console.error("Error in repost:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
 export {
   createPost,
   getPost,
@@ -253,4 +428,6 @@ export {
   getFeedPosts,
   getUserPosts,
   getAllPosts,
+  updatePost,
+  repost,
 };

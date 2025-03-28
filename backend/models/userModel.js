@@ -39,6 +39,15 @@ const userSchema = mongoose.Schema(
       type: [String],
       default: [],
     },
+    reposts: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Post",
+        },
+      ],
+      default: [],
+    },
     bio: {
       type: String,
       default: "",

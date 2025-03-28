@@ -15,6 +15,7 @@ import { useRecoilState } from "recoil";
 import userAtom from "../atoms/userAtom";
 import usePreviewImg from "../hooks/usePreviewImg";
 import useShowToast from "../hooks/useShowToast";
+import { useNavigate } from "react-router-dom";
 
 export default function UpdateProfilePage() {
     const [user, setUser] = useRecoilState(userAtom);
@@ -25,6 +26,7 @@ export default function UpdateProfilePage() {
         bio: user.bio,
         password: "",
     });
+    const navigate = useNavigate();
     const fileRef = useRef(null);
     const [updating, setUpdating] = useState(false);
 
@@ -126,16 +128,6 @@ export default function UpdateProfilePage() {
                             type='text'
                         />
                     </FormControl>
-                    <FormControl>
-                        <FormLabel>Password</FormLabel>
-                        <Input
-                            placeholder='password'
-                            value={inputs.password}
-                            onChange={(e) => setInputs({ ...inputs, password: e.target.value })}
-                            _placeholder={{ color: "gray.500" }}
-                            type='password'
-                        />
-                    </FormControl>
                     <Stack spacing={6} direction={["column", "row"]}>
                         <Button
                             bg={"red.400"}
@@ -144,6 +136,7 @@ export default function UpdateProfilePage() {
                             _hover={{
                                 bg: "red.500",
                             }}
+                            onClick={() => navigate("/settings")}
                         >
                             Cancel
                         </Button>

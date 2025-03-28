@@ -135,19 +135,19 @@ const getSuggestedUsers = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    const { following } = await User.findById(userId).select("following");
+    // 🔹 Lấy danh sách người đang theo dõi
+    const user = await User.findById(userId).select("following");
+    const following = user?.following || [];
 
-    const suggestedUsers = await User.aggregate([
-      {
-        $match: {
-          _id: { $ne: userId, $nin: following },
-        },
-      },
-      { $sample: { size: 4 } },
-      { $project: { password: 0 } },
-    ]);
+    // 🔹 Lấy danh sách người dùng chưa được theo dõi
+    const notFollowingUsers = await User.find({
+      _id: { $ne: userId, $nin: following },
+    })
+      .sort({ createdAt: -1 }) // 🔹 Ưu tiên người mới
+      .limit(4) // 🔹 Chỉ lấy tối đa 4 người
+      .select("-password"); // Ẩn password
 
-    res.status(200).json(suggestedUsers);
+    res.status(200).json(notFollowingUsers);
   } catch (error) {
     console.error("Error in getSuggestedUsers:", error.message);
     res.status(500).json({ error: "Internal Server Error" });
@@ -173,10 +173,63 @@ const freezeAccount = async (req, res) => {
   }
 };
 
+const deleteAccount = async (req, res) => {
+  try {
+    const { password, isSocialLogin } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // For social login accounts, just delete without password verification
+    if (isSocialLogin) {
+      await User.findByIdAndDelete(req.user._id);
+      return res.status(200).json({ success: true });
+    }
+
+    // For regular accounts, verify password
+    if (!password) {
+      return res
+        .status(400)
+        .json({ error: "Password is required for regular accounts" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: "Incorrect password" });
+    }
+
+    // Delete user account
+    await User.findByIdAndDelete(req.user._id);
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error("Error in deleteAccount:", error.message);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// Get current user's profile
+const getCurrentUserProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select(
+      "-password -updatedAt"
+    );
+    if (!user) return res.status(404).json({ error: "User not found" });
+    res.status(200).json(user);
+  } catch (error) {
+    console.error("Error in getCurrentUserProfile:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
 export {
   followUnFollowUser,
   updateUser,
   getUserProfile,
+  getCurrentUserProfile,
   getSuggestedUsers,
   freezeAccount,
+  deleteAccount,
 };

@@ -1,10 +1,10 @@
 import jwt from "jsonwebtoken";
 const generateTokenAndSetCookie = (userId, res) => {
   const token = jwt.sign({ userId }, process.env.JWT_SECRET, {
-    expiresIn: "7d",
+    expiresIn: process.env.JWT_EXPIRES_IN,
   });
   const refreshToken = jwt.sign({ userId }, process.env.JWT_SECRET_REFRESH, {
-    expiresIn: "30d",
+    expiresIn: process.env.JWT_EXPIRES_IN_REFRESH,
   });
   res.cookie("jwt", token, {
     httpOnly: true, // more secure

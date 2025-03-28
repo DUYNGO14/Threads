@@ -4,17 +4,27 @@ import jwt from "jsonwebtoken";
 const protectRoute = async (req, res, next) => {
   try {
     const token = req.cookies.jwt;
+
     if (!token) {
-      return res.status(401).json({ message: "Unauthorized" });
+      // Nếu không có token, vẫn cho phép request tiếp tục
+      return next();
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!decoded) {
+      return next();
+    }
+
     const user = await User.findById(decoded.userId).select("-password");
+    if (!user) {
+      return next();
+    }
+
     req.user = user;
     next();
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-    console.error("Error in protectRoute: ", error.message);
+  } catch (err) {
+    // Nếu có lỗi, vẫn cho phép request tiếp tục
+    next();
   }
 };
 

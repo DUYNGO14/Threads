@@ -10,6 +10,7 @@ const postSchema = mongoose.Schema(
     text: {
       type: String,
       maxLength: 500,
+      required: true,
     },
     media: [
       {
@@ -19,6 +20,12 @@ const postSchema = mongoose.Schema(
     ],
     likes: {
       // array of user ids
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: "User",
+      default: [],
+    },
+    repostedBy: {
+      // array of user ids who reposted this post
       type: [mongoose.Schema.Types.ObjectId],
       ref: "User",
       default: [],

@@ -9,7 +9,11 @@ import { Link as RouterLink } from "react-router-dom";
 import useFollowUnfollow from "../hooks/useFollowUnfollow";
 import { PropTypes } from 'prop-types';
 import useShowToast from "../hooks/useShowToast";
-const UserHeader = ({ user }) => {
+import Tabs from "./Tabs";
+import { useState } from "react";
+
+const UserHeader = ({ user, onTabChange }) => {
+    const [feedType, setFeedType] = useState("threads");
     const showToast = useShowToast();
     const currentUser = useRecoilValue(userAtom); // logged in user
     const { handleFollowUnfollow, following, updating } = useFollowUnfollow(user);
@@ -20,6 +24,16 @@ const UserHeader = ({ user }) => {
             showToast("Success", "Profile link copied.", "success");
         });
     };
+
+    const handleTabChangeInternal = (tab) => {
+        setFeedType(tab);
+        onTabChange(tab);
+    };
+
+    const myTabs = [
+        { value: "threads", label: "Threads" },
+        { value: "reposts", label: "Reposts" },
+    ];
 
     return (
         <VStack gap={4} alignItems={"start"}>
@@ -99,24 +113,15 @@ const UserHeader = ({ user }) => {
             </Flex>
 
             <Flex w={"full"}>
-                <Flex flex={1} borderBottom={"1.5px solid white"} justifyContent={"center"} pb='3' cursor={"pointer"}>
-                    <Text fontWeight={"bold"}> Threads</Text>
-                </Flex>
-                <Flex
-                    flex={1}
-                    borderBottom={"1px solid gray"}
-                    justifyContent={"center"}
-                    color={"gray.light"}
-                    pb='3'
-                    cursor={"pointer"}
-                >
-                    <Text fontWeight={"bold"}> Replies</Text>
-                </Flex>
+                <Tabs tabs={myTabs} onTabChange={handleTabChangeInternal} initialTab={feedType} />
             </Flex>
         </VStack>
     );
 };
+
 UserHeader.propTypes = {
     user: PropTypes.object.isRequired,
+    onTabChange: PropTypes.func.isRequired,
 };
+
 export default UserHeader;

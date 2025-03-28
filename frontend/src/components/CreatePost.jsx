@@ -25,10 +25,11 @@ import userAtom from "../atoms/userAtom";
 import useShowToast from "../hooks/useShowToast";
 import { useParams } from "react-router-dom";
 import postsAtom from "../atoms/postsAtom";
+import useDebounceSubmit from "../hooks/useDebounceSubmit";
 
 const MAX_CHAR = 500;
-const MAX_FILES = 5;
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "video/mp4", "video/webm"];
+const MAX_FILES = 10;
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/webm"];
 
 const CreatePost = () => {
     const { isOpen, onOpen, onClose } = useDisclosure();
@@ -38,7 +39,6 @@ const CreatePost = () => {
     const [remainingChar, setRemainingChar] = useState(MAX_CHAR);
     const user = useRecoilValue(userAtom);
     const showToast = useShowToast();
-    const [loading, setLoading] = useState(false);
     const [posts, setPosts] = useRecoilState(postsAtom);
     const { username } = useParams();
 
@@ -94,42 +94,42 @@ const CreatePost = () => {
         setMediaFiles(mediaFiles.filter((_, i) => i !== index));
     };
 
-    const handleCreatePost = async () => {
-        setLoading(true);
-        try {
-            const formData = new FormData();
-            formData.append("postedBy", user._id);
-            formData.append("text", postText);
-
-            mediaFiles.forEach(({ file }) => {
-                formData.append("media", file);
-            });
-
-            const res = await fetch("/api/posts/create", {
-                method: "POST",
-                body: formData,
-            });
-
-            const data = await res.json();
-            if (data.error) {
-                showToast("Error", data.error, "error");
-                return;
-            }
-
-            showToast("Success", "Post created successfully", "success");
-            if (username === user.username) {
-                setPosts([data, ...posts]);
-            }
-
-            onClose();
-            setPostText("");
-            setMediaFiles([]);
-        } catch (err) {
-            showToast("Error", err.message, "error");
-        } finally {
-            setLoading(false);
+    const submitPost = async () => {
+        if (postText.length === 0) {
+            showToast("Error", "Please enter some text", "error");
+            return;
         }
+
+        const formData = new FormData();
+        formData.append("postedBy", user._id);
+        formData.append("text", postText);
+
+        mediaFiles.forEach(({ file }) => {
+            formData.append("media", file);
+        });
+
+        const res = await fetch("/api/posts/create", {
+            method: "POST",
+            body: formData,
+        });
+
+        const data = await res.json();
+        if (data.error) {
+            showToast("Error", data.error, "error");
+            return;
+        }
+
+        showToast("Success", "Post created successfully", "success");
+        if (username === user.username) {
+            setPosts([data, ...posts]);
+        }
+
+        onClose();
+        setPostText("");
+        setMediaFiles([]);
     };
+
+    const { handleSubmit: handleCreatePost, isLoading } = useDebounceSubmit(submitPost);
 
     return (
         <>
@@ -210,7 +210,7 @@ const CreatePost = () => {
                     </ModalBody>
 
                     <ModalFooter>
-                        <Button colorScheme="blue" mr={3} onClick={handleCreatePost} isLoading={loading}>
+                        <Button colorScheme="blue" mr={3} onClick={handleCreatePost} isLoading={isLoading}>
                             Post
                         </Button>
                     </ModalFooter>
