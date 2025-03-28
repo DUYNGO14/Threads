@@ -29,7 +29,7 @@ router.get("/google/callback", (req, res, next) => {
         `${
           process.env.NODE_ENV === "production"
             ? "https://threads-0m08.onrender.com"
-            : "http://localhost:3000"
+            : process.env.CLIENT_URL
         }/oauth-failure?error=${encodeURIComponent(
           "Đăng nhập thất bại. Vui lòng thử lại."
         )}`
@@ -41,7 +41,7 @@ router.get("/google/callback", (req, res, next) => {
         `${
           process.env.NODE_ENV === "production"
             ? "https://threads-0m08.onrender.com"
-            : "http://localhost:3000"
+            : process.env.CLIENT_URL
         }/oauth-failure?error=${encodeURIComponent(
           info?.message || "Đăng nhập thất bại."
         )}`
@@ -54,7 +54,7 @@ router.get("/google/callback", (req, res, next) => {
           `${
             process.env.NODE_ENV === "production"
               ? "https://threads-0m08.onrender.com"
-              : "http://localhost:3000"
+              : process.env.CLIENT_URL
           }/oauth-failure?error=${encodeURIComponent("Đăng nhập thất bại.")}`
         );
       }
@@ -69,7 +69,7 @@ router.get("/google/callback", (req, res, next) => {
         `${
           process.env.NODE_ENV === "production"
             ? "https://threads-0m08.onrender.com"
-            : "http://localhost:3000"
+            : process.env.CLIENT_URL
         }/oauth-success`
       );
     });
@@ -92,7 +92,7 @@ router.get("/facebook/callback", (req, res, next) => {
         `${
           process.env.NODE_ENV === "production"
             ? "https://threads-0m08.onrender.com"
-            : "http://localhost:3000"
+            : process.env.CLIENT_URL
         }/oauth-failure?error=${encodeURIComponent(
           err.message || "Đăng nhập thất bại."
         )}`
@@ -105,7 +105,7 @@ router.get("/facebook/callback", (req, res, next) => {
         `${
           process.env.NODE_ENV === "production"
             ? "https://threads-0m08.onrender.com"
-            : "http://localhost:3000"
+            : process.env.CLIENT_URL
         }/oauth-failure?error=${encodeURIComponent(
           info?.message || "Đăng nhập thất bại."
         )}`
@@ -119,7 +119,7 @@ router.get("/facebook/callback", (req, res, next) => {
           `${
             process.env.NODE_ENV === "production"
               ? "https://threads-0m08.onrender.com"
-              : "http://localhost:3000"
+              : process.env.CLIENT_URL
           }/oauth-failure?error=${encodeURIComponent("Đăng nhập thất bại.")}`
         );
       }
@@ -135,7 +135,7 @@ router.get("/facebook/callback", (req, res, next) => {
         `${
           process.env.NODE_ENV === "production"
             ? "https://threads-0m08.onrender.com"
-            : "http://localhost:3000"
+            : process.env.CLIENT_URL
         }/oauth-success`
       );
     });

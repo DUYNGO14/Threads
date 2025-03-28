@@ -7,6 +7,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    base: isProduction ? "https://threads-0m08.onrender.com" : "/",
     server: {
       port: isProduction ? 5000 : 3000,
       // Get rid of the CORS error

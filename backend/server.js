@@ -57,11 +57,12 @@ app.use("/api/messages", messageRouters);
 // http://localhost:5000 => backend,frontend
 
 if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "/frontend/dist")));
+  // Serve static files from the frontend/dist directory
+  app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
-  // react app
+  // Handle React routing, return all requests to React app
   app.get("*", (req, res) => {
-    res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"));
+    res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
   });
 }
 
