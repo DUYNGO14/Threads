@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
       proxy: {
         "/api": {
           target: isProduction
-            ? "https://threads-app.onrender.com"
+            ? "https://threads-0m08.onrender.com"
             : "http://localhost:5000",
           changeOrigin: true,
           secure: false,
