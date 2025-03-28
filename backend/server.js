@@ -43,7 +43,7 @@ app.use(passport.session());
 // CORS
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    origin: "*",
     credentials: true,
   })
 );
