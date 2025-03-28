@@ -26,7 +26,11 @@ router.get("/google/callback", (req, res, next) => {
   passport.authenticate("google", (err, user, info) => {
     if (err) {
       return res.redirect(
-        `${process.env.CLIENT_URL}/oauth-failure?error=${encodeURIComponent(
+        `${
+          process.env.NODE_ENV === "production"
+            ? "https://threads-0m08.onrender.com"
+            : "http://localhost:3000"
+        }/oauth-failure?error=${encodeURIComponent(
           "Đăng nhập thất bại. Vui lòng thử lại."
         )}`
       );
@@ -34,7 +38,11 @@ router.get("/google/callback", (req, res, next) => {
 
     if (!user) {
       return res.redirect(
-        `${process.env.CLIENT_URL}/oauth-failure?error=${encodeURIComponent(
+        `${
+          process.env.NODE_ENV === "production"
+            ? "https://threads-0m08.onrender.com"
+            : "http://localhost:3000"
+        }/oauth-failure?error=${encodeURIComponent(
           info?.message || "Đăng nhập thất bại."
         )}`
       );
@@ -43,9 +51,11 @@ router.get("/google/callback", (req, res, next) => {
     req.logIn(user, (loginErr) => {
       if (loginErr) {
         return res.redirect(
-          `${process.env.CLIENT_URL}/oauth-failure?error=${encodeURIComponent(
-            "Đăng nhập thất bại."
-          )}`
+          `${
+            process.env.NODE_ENV === "production"
+              ? "https://threads-0m08.onrender.com"
+              : "http://localhost:3000"
+          }/oauth-failure?error=${encodeURIComponent("Đăng nhập thất bại.")}`
         );
       }
       generateTokenAndSetCookie(user._id, res);
@@ -55,7 +65,13 @@ router.get("/google/callback", (req, res, next) => {
         sameSite: "Lax",
       });
 
-      res.redirect(`${process.env.CLIENT_URL}/oauth-success`);
+      res.redirect(
+        `${
+          process.env.NODE_ENV === "production"
+            ? "https://threads-0m08.onrender.com"
+            : "http://localhost:3000"
+        }/oauth-success`
+      );
     });
   })(req, res, next);
 });
@@ -73,7 +89,11 @@ router.get("/facebook/callback", (req, res, next) => {
     if (err) {
       console.error("🔥 Lỗi OAuth Facebook:", err.message || err);
       return res.redirect(
-        `${process.env.CLIENT_URL}/oauth-failure?error=${encodeURIComponent(
+        `${
+          process.env.NODE_ENV === "production"
+            ? "https://threads-0m08.onrender.com"
+            : "http://localhost:3000"
+        }/oauth-failure?error=${encodeURIComponent(
           err.message || "Đăng nhập thất bại."
         )}`
       );
@@ -82,7 +102,11 @@ router.get("/facebook/callback", (req, res, next) => {
     if (!user) {
       console.warn("⚠ OAuth Facebook thất bại:", info?.message);
       return res.redirect(
-        `${process.env.CLIENT_URL}/oauth-failure?error=${encodeURIComponent(
+        `${
+          process.env.NODE_ENV === "production"
+            ? "https://threads-0m08.onrender.com"
+            : "http://localhost:3000"
+        }/oauth-failure?error=${encodeURIComponent(
           info?.message || "Đăng nhập thất bại."
         )}`
       );
@@ -92,9 +116,11 @@ router.get("/facebook/callback", (req, res, next) => {
       if (loginErr) {
         console.error("🔥 Lỗi đăng nhập:", loginErr);
         return res.redirect(
-          `${process.env.CLIENT_URL}/oauth-failure?error=${encodeURIComponent(
-            "Đăng nhập thất bại."
-          )}`
+          `${
+            process.env.NODE_ENV === "production"
+              ? "https://threads-0m08.onrender.com"
+              : "http://localhost:3000"
+          }/oauth-failure?error=${encodeURIComponent("Đăng nhập thất bại.")}`
         );
       }
 
@@ -105,7 +131,13 @@ router.get("/facebook/callback", (req, res, next) => {
         sameSite: "Lax",
       });
 
-      res.redirect(`${process.env.CLIENT_URL}/oauth-success`);
+      res.redirect(
+        `${
+          process.env.NODE_ENV === "production"
+            ? "https://threads-0m08.onrender.com"
+            : "http://localhost:3000"
+        }/oauth-success`
+      );
     });
   })(req, res, next);
 });
