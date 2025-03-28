@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { JWT_EXPIRES_IN, JWT_EXPIRES_IN_REFRESH } from "../../constants";
+import { JWT_EXPIRES_IN, JWT_EXPIRES_IN_REFRESH } from "../../constants.js";
 const generateTokenAndSetCookie = (userId, res) => {
   const token = jwt.sign({ userId }, process.env.JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
