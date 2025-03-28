@@ -14,6 +14,7 @@ import { v2 as cloudinary } from "cloudinary";
 import "./config/passport.js";
 import { server, app } from "./sockets/socket.js";
 import job from "./cron/cron.js";
+
 dotenv.config();
 connectDB();
 job.start();

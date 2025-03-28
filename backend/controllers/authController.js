@@ -185,6 +185,7 @@ const verifyEmail = async (req, res) => {
 //forgot password
 const forgotPassword = async (req, res) => {
   const { email } = req.body;
+  console.log("email", email);
   try {
     const user = await User.findOne({ email });
 

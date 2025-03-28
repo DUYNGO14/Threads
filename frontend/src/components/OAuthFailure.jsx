@@ -5,20 +5,18 @@ import useShowToast from "../hooks/useShowToast";
 
 const OAuthFailure = () => {
     const navigate = useNavigate();
-    const showToast = useShowToast();
     const [searchParams] = useSearchParams();
+    const showToast = useShowToast();
 
     useEffect(() => {
         const error = searchParams.get("error");
         if (error) {
-            console.log("OAuth Error:", error); // ✅ Kiểm tra error trên console
             showToast("Error", decodeURIComponent(error), "error");
+        } else {
+            showToast("Error", "Authentication failed", "error");
         }
-
-        // setTimeout(() => {
-        //     navigate("/auth"); // ✅ Chuyển hướng về login sau 3s
-        // }, 2000);
-    }, [searchParams, navigate, showToast]);
+        navigate("/auth");
+    }, [navigate, searchParams, showToast]);
 
     return (
         <Box textAlign="center" mt="50px">

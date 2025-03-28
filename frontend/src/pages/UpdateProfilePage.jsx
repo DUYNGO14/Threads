@@ -116,6 +116,7 @@ export default function UpdateProfilePage() {
                             onChange={(e) => setInputs({ ...inputs, email: e.target.value })}
                             _placeholder={{ color: "gray.500" }}
                             type='email'
+                            disabled={true}
                         />
                     </FormControl>
                     <FormControl>
