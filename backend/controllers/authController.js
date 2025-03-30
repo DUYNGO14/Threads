@@ -5,7 +5,7 @@ import generateTokenAndSetCookie from "../utils/helpers/generateTokenAndSetCooki
 import {
   sendPasswordResetEmail,
   sendVerificationEmail,
-} from "../helper/sendEmail.js";
+} from "../utils/helpers/sendEmail.js";
 const generateOTP = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
 const signupUser = async (req, res) => {
@@ -40,7 +40,11 @@ const signupUser = async (req, res) => {
     // Tạo token và gửi cookie
 
     //send email verification
-    await sendVerificationEmail(email, verificationOTP);
+    await sendVerificationEmail(
+      email,
+      newUser.name || newUser.username,
+      verificationOTP
+    );
 
     // Trả về thông tin user (loại bỏ mật khẩu)
     res.status(201).json({
@@ -132,7 +136,7 @@ const resendOTP = async (req, res) => {
 
     await user.save();
     //send email verification
-    await sendVerificationEmail(email, newOTP);
+    await sendVerificationEmail(email, user.name || user.username, newOTP);
 
     res.json({ success: true, message: "OTP has been resent" });
   } catch (error) {
@@ -216,6 +220,7 @@ const forgotPassword = async (req, res) => {
     // Gửi email chứa token gốc
     await sendPasswordResetEmail(
       user.email,
+      user.name || user.username,
       `${process.env.CLIENT_URL}/reset-password/${resetToken}`
     );
 
