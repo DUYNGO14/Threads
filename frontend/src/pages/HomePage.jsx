@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Spinner, Box, Flex, Text, Button, useColorModeValue } from "@chakra-ui/react";
+import { Spinner, Box, Flex, Text, useColorModeValue, Stack } from "@chakra-ui/react";
 import useShowToast from "../hooks/useShowToast";
 import { useRecoilValue } from "recoil";
 import SuggestedUsers from "../components/SuggestedUsers";
@@ -7,6 +7,7 @@ import Post from "../components/Post";
 import Tabs from "../components/Tabs";
 import { debounce } from "lodash";
 import userAtom from "../atoms/userAtom";
+import PostSkeleton from "../components/PostSkeleton";
 
 const INITIAL_POSTS_LIMIT = 5;
 const SCROLL_POSTS_LIMIT = 10;
@@ -43,7 +44,7 @@ const HomePage = () => {
         }));
     }, [feedType, setPosts]);
 
-    const getFeedPost = async (feed, pageNumber, isInitialLoad = false) => {
+    const getFeedPost = useCallback(async (feed, pageNumber, isInitialLoad = false) => {
         if ((loading || loadingMore) && !isInitialLoad) return;
         if (!hasMore[feed]) return;
 
@@ -71,10 +72,12 @@ const HomePage = () => {
 
             setPosts((prev) => ({
                 ...prev,
-                [feed]: [...prev[feed], ...processedPosts].reduce((acc, post) => {
-                    if (!acc.some((p) => p._id === post._id)) acc.push(post);
-                    return acc;
-                }, []),
+                [feed]: isInitialLoad
+                    ? processedPosts
+                    : [...prev[feed], ...processedPosts].reduce((acc, post) => {
+                        if (!acc.some((p) => p._id === post._id)) acc.push(post);
+                        return acc;
+                    }, []),
             }));
 
             setHasMore((prev) => ({
@@ -82,7 +85,6 @@ const HomePage = () => {
                 [feed]: processedPosts.length > 0 && processedPosts.length >= limit
             }));
 
-            // Cập nhật initialLoadComplete khi đã load đủ số bài viết ban đầu
             if (isInitialLoad && processedPosts.length >= INITIAL_POSTS_LIMIT) {
                 setInitialLoadComplete(prev => ({ ...prev, [feed]: true }));
             }
@@ -95,7 +97,7 @@ const HomePage = () => {
                 setLoadingMore(false);
             }
         }
-    };
+    }, [loading, loadingMore, hasMore, showToast, setPosts, setHasMore, setInitialLoadComplete, setLoading, setLoadingMore]);
 
     // Khi đổi tab, reset state và load lại từ đầu
     useEffect(() => {
@@ -144,52 +146,55 @@ const HomePage = () => {
         <Flex gap={10} alignItems={"flex-start"}>
             <Box flex={70}>
                 <Tabs tabs={myTabs} onTabChange={setFeedType} initialTab={feedType} requireAuth={true} />
+                <Box minH="calc(100vh - 200px)">
+                    {!loading && posts[feedType].length === 0 && (
+                        <Box
+                            display="flex"
+                            flexDirection="column"
+                            alignItems="center"
+                            justifyContent="center"
+                            height="50vh"
+                            textAlign="center"
+                            color="gray.500"
+                        >
+                            <Text fontSize="xl" fontWeight="bold">
+                                Không có bài viết nào
+                            </Text>
+                            <Text fontSize="md">Hãy theo dõi bạn bè để xem bài viết tại đây!</Text>
+                        </Box>
+                    )}
 
-                {!loading && posts[feedType].length === 0 && (
-                    <Box
-                        display="flex"
-                        flexDirection="column"
-                        alignItems="center"
-                        justifyContent="center"
-                        height="50vh"
-                        textAlign="center"
-                        color="gray.500"
-                    >
-                        <Text fontSize="xl" fontWeight="bold">
-                            Không có bài viết nào
-                        </Text>
-                        <Text fontSize="md">Hãy theo dõi bạn bè để xem bài viết tại đây!</Text>
-                    </Box>
-                )}
+                    {loading && posts[feedType].length === 0 && (
+                        <Stack spacing={4} mt={4}>
+                            <PostSkeleton />
+                            <PostSkeleton />
+                            <PostSkeleton />
+                        </Stack>
+                    )}
 
-                {loading && posts[feedType].length === 0 && (
-                    <Flex justifyContent={"center"} mt={4}>
-                        <Spinner size={"xl"} />
-                    </Flex>
-                )}
+                    {posts[feedType].map((post) => (
+                        <Post
+                            key={post._id}
+                            post={post}
+                            postedBy={post?.postedBy}
+                            onPostUpdate={updatePostInFeed}
+                        />
+                    ))}
 
-                {posts[feedType].map((post) => (
-                    <Post
-                        key={post._id}
-                        post={post}
-                        postedBy={post?.postedBy}
-                        onPostUpdate={updatePostInFeed}
-                    />
-                ))}
+                    {loadingMore && (
+                        <Stack spacing={4} mt={4}>
+                            <PostSkeleton />
+                        </Stack>
+                    )}
 
-                {loadingMore && (
-                    <Flex justifyContent={"center"} mt={4} mb={4}>
-                        <Spinner size={"md"} />
-                    </Flex>
-                )}
-
-                {!hasMore[feedType] && posts[feedType].length > 0 && (
-                    <Flex justifyContent={"center"} mb={4} color="gray.500">
-                        <p>📌 Đã hết bài viết</p>
-                    </Flex>
-                )}
+                    {!hasMore[feedType] && posts[feedType].length > 0 && (
+                        <Flex justifyContent={"center"} mb={4} color="gray.500">
+                            <p>📌 Đã hết bài viết</p>
+                        </Flex>
+                    )}
+                </Box>
             </Box>
-            <Box flex={30} display={{ base: "none", md: "block" }}>
+            <Box w="300px" minW="300px" display={{ base: "none", md: "block" }} position="sticky" top="20px">
                 {currentUser ? (
                     <SuggestedUsers />
                 ) : (

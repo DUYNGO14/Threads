@@ -13,6 +13,8 @@ export default function Tabs({ tabs, onTabChange, initialTab = tabs[0].value, re
     const inactiveTextColor = useColorModeValue("gray.500", "gray.400");
     const currentUser = useRecoilValue(userAtom);
     const showToast = useShowToast();
+    const bgColor = useColorModeValue("gray.100", "#101010");
+
     // Tối ưu: Dùng useMemo để tránh tính toán lại không cần thiết
     const styles = useMemo(() => ({
         activeBorderColor,
@@ -30,6 +32,14 @@ export default function Tabs({ tabs, onTabChange, initialTab = tabs[0].value, re
             }
         }
 
+        // Cuộn lên trên khi click vào tab hiện tại
+        if (tabValue === activeTab) {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+
         if (tabValue !== activeTab) {
             setActiveTab(tabValue);
             onTabChange(tabValue);
@@ -37,7 +47,27 @@ export default function Tabs({ tabs, onTabChange, initialTab = tabs[0].value, re
     }
 
     return (
-        <Flex w="full" mb={4}>
+        <Flex
+            w="full"
+            mb={4}
+            position="sticky"
+            top={0}
+            zIndex={10}
+            bg={bgColor}
+            py={2}
+            backdropFilter="blur(10px)"
+            _before={{
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                bg: bgColor,
+                opacity: 0.8,
+                zIndex: -1,
+            }}
+        >
             {tabs.map((tab) => (
                 <Flex
                     key={tab.value}

@@ -1,10 +1,10 @@
 import Post from "../models/postModel.js";
 import User from "../models/userModel.js";
 import { v2 as cloudinary } from "cloudinary";
-import fs from "fs/promises";
 import mongoose from "mongoose";
+import { uploadFiles } from "../utils/uploadUtils.js";
+import { MAX_FILES, MAX_CHAR } from "../constants/upload.js";
 
-const MAX_FILES = 20;
 
 const createPost = async (req, res) => {
   try {
@@ -12,59 +12,34 @@ const createPost = async (req, res) => {
     const user = await User.findById(postedBy);
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    if (user._id.toString() !== req.user._id.toString()) {
-      return res.status(401).json({ error: "Unauthorized to create post" });
-    }
-
-    if (text.length > 500) {
+    if (text.length > MAX_CHAR) {
       return res
         .status(400)
-        .json({ error: "Text must be less than 500 characters" });
+        .json({ error: `Text must be less than ${MAX_CHAR} characters` });
     }
 
     let mediaFiles = [];
-
-    // 🟢 Upload nhiều ảnh hoặc video song song lên Cloudinary
     if (req.files && req.files.length > 0) {
-      const uploadPromises = req.files.map(async (file) => {
-        try {
-          const resourceType = file.mimetype.startsWith("video")
-            ? "video"
-            : "image";
-
-          // Upload lên Cloudinary
-          const uploadedResponse = await cloudinary.uploader.upload(file.path, {
-            resource_type: resourceType,
-          });
-
-          // Xóa file tạm sau khi upload thành công
-          await fs.unlink(file.path);
-
-          return { url: uploadedResponse.secure_url, type: resourceType };
-        } catch (err) {
-          console.error("Lỗi upload:", err);
-          return null;
-        }
-      });
-
-      // Đợi tất cả file được upload xong
-      mediaFiles = (await Promise.all(uploadPromises)).filter(
-        (file) => file !== null
-      );
+      if (req.files.length > MAX_FILES) {
+        return res
+          .status(400)
+          .json({ error: `You can only upload up to ${MAX_FILES} files` });
+      }
+      mediaFiles = await uploadFiles(req.files);
     }
 
+    // Create new post
     const newPost = new Post({ postedBy, text, media: mediaFiles });
     await newPost.save();
 
-    // Populate thông tin người đăng trước khi trả về
+    // Populate to return full information
     const populatedPost = await Post.findById(newPost._id).populate(
       "postedBy",
       "_id username name profilePic"
     );
-
     res.status(201).json(populatedPost);
   } catch (err) {
-    console.error("Lỗi tạo bài viết:", err.message);
+    console.error("Post error:", err.message);
     res.status(500).json({ error: err.message });
   }
 };
@@ -86,30 +61,7 @@ const updatePost = async (req, res) => {
     }
 
     if (req.files && req.files.length > 0) {
-      const uploadPromises = req.files.map(async (file) => {
-        try {
-          const resourceType = file.mimetype.startsWith("video")
-            ? "video"
-            : "image";
-
-          const uploadedResponse = await cloudinary.uploader.upload(file.path, {
-            resource_type: resourceType,
-          });
-
-          // Xóa file tạm sau khi upload thông
-          await fs.unlink(file.path);
-
-          return { url: uploadedResponse.secure_url, type: resourceType };
-        } catch (err) {
-          console.error("Lỗi upload:", err);
-          return null;
-        }
-      }); // Đợi tất cả file được upload xong
-
-      const mediaFiles = (await Promise.all(uploadPromises)).filter(
-        (file) => file !== null
-      );
-
+      const mediaFiles = await uploadFiles(req.files);
       post.media = post.media.concat(mediaFiles);
     }
 

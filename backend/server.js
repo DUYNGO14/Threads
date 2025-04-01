@@ -2,7 +2,6 @@ import express from "express";
 import path from "path";
 import dotenv from "dotenv";
 import cors from "cors";
-import connectDB from "./db/connectDB.js";
 import cookieParser from "cookie-parser";
 import userRouters from "./routes/userRoutes.js";
 import postRouters from "./routes/postRouters.js";
@@ -14,6 +13,7 @@ import { v2 as cloudinary } from "cloudinary";
 import "./config/passport.js";
 import { server, app } from "./sockets/socket.js";
 import job from "./cron/cron.js";
+import connectDB from "./config/connectDB.js";
 
 dotenv.config();
 connectDB();

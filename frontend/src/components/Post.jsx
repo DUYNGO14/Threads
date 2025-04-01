@@ -4,7 +4,7 @@ import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
 import Actions from "./Actions";
-import { useEffect, useState, useCallback } from "react";
+import { useCallback } from "react";
 import useShowToast from "../hooks/useShowToast";
 import { formatDistanceToNow } from "date-fns";
 import { DeleteIcon } from "@chakra-ui/icons";
@@ -13,7 +13,6 @@ import userAtom from "../atoms/userAtom";
 import postsAtom from "../atoms/postsAtom";
 import { PropTypes } from "prop-types";
 import Carousels from "./Carousels";
-import { BsRepeat } from "react-icons/bs";
 
 const Post = ({ post, postedBy, onPostUpdate }) => {
     const showToast = useShowToast();
@@ -21,7 +20,6 @@ const Post = ({ post, postedBy, onPostUpdate }) => {
     const [posts, setPosts] = useRecoilState(postsAtom);
     const navigate = useNavigate();
     const { isOpen, onOpen, onClose } = useDisclosure();
-
     const handleDeletePost = useCallback(async () => {
         try {
             const res = await fetch(`/api/posts/${post?._id}`, {
@@ -83,14 +81,6 @@ const Post = ({ post, postedBy, onPostUpdate }) => {
                                 <Text fontSize={"xs"} color={"gray.500"}>
                                     {post.createdAt ? formatDistanceToNow(new Date(post.createdAt)) : "Just now"} ago
                                 </Text>
-                                {post.repostedBy?.length > 0 && (
-                                    <Flex alignItems="center" ml={2}>
-                                        <BsRepeat size={12} style={{ marginRight: '4px', color: '#805AD5' }} />
-                                        <Text fontSize="xs" color="gray.500">
-                                            {post.repostedBy.length} reposts
-                                        </Text>
-                                    </Flex>
-                                )}
                             </Flex>
                             {currentUser?._id === postedBy?._id && (
                                 <IconButton

@@ -15,7 +15,11 @@ const postSchema = mongoose.Schema(
     media: [
       {
         url: { type: String, required: true }, // URL của file
-        type: { type: String, enum: ["image", "video"], required: true }, // Kiểu file
+        type: {
+          type: String,
+          enum: ["image", "video", "audio"],
+          required: true,
+        }, // Kiểu file
       },
     ],
     likes: {

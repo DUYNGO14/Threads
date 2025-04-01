@@ -1,35 +1,21 @@
 import { AddIcon } from "@chakra-ui/icons";
 import {
-    Button,
-    CloseButton,
-    Flex,
-    FormControl,
-    Image,
-    Input,
-    Modal,
-    ModalBody,
-    ModalCloseButton,
-    ModalContent,
-    ModalFooter,
-    ModalHeader,
-    ModalOverlay,
-    Text,
-    Textarea,
-    useColorModeValue,
-    useDisclosure,
+    Button, CloseButton, Flex, FormControl, Image, Input, Modal,
+    ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalHeader,
+    ModalOverlay, Text, Textarea, useColorModeValue, useDisclosure,
+    Box, IconButton, Tooltip, Tabs, TabList, TabPanels, Tab, TabPanel,
+    Avatar, Divider
 } from "@chakra-ui/react";
 import { useRef, useState, useEffect } from "react";
-import { BsFillImageFill } from "react-icons/bs";
+import { BsFillImageFill, BsFillCameraVideoFill, BsFillMicFill } from "react-icons/bs";
 import { useRecoilState, useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
 import useShowToast from "../hooks/useShowToast";
 import { useParams } from "react-router-dom";
 import postsAtom from "../atoms/postsAtom";
 import useDebounceSubmit from "../hooks/useDebounceSubmit";
-
-const MAX_CHAR = 500;
-const MAX_FILES = 10;
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/webm"];
+import { MAX_CHAR, MAX_FILES, ALLOWED_TYPES } from "../constant/uploads";
+import PostPreview from "./PostPreview";
 
 const CreatePost = () => {
     const { isOpen, onOpen, onClose } = useDisclosure();
@@ -41,8 +27,8 @@ const CreatePost = () => {
     const showToast = useShowToast();
     const [posts, setPosts] = useRecoilState(postsAtom);
     const { username } = useParams();
+    const previewBgColor = useColorModeValue("gray.50", "gray.700");
 
-    // Cleanup Object URLs để tránh memory leak
     useEffect(() => {
         return () => {
             mediaFiles.forEach((file) => URL.revokeObjectURL(file.preview));
@@ -71,19 +57,10 @@ const CreatePost = () => {
             return true;
         });
 
-        const uniqueFiles = validFiles.filter((file) =>
-            !mediaFiles.some((existing) => existing.file.name === file.name)
-        );
-
-        if (uniqueFiles.length === 0) {
-            showToast("Error", "Duplicate or invalid files selected", "error");
-            return;
-        }
-
-        const newFiles = uniqueFiles.map((file) => ({
+        const newFiles = validFiles.map((file) => ({
             file,
             preview: URL.createObjectURL(file),
-            type: file.type.startsWith("video") ? "video" : "image",
+            type: file.type.startsWith("video") ? "video" : file.type.startsWith("audio") ? "audio" : "image",
         }));
 
         setMediaFiles([...mediaFiles, ...newFiles]);
@@ -137,80 +114,181 @@ const CreatePost = () => {
                 position="fixed"
                 bottom={10}
                 right={10}
-                leftIcon={<AddIcon />}
-                bg={useColorModeValue("gray.300", "gray.dark")}
+                bg={useColorModeValue("blue.500", "blue.400")}
+                color="white"
+                transition="all 0.3s ease-in-out"
                 onClick={onOpen}
                 size={{ base: "sm", sm: "md" }}
+                zIndex={1000}
+                width={{ base: "40px", sm: "40px" }}
+                height="40px"
+                padding={0}
+                _hover={{
+                    width: "140px",
+                    bg: useColorModeValue("blue.600", "blue.500"),
+                    transform: "translateY(-2px)",
+                    boxShadow: "lg"
+                }}
+                role="group"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                overflow="hidden"
             >
-                Post
+                <Flex
+                    position="absolute"
+                    left={0}
+                    width="full"
+                    height="full"
+                    alignItems="center"
+                    px={3}
+                >
+                    <AddIcon boxSize={3} />
+                    <Box
+                        as="span"
+                        opacity={0}
+                        width="0"
+                        overflow="hidden"
+                        display="inline-block"
+                        transition="all 0.3s ease-in-out"
+                        _groupHover={{
+                            opacity: 1,
+                            width: "auto",
+                            marginLeft: "8px"
+                        }}
+                        whiteSpace="nowrap"
+                        fontSize="sm"
+                    >
+                        Create Post
+                    </Box>
+                </Flex>
             </Button>
-            <Modal isOpen={isOpen} onClose={onClose} centered>
-                <ModalOverlay />
+
+            <Modal isOpen={isOpen} onClose={onClose} size="xl">
+                <ModalOverlay backdropFilter="blur(10px)" />
                 <ModalContent>
-                    <ModalHeader>Create a Post</ModalHeader>
+                    <ModalHeader fontSize="2xl" fontWeight="bold">Create a New Post</ModalHeader>
                     <ModalCloseButton />
                     <ModalBody>
-                        <FormControl>
-                            <Textarea
-                                placeholder="Post content goes here..."
-                                onChange={handleTextChange}
-                                value={postText}
-                            />
-                            <Text fontSize="xs" fontWeight="bold" textAlign="right" m="1">
-                                {remainingChar}/{MAX_CHAR}
-                            </Text>
-
-                            <Input
-                                type="file"
-                                hidden
-                                ref={imageRef}
-                                multiple
-                                accept="image/*,video/*"
-                                onChange={handleFileChange}
-                            />
-                            <BsFillImageFill
-                                style={{ marginLeft: "5px", cursor: "pointer" }}
-                                size={16}
-                                onClick={() => imageRef.current.click()}
-                            />
-                        </FormControl>
-
-                        {mediaFiles.length > 0 && (
-                            <Flex mt={5} wrap="wrap">
-                                {mediaFiles.map((file, index) => (
-                                    <Flex
-                                        key={index}
-                                        position="relative"
-                                        m={2}
-                                        w="100px"
-                                        h="100px"
-                                        borderRadius="md"
-                                        overflow="hidden"
-                                        bg="gray.100"
-                                        justify="center"
-                                        align="center"
-                                    >
-                                        {file.type === "image" ? (
-                                            <Image src={file.preview} alt="Preview" w="full" h="full" objectFit="cover" />
-                                        ) : (
-                                            <video src={file.preview} controls width="100%" height="100%" />
-                                        )}
-                                        <CloseButton
-                                            position="absolute"
-                                            top={1}
-                                            right={1}
-                                            bg="gray.800"
-                                            color="white"
-                                            onClick={() => handleRemoveFile(index)}
+                        <Tabs variant="enclosed" colorScheme="blue">
+                            <TabList mb={4}>
+                                <Tab>Edit</Tab>
+                                <Tab>Preview</Tab>
+                            </TabList>
+                            <TabPanels>
+                                <TabPanel p={0}>
+                                    <FormControl>
+                                        <Textarea
+                                            placeholder="What's on your mind?"
+                                            onChange={handleTextChange}
+                                            value={postText}
+                                            minH="150px"
+                                            fontSize="lg"
+                                            resize="none"
+                                            _focus={{
+                                                borderColor: "blue.500",
+                                                boxShadow: "0 0 0 1px blue.500"
+                                            }}
                                         />
-                                    </Flex>
-                                ))}
-                            </Flex>
-                        )}
+                                        <Flex justify="space-between" align="center" mt={2}>
+                                            <Text fontSize="xs" fontWeight="bold" color={remainingChar < 50 ? "red.500" : "gray.500"}>
+                                                {remainingChar}/{MAX_CHAR} characters remaining
+                                            </Text>
+                                            <Flex gap={2}>
+                                                <Tooltip label="Add images">
+                                                    <IconButton
+                                                        icon={<BsFillImageFill />}
+                                                        onClick={() => imageRef.current.click()}
+                                                        colorScheme="blue"
+                                                        variant="ghost"
+                                                        aria-label="Add images"
+                                                        _hover={{ transform: "scale(1.1)" }}
+                                                        transition="all 0.2s"
+                                                    />
+                                                </Tooltip>
+                                            </Flex>
+                                        </Flex>
+
+                                        <Input
+                                            type="file"
+                                            hidden
+                                            ref={imageRef}
+                                            multiple
+                                            accept="image/*,video/*,audio/*"
+                                            onChange={handleFileChange}
+                                        />
+                                    </FormControl>
+
+                                    {mediaFiles.length > 0 && (
+                                        <Box mt={5}>
+                                            <Text fontSize="sm" fontWeight="medium" mb={2}>
+                                                Media Preview ({mediaFiles.length}/{MAX_FILES})
+                                            </Text>
+                                            <Flex wrap="wrap" gap={3}>
+                                                {mediaFiles.map((file, index) => (
+                                                    <Box
+                                                        key={index}
+                                                        position="relative"
+                                                        w="120px"
+                                                        h="120px"
+                                                        borderRadius="lg"
+                                                        overflow="hidden"
+                                                        boxShadow="md"
+                                                        _hover={{ transform: "scale(1.02)" }}
+                                                        transition="all 0.2s"
+                                                    >
+                                                        {file.type === "image" ? (
+                                                            <Image
+                                                                src={file.preview}
+                                                                alt="Preview"
+                                                                w="full"
+                                                                h="full"
+                                                                objectFit="cover"
+                                                            />
+                                                        ) : file.type === "video" ? (
+                                                            <Box w="full" h="full" bg="gray.100" p={2}>
+                                                                <BsFillCameraVideoFill size={24} style={{ margin: "auto" }} />
+                                                            </Box>
+                                                        ) : (
+                                                            <Box w="full" h="full" bg="gray.100" p={2}>
+                                                                <BsFillMicFill size={24} style={{ margin: "auto" }} />
+                                                            </Box>
+                                                        )}
+                                                        <CloseButton
+                                                            position="absolute"
+                                                            top={2}
+                                                            right={2}
+                                                            bg="rgba(0,0,0,0.5)"
+                                                            color="white"
+                                                            _hover={{ bg: "rgba(0,0,0,0.7)" }}
+                                                            onClick={() => handleRemoveFile(index)}
+                                                        />
+                                                    </Box>
+                                                ))}
+                                            </Flex>
+                                        </Box>
+                                    )}
+                                </TabPanel>
+                                <TabPanel p={0}>
+                                    <PostPreview user={user} postText={postText} mediaFiles={mediaFiles} />
+                                </TabPanel>
+                            </TabPanels>
+                        </Tabs>
                     </ModalBody>
 
                     <ModalFooter>
-                        <Button colorScheme="blue" mr={3} onClick={handleCreatePost} isLoading={isLoading}>
+                        <Button
+                            colorScheme="blue"
+                            mr={3}
+                            onClick={handleCreatePost}
+                            isLoading={isLoading}
+                            px={8}
+                            _hover={{
+                                transform: "translateY(-1px)",
+                                boxShadow: "lg"
+                            }}
+                            transition="all 0.2s"
+                        >
                             Post
                         </Button>
                     </ModalFooter>

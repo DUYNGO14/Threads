@@ -2,8 +2,23 @@ import {
     Modal, ModalBody, ModalCloseButton, ModalContent,
     ModalOverlay, Image, Box
 } from "@chakra-ui/react";
+import AudioPlayer from "./AudioPlayer";
+import { useEffect, useRef, useState } from "react";
 
 const ModalPost = ({ mediaUrl, mediaType, isOpen, onClose }) => {
+    const videoRef = useRef(null);
+    const imgRef = useRef(null);
+
+    // Dừng tất cả âm thanh khi mở modal
+    useEffect(() => {
+        if (isOpen) {
+            document.querySelectorAll('audio').forEach(audio => audio.pause());
+        } else {
+            // Dừng video khi đóng modal
+            if (videoRef.current) videoRef.current.pause();
+        }
+    }, [isOpen]);
+
     return (
         <Modal onClose={onClose} isOpen={isOpen} size="full" motionPreset="scale">
             <ModalOverlay bg="blackAlpha.900" backdropFilter="blur(10px)" />
@@ -45,14 +60,17 @@ const ModalPost = ({ mediaUrl, mediaType, isOpen, onClose }) => {
                     >
                         {mediaType === "image" ? (
                             <Image
+                                ref={imgRef}
                                 src={mediaUrl}
                                 alt="Post Image"
                                 maxW="100%"
                                 maxH="95vh"
                                 objectFit="contain"
+                                transition="transform 0.2s ease-out"
                             />
-                        ) : (
+                        ) : mediaType === "video" ? (
                             <video
+                                ref={videoRef}
                                 src={mediaUrl}
                                 controls
                                 autoPlay
@@ -64,7 +82,10 @@ const ModalPost = ({ mediaUrl, mediaType, isOpen, onClose }) => {
                                     objectFit: "contain",
                                     backgroundColor: "black",
                                 }}
+                                onClick={(e) => e.stopPropagation()}
                             />
+                        ) : (
+                            <AudioPlayer url={mediaUrl} />
                         )}
                     </Box>
                 </ModalBody>

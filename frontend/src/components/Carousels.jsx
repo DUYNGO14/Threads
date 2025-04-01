@@ -1,17 +1,24 @@
-import { Box, Image } from "@chakra-ui/react";
+import { Box, Image, useBreakpointValue } from "@chakra-ui/react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
 import { Pagination } from "swiper/modules";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import ModalPost from "./ModalPost";
+import AudioPlayer from "./AudioPlayer";
 
 const Carousels = ({ medias }) => {
     const [selectedMedia, setSelectedMedia] = useState(null);
     const videoRefs = useRef([]);
     const [imageSizes, setImageSizes] = useState({});
+    const swiperRef = useRef(null);
 
+    // Kích thước responsive
+    const maxWidth = useBreakpointValue({ base: "90%", md: "400px", lg: "500px" });
+    const maxHeight = useBreakpointValue({ base: "60vh", md: "70vh", lg: "80vh" });
+
+    // Tự động phát/dừng video khi vào/ra màn hình
     useEffect(() => {
         if (!videoRefs.current.length) return;
 
@@ -26,72 +33,80 @@ const Carousels = ({ medias }) => {
                     }
                 });
             },
-            { threshold: 0.5 }
+            { threshold: 0.8 }
         );
 
-        videoRefs.current.forEach((video) => {
-            if (video) observer.observe(video);
-        });
+        videoRefs.current.forEach((video) => video && observer.observe(video));
 
         return () => {
-            videoRefs.current.forEach((video) => {
-                if (video) observer.unobserve(video);
-            });
+            videoRefs.current.forEach((video) => video && observer.unobserve(video));
         };
     }, [medias]);
 
-    // Xử lý khi ảnh tải xong để lấy kích thước thực
-    const handleImageLoad = (index, event) => {
+    const handleImageLoad = useCallback((index, event) => {
         const { naturalWidth, naturalHeight } = event.target;
         setImageSizes((prevSizes) => ({
             ...prevSizes,
             [index]: { width: naturalWidth, height: naturalHeight },
         }));
-    };
+    }, []);
 
     return (
-        <>
+        <Box position="relative" overflow="hidden" w="100%">
             <Swiper
                 modules={[Pagination]}
-                pagination={medias.length > 1 ? { clickable: true } : false}
+                pagination={medias.length > 1 ? { clickable: true, dynamicBullets: true } : false}
                 spaceBetween={10}
                 slidesPerView={"auto"}
-                style={{ width: "100%", paddingBottom: medias.length > 1 ? "10px" : "0", display: "flex", justifyContent: "flex-start" }}
+                centeredSlides={false}
+                style={{
+                    width: "100%",
+                    paddingBottom: medias.length > 1 ? "8px" : "0",
+                    display: "flex",
+                    justifyContent: "flex-start",
+                }}
+                onSwiper={(swiper) => (swiperRef.current = swiper)}
+                onSlideChange={() => {
+                    document.querySelectorAll("audio").forEach((audio) => audio.pause());
+                }}
             >
-                {medias.map((media, index) => {
-                    const imgSize = imageSizes[index] || { width: 600 }; // Mặc định nếu chưa load kích thước ảnh
-
-                    return (
-                        <SwiperSlide
-                            key={index}
-                            style={{
-                                width: "auto",
-                                maxWidth: `${media.type === "video" ? "600px" : Math.min(imgSize.width, 600)}px`,
-                                display: "flex",
-                                justifyContent: "flex-start",
-                                borderRadius: "12px",
+                {medias.map((media, index) => (
+                    <SwiperSlide
+                        key={index}
+                        style={{
+                            width: "auto",
+                            maxWidth: "100%",
+                            display: "flex",
+                            justifyContent: "flex-start",
+                            alignItems: "flex-start",
+                            borderRadius: "12px",
+                            overflow: "hidden",
+                        }}
+                    >
+                        <Box
+                            display="flex"
+                            justifyContent="center"
+                            alignItems="center"
+                            maxW="100%"
+                            maxH="90vh"
+                            overflow="hidden"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedMedia(media);
                             }}
                         >
-                            <Box
-                                display="flex"
-                                alignItems="center"
-                                justifyContent="center"
-                                maxWidth="100%"
-                                overflow="hidden"
-                                borderRadius="12px"
-                                cursor="pointer"
-                                onClick={() => setSelectedMedia(media)}
-                            >
-                                {media.type === "image" ? (
-                                    <Image
-                                        src={media.url}
-                                        objectFit="contain"
-                                        maxWidth="100%"
-                                        maxHeight="50vh"
-                                        borderRadius="12px"
-                                        onLoad={(e) => handleImageLoad(index, e)} // Cập nhật kích thước khi ảnh tải xong
-                                    />
-                                ) : (
+                            {media.type === "image" ? (
+                                <Image
+                                    src={media.url}
+                                    alt="Post Image"
+                                    maxWidth="100%"
+                                    maxHeight={maxHeight}
+                                    objectFit="contain"
+                                    borderRadius="12px"
+                                    onLoad={(e) => handleImageLoad(index, e)}
+                                />
+                            ) : media.type === "video" ? (
+                                <Box onClick={() => setSelectedMedia(media)} cursor="pointer" maxW="100%" overflow="hidden">
                                     <video
                                         ref={(el) => (videoRefs.current[index] = el)}
                                         muted
@@ -100,20 +115,21 @@ const Carousels = ({ medias }) => {
                                         controls
                                         style={{
                                             borderRadius: "12px",
-                                            width: "100%", // Đảm bảo video chiếm đủ khung
-                                            maxWidth: "500px", // Giới hạn chiều rộng tối đa
-                                            maxHeight: "70vh",
-                                            aspectRatio: "auto",
+                                            width: "100%",
+                                            maxHeight: maxHeight,
+                                            objectFit: "contain",
                                         }}
                                     >
                                         <source src={media.url} type="video/mp4" />
                                         Your browser does not support the video tag.
                                     </video>
-                                )}
-                            </Box>
-                        </SwiperSlide>
-                    );
-                })}
+                                </Box>
+                            ) : (
+                                <AudioPlayer url={media.url} onModalClick={() => setSelectedMedia(media)} />
+                            )}
+                        </Box>
+                    </SwiperSlide>
+                ))}
             </Swiper>
 
             {selectedMedia && (
@@ -124,7 +140,7 @@ const Carousels = ({ medias }) => {
                     onClose={() => setSelectedMedia(null)}
                 />
             )}
-        </>
+        </Box>
     );
 };
 

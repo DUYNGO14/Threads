@@ -19,7 +19,7 @@ const OAuthSuccess = () => {
                 if (data._id) {
                     localStorage.setItem("user-threads", JSON.stringify(data));
                     setUser(data);
-                    showToast("Success", "Đăng nhập thành công!", "success");
+                    //showToast("Success", "Đăng nhập thành công!", "success");
                     navigate("/");
                 } else {
                     showToast("Error", "Không thể lấy thông tin người dùng", "error");

@@ -16,12 +16,11 @@ const LogoutButton = () => {
             })
             const data = await res.json();
             if (data.error) {
-                showToast("Error", data.error, "error");
-                return;
+                return showToast("Error", data.error, "error");
             }
             localStorage.removeItem("user-threads");
             setUser(null);
-            showToast("Success", data.message, "success");
+            //showToast("Success", data.message, "success");
         } catch (error) {
             console.log(error);
         }
