@@ -17,7 +17,20 @@ import "./config/cloudinary.config.js";
 
 dotenv.config();
 connectDB();
-
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "your-secret-key", // Sử dụng biến môi trường để bảo mật
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({
+      mongoUrl: process.env.MONGO_URI, // Cung cấp URL MongoDB ở đây
+      ttl: 14 * 24 * 60 * 60, // Thời gian sống của session (14 ngày)
+    }), // Sử dụng mongoose.connection
+    cookie: {
+      secure: process.env.NODE_ENV === "production", // Đảm bảo chỉ sử dụng HTTPS khi ở môi trường production
+    },
+  })
+);
 const PORT = process.env.PORT || 5000;
 const __dirname = path.resolve();
 
@@ -33,22 +46,6 @@ app.use(
   cors({
     origin: "*",
     credentials: true,
-  })
-);
-
-// Cấu hình session
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "your-secret-key", // Sử dụng biến môi trường để bảo mật
-    resave: false,
-    saveUninitialized: false,
-    store: MongoStore.create({
-      mongoUrl: process.env.MONGO_URI, // Cung cấp URL MongoDB ở đây
-      ttl: 14 * 24 * 60 * 60, // Thời gian sống của session (14 ngày)
-    }), // Sử dụng mongoose.connection
-    cookie: {
-      secure: process.env.NODE_ENV === "production", // Đảm bảo chỉ sử dụng HTTPS khi ở môi trường production
-    },
   })
 );
 
