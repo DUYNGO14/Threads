@@ -1,7 +1,7 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
 
-const useDebounceSubmit = (submitFunction, delay = 1000) => {
+const useDebounceSubmit = (submitFunction, delay = 500) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const debouncedSubmit = useDebouncedCallback(async (...args) => {

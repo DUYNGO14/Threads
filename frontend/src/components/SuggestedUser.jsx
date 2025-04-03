@@ -1,4 +1,4 @@
-import { Avatar, Box, Button, Flex, Text } from "@chakra-ui/react";
+import { Avatar, Box, Button, Flex, Text, useColorModeValue } from "@chakra-ui/react";
 import { Link } from "react-router-dom";
 import useFollowUnfollow from "../hooks/useFollowUnfollow";
 import PropTypes from "prop-types";
@@ -6,33 +6,47 @@ const SuggestedUser = ({ user }) => {
     const { handleFollowUnfollow, following, updating } = useFollowUnfollow(user);
 
     return (
-        <Flex gap={2} justifyContent={"space-between"} alignItems={"center"}>
+        <Flex
+            gap={3}
+            justifyContent={"space-between"}
+            alignItems={"center"}
+            p={2} // Tăng padding để có khoảng cách tốt hơn
+            borderRadius={"md"}
+            w={"full"}
+            _hover={{ bg: useColorModeValue("gray.100", "gray.700") }} // Chỉnh màu hover cho dark mode
+        >
             {/* left side */}
-            <Flex gap={2} as={Link} to={`${user.username}`}>
-                <Avatar src={user.profilePic} />
-                <Box>
-                    <Text fontSize={"sm"} fontWeight={"bold"}>
+            <Flex gap={2} as={Link} to={`/${user.username}`} flex={1} overflow="hidden">
+                <Avatar src={user.profilePic} size="md" name={user.username} />
+                <Box overflow="hidden">
+                    <Text
+                        fontSize="sm"
+                        fontWeight="bold"
+                        isTruncated
+                        maxW="150px" // hoặc tùy chỉnh cho hợp với layout
+                    >
                         {user.username}
                     </Text>
-                    <Text color={"gray.light"} fontSize={"sm"}>
+                    <Text fontSize="sm" color="gray.400" isTruncated maxW="150px">
                         {user.name}
                     </Text>
                 </Box>
             </Flex>
+
+
             {/* right side */}
             <Button
-                size={"sm"}
+                size="sm"
                 color={following ? "black" : "white"}
                 bg={following ? "white" : "blue.400"}
                 onClick={handleFollowUnfollow}
                 isLoading={updating}
-                _hover={{
-                    color: following ? "black" : "white",
-                    opacity: ".8",
-                }}
+                whiteSpace="nowrap"
+                flexShrink={0}
             >
                 {following ? "Unfollow" : "Follow"}
             </Button>
+
         </Flex>
     );
 };
@@ -40,34 +54,3 @@ SuggestedUser.propTypes = {
     user: PropTypes.object.isRequired,
 };
 export default SuggestedUser;
-
-//  SuggestedUser component, if u want to copy and paste as shown in the tutorial
-
-{
-    /* <Flex gap={2} justifyContent={"space-between"} alignItems={"center"}>
-            <Flex gap={2} as={Link} to={`${user.username}`}>
-                <Avatar src={user.profilePic} />
-                <Box>
-                    <Text fontSize={"sm"} fontWeight={"bold"}>
-                        {user.username}
-                    </Text>
-                    <Text color={"gray.light"} fontSize={"sm"}>
-                        {user.name}
-                    </Text>
-                </Box>
-            </Flex>
-            <Button
-                size={"sm"}
-                color={following ? "black" : "white"}
-                bg={following ? "white" : "blue.400"}
-                onClick={handleFollow}
-                isLoading={updating}
-                _hover={{
-                    color: following ? "black" : "white",
-                    opacity: ".8",
-                }}
-            >
-                {following ? "Unfollow" : "Follow"}
-            </Button>
-        </Flex> */
-}

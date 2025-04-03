@@ -1,36 +1,54 @@
 import cron from "cron";
 import https from "https";
+import User from "../models/userModel.js";
+import connectDB from "../config/connectDB.config.js";
+
+connectDB(); // Kết nối database
 
 const URL = "https://threads-0m08.onrender.com";
 
+// 🔹 Hàm xoá người dùng chưa xác thực
+const deleteUnverifiedUsers = async () => {
+  try {
+    console.log("🔄 Bắt đầu xoá tài khoản chưa xác thực...");
+
+    const expirationTime = new Date();
+    expirationTime.setDate(expirationTime.getDate() - 7); // 7 ngày trước
+
+    const result = await User.deleteMany({
+      isVerified: false,
+      createdAt: { $lt: expirationTime }, // Chỉ xoá người dùng đăng ký hơn 7 ngày trước
+    });
+
+    console.log(`✅ Đã xoá ${result.deletedCount} tài khoản chưa xác thực`);
+  } catch (error) {
+    console.error("❌ Lỗi khi xoá người dùng chưa xác thực:", error);
+  }
+};
+
+// 🔹 Cron job ping server mỗi 14 phút (để Render không sleep)
 const job = new cron.CronJob("*/14 * * * *", function () {
   https
     .get(URL, (res) => {
-      if (res.statusCode === 200) {
-        console.log("GET request sent successfully");
-      } else {
-        console.log("GET request failed", res.statusCode);
-      }
+      console.log(
+        res.statusCode === 200
+          ? "✅ GET request sent successfully"
+          : `❌ GET request failed: ${res.statusCode}`
+      );
     })
     .on("error", (e) => {
-      console.error("Error while sending request", e);
+      console.error("❌ Error while sending request", e);
     });
 });
 
-export default job;
+// 🔹 Cron job xoá user chưa xác thực mỗi ngày lúc 00:00
+const deleteUsersJob = new cron.CronJob("0 0 * * *", deleteUnverifiedUsers);
 
-// CRON JOB EXPLANATION:
-// Cron jobs are scheduled tasks that run periodically at fixed intervals or specific times
-// send 1 GET request for every 14 minutes
+// 🔥 **BẮT ĐẦU CRON JOBS**
+job.start();
+deleteUsersJob.start();
 
-// Schedule:
-// You define a schedule using a cron expression, which consists of five fields representing:
+console.log("🚀 Cron jobs đã khởi động!");
 
-//! MINUTE, HOUR, DAY OF THE MONTH, MONTH, DAY OF THE WEEK
-
-//? EXAMPLES && EXPLANATION:
-//* 14 * * * * - Every 14 minutes
-//* 0 0 * * 0 - At midnight on every Sunday
-//* 30 3 15 * * - At 3:30 AM, on the 15th of every month
-//* 0 0 1 1 * - At midnight, on January 1st
-//* 0 * * * * - Every hour
+// Xuất cron jobs để có thể sử dụng ở nơi khác
+export { job, deleteUsersJob };

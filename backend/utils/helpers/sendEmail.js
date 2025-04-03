@@ -1,4 +1,4 @@
-import emailService from "../../config/emailService.js";
+import emailService from "../../config/email.config.js";
 
 const sendVerificationEmail = async (email, name, verificationOTP) => {
   try {

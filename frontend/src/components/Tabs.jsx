@@ -1,5 +1,8 @@
-import { useState, useMemo } from "react";
-import { Flex, Text, useColorModeValue } from "@chakra-ui/react";
+import { useState } from "react";
+import {
+    Flex, Text, Menu, MenuButton, MenuList, MenuItem, IconButton, Icon, useColorModeValue
+} from "@chakra-ui/react";
+import { ChevronDownIcon, CheckIcon, DeleteIcon } from "@chakra-ui/icons";
 import PropTypes from "prop-types";
 import { useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
@@ -7,23 +10,11 @@ import useShowToast from "../hooks/useShowToast";
 
 export default function Tabs({ tabs, onTabChange, initialTab = tabs[0].value, requireAuth = false }) {
     const [activeTab, setActiveTab] = useState(initialTab);
-    const activeBorderColor = useColorModeValue("black", "white");
-    const inactiveBorderColor = useColorModeValue("gray.300", "gray.600");
-    const activeTextColor = useColorModeValue("black", "white");
-    const inactiveTextColor = useColorModeValue("gray.500", "gray.400");
     const currentUser = useRecoilValue(userAtom);
     const showToast = useShowToast();
-    const bgColor = useColorModeValue("gray.100", "#101010");
-
-    // Tối ưu: Dùng useMemo để tránh tính toán lại không cần thiết
-    const styles = useMemo(() => ({
-        activeBorderColor,
-        inactiveBorderColor,
-        activeTextColor,
-        inactiveTextColor,
-    }), [activeBorderColor, inactiveBorderColor, activeTextColor, inactiveTextColor]);
 
     const handleTabClick = (tabValue) => {
+        console.log(tabValue)
         if (requireAuth) {
             const tab = tabs.find(t => t.value === tabValue);
             if (tab && tab.requireAuth && !currentUser) {
@@ -32,57 +23,78 @@ export default function Tabs({ tabs, onTabChange, initialTab = tabs[0].value, re
             }
         }
 
-        // Cuộn lên trên khi click vào tab hiện tại
-        if (tabValue === activeTab) {
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
-        }
+        // 🔹 Luôn gọi `onTabChange`, ngay cả khi người dùng nhấn vào tab hiện tại
+        setActiveTab(tabValue);
+        onTabChange(tabValue);
 
-        if (tabValue !== activeTab) {
-            setActiveTab(tabValue);
-            onTabChange(tabValue);
-        }
-    }
+        // 🔹 Cuộn lên đầu trang
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+
+
+    const activeTabLabel = tabs.find(tab => tab.value === activeTab)?.label || tabs[0].label;
+
+    // Điều chỉnh màu sắc theo chế độ sáng/tối
+    const bgColor = useColorModeValue("white", "gray.900");
+    const hoverBgColor = useColorModeValue("gray.200", "gray.800");
+    const textColor = useColorModeValue("black", "white");
+    const borderColor = useColorModeValue("gray.300", "gray.700");
 
     return (
-        <Flex
-            w="full"
-            mb={4}
-            position="sticky"
-            top={0}
-            zIndex={10}
-            bg={bgColor}
-            py={2}
-            backdropFilter="blur(10px)"
-            _before={{
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                bg: bgColor,
-                opacity: 0.8,
-                zIndex: -1,
-            }}
-        >
-            {tabs.map((tab) => (
-                <Flex
-                    key={tab.value}
-                    flex={1}
-                    borderBottom={`2px solid ${activeTab === tab.value ? styles.activeBorderColor : styles.inactiveBorderColor}`}
-                    justifyContent="center"
-                    pb={3}
-                    cursor="pointer"
-                    onClick={() => handleTabClick(tab.value)}
+        <Flex w="full" justify="center" px={2} alignItems="center">
+            {/* Hiển thị tab đang chọn */}
+            <Text fontWeight="semibold" color={textColor} px={4} py={2} fontSize="md" cursor={"pointer"} onClick={() => handleTabClick(activeTab)}>
+                {activeTabLabel}
+            </Text>
+
+            {/* Nút mở menu */}
+            <Menu placement="bottom">
+                <MenuButton
+                    as={IconButton}
+                    size="sm"
+                    icon={<ChevronDownIcon />}
+                    aria-label="Open Menu"
+                    bg={bgColor}
+                    color={textColor}
+                    ml={1}
+                    borderRadius="full"
+                    border="1px solid"
+                    borderColor={borderColor}
+                    _hover={{ bg: hoverBgColor }}
+                    _active={{ bg: hoverBgColor }}
+                />
+                <MenuList
+                    bg={bgColor}
+                    borderColor={borderColor}
+                    boxShadow="lg"
+                    borderRadius="md"
+                    minW="250px"
+                    maxH="300px"
+                    overflowY="auto"
                 >
-                    <Text fontWeight="bold" color={activeTab === tab.value ? styles.activeTextColor : styles.inactiveTextColor}>
-                        {tab.label}
-                    </Text>
-                </Flex>
-            ))}
+                    {tabs.map((tab) => (
+                        <MenuItem
+                            key={tab.value}
+                            onClick={() => handleTabClick(tab.value)}
+                            bg={"transparent"}
+                            _hover={{ bg: hoverBgColor }}
+                            color={textColor}
+                            px={4}
+                            py={3}
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="space-between"
+                        >
+                            <Text fontWeight={activeTab === tab.value ? "bold" : "normal"} >
+                                {tab.label}
+                            </Text>
+                            {activeTab === tab.value && <CheckIcon color="blue.400" />}
+                        </MenuItem>
+                    ))}
+                </MenuList>
+            </Menu>
+
         </Flex>
     );
 }

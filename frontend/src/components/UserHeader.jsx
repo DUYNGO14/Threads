@@ -1,4 +1,4 @@
-import { Avatar, Box, Flex, Link, Text, VStack, Menu, MenuButton, MenuItem, MenuList } from "@chakra-ui/react";
+import { Avatar, Box, Flex, Link, Text, VStack, Menu, MenuButton, MenuItem, MenuList, useColorModeValue } from "@chakra-ui/react";
 import { Portal } from "@chakra-ui/portal";
 import { Button } from "@chakra-ui/react";
 import { BsInstagram } from "react-icons/bs";
@@ -36,8 +36,8 @@ const UserHeader = ({ user, onTabChange }) => {
     ];
 
     return (
-        <>
-            <Box position="relative">
+        <Box position="relative">
+            <Box mt={4} maxW={"90%"} mx={"auto"}>
                 <VStack gap={4} alignItems={"start"}>
                     <Flex justifyContent={"space-between"} w={"full"}>
                         <Box>
@@ -56,16 +56,6 @@ const UserHeader = ({ user, onTabChange }) => {
                                 <Avatar
                                     name={user.name}
                                     src={user.profilePic}
-                                    size={{
-                                        base: "md",
-                                        md: "xl",
-                                    }}
-                                />
-                            )}
-                            {!user.profilePic && (
-                                <Avatar
-                                    name={user.name}
-                                    src='https://bit.ly/broken-link'
                                     size={{
                                         base: "md",
                                         md: "xl",
@@ -114,13 +104,9 @@ const UserHeader = ({ user, onTabChange }) => {
                         </Flex>
                     </Flex>
                 </VStack>
-
-
             </Box>
-            <Box position="sticky" top={0} zIndex={10} bg="inherit">
-                <Tabs tabs={myTabs} onTabChange={handleTabChangeInternal} initialTab={feedType} />
-            </Box>
-        </>
+
+        </Box>
     );
 };
 

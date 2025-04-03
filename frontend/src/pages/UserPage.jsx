@@ -2,13 +2,14 @@ import { useEffect, useState, useCallback } from "react";
 import UserHeader from "../components/UserHeader";
 import { useParams } from "react-router-dom";
 import useShowToast from "../hooks/useShowToast";
-import { Flex, Box, Text, Stack } from "@chakra-ui/react";
+import { Flex, Box, Text, Stack, useColorModeValue, GridItem, useColorMode } from "@chakra-ui/react";
 import Post from "../components/Post";
 import useGetUserProfile from "../hooks/useGetUserProfile";
 import { useRecoilState } from "recoil";
 import postsAtom from "../atoms/postsAtom";
 import PostSkeleton from "../components/PostSkeleton";
-
+import NotFound from "../components/NotFound";
+import Tabs from "../components/Tabs";
 const UserPage = () => {
     const { user, loading } = useGetUserProfile();
     const { username } = useParams();
@@ -17,6 +18,11 @@ const UserPage = () => {
     const [fetchingPosts, setFetchingPosts] = useState(true);
     const [feedType, setFeedType] = useState("threads");
 
+    const { colorMode } = useColorMode();
+    const myTabs = [
+        { value: "threads", label: "Threads" },
+        { value: "reposts", label: "Reposts" },
+    ];
     const updatePost = useCallback((updatedPost) => {
         if (!updatedPost) {
             setPosts(prev => prev.filter(p => p._id !== updatedPost?._id));
@@ -62,7 +68,7 @@ const UserPage = () => {
 
                 setPosts(data);
             } catch (error) {
-                showToast("Error", error.message, "error");
+                //showToast("Error", error.message, "error");
                 setPosts([]);
             } finally {
                 setFetchingPosts(false);
@@ -88,12 +94,42 @@ const UserPage = () => {
         );
     }
 
-    if (!user) return <h1>User not found</h1>;
+    if (!user) return <NotFound type="user" />;
 
     return (
         <>
-            <UserHeader user={user} onTabChange={handleTabChange} />
+            <GridItem area={'header'}>
+                <Box
+                    position="fixed"
+                    top="0"
+                    left="0"
+                    w="full"
+                    bg={colorMode === "dark" ? "#101010" : "gray.50"}
+                    zIndex="100"
 
+                    borderColor={colorMode === "dark" ? "whiteAlpha.100" : "gray.200"}
+                    backdropFilter="blur(12px)"
+                    py={2}
+                >
+                    <Flex justify="center" align="center">
+                        <Text fontSize="md" fontWeight="bold">Profile</Text>
+                    </Flex>
+                </Box>
+                <Box height="60px" /> {/* Thêm khoảng trống tránh nội dung bị che mất */}
+            </GridItem>
+            <UserHeader user={user} onTabChange={handleTabChange} />
+            <Box
+                position="sticky"
+                top="0"
+                zIndex={1000}
+                bg={"transparent"}
+                boxShadow="md"
+                width="100%"
+                p={2}
+            // Có thể cần thêm padding-top hoặc margin-top nếu có các thành phần khác
+            >
+                <Tabs tabs={myTabs} onTabChange={setFeedType} initialTab={feedType} requireAuth={true} />
+            </Box>
             {fetchingPosts ? (
                 <Stack spacing={4} mt={4}>
                     <PostSkeleton />

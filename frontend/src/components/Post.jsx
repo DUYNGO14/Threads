@@ -56,7 +56,7 @@ const Post = ({ post, postedBy, onPostUpdate }) => {
 
     return (
         <>
-            <Box>
+            <Box w="full">
                 <Flex gap={4} p={4}>
                     <Flex flexDirection={"column"} alignItems={"center"}>
                         <Avatar
@@ -136,7 +136,7 @@ const Post = ({ post, postedBy, onPostUpdate }) => {
 
 Post.propTypes = {
     post: PropTypes.object.isRequired,
-    postedBy: PropTypes.object.isRequired,
+    postedBy: PropTypes.object,
     onPostUpdate: PropTypes.func.isRequired,
 };
 export default Post;
