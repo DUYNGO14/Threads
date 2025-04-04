@@ -1,4 +1,3 @@
-import mongoose from "mongoose"; // Import mongoose
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
@@ -14,9 +13,12 @@ import MongoStore from "connect-mongo"; // Đảm bảo bạn đã import MongoS
 import connectDB from "./config/connectDB.config.js";
 import { server, app } from "./sockets/socket.js";
 import "./config/cloudinary.config.js";
+import "./config/passport.config.js";
 
 dotenv.config();
 connectDB();
+const PORT = process.env.PORT || 5000;
+const __dirname = path.resolve();
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "your-secret-key", // Sử dụng biến môi trường để bảo mật
@@ -31,8 +33,6 @@ app.use(
     },
   })
 );
-const PORT = process.env.PORT || 5000;
-const __dirname = path.resolve();
 
 // Cấu hình các middleware
 app.use(express.json({ limit: "50mb" }));
