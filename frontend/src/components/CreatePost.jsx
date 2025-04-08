@@ -1,16 +1,29 @@
+import React, { useRef } from "react";
 import { Button, Box, useColorModeValue, useBreakpointValue } from "@chakra-ui/react";
 import { AddIcon } from "@chakra-ui/icons";
 import Draggable from "react-draggable";
 import { useDisclosure } from "@chakra-ui/react";
 import CreatePostModal from "./CreatePostModal";
+import { useRecoilValue } from "recoil";
+import userAtom from "../atoms/userAtom";
 
 const CreatePost = () => {
     const { isOpen, onOpen, onClose } = useDisclosure();
-
+    const draggableRef = useRef(null);  // Ref for Draggable container
+    const user = useRecoilValue(userAtom);
     return (
         <>
-            <Draggable>
-                <Box display={{ base: "none", md: "block" }} position="fixed" bottom={10} right={10} zIndex={1000} cursor="grab" _active={{ cursor: "grabbing" }}>
+            <Draggable nodeRef={draggableRef}>
+                <Box
+                    ref={draggableRef}
+                    display={{ base: "none", md: "block" }}
+                    position="fixed"
+                    bottom={10}
+                    right={10}
+                    zIndex={1000}
+                    cursor="grab"
+                    _active={{ cursor: "grabbing" }}
+                >
                     <Button
                         bg={useColorModeValue("white", "gray.900")}
                         boxShadow={useColorModeValue("0 4px 6px rgba(0, 0, 0, 0.1)", "0 4px 6px rgba(255, 255, 255, 0.1)")}
@@ -31,7 +44,7 @@ const CreatePost = () => {
                     </Button>
                 </Box>
             </Draggable>
-            <CreatePostModal isOpen={isOpen} onClose={onClose} />
+            <CreatePostModal isOpen={isOpen} onClose={onClose} username={user?.username} />
         </>
     );
 };

@@ -21,7 +21,6 @@ import userAtom from "../atoms/userAtom";
 import useShowToast from "../hooks/useShowToast";
 import { PropTypes } from "prop-types";
 import { BsHeart, BsHeartFill, BsChat, BsShare, BsRepeat } from "react-icons/bs";
-import { useNavigate } from "react-router-dom";
 import { FaRepeat } from "react-icons/fa6";
 const Actions = ({ post, onPostUpdate }) => {
     const user = useRecoilValue(userAtom);

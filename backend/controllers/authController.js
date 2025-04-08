@@ -189,7 +189,6 @@ const verifyEmail = async (req, res) => {
 //forgot password
 const forgotPassword = async (req, res) => {
   const { email } = req.body;
-  console.log("email", email);
   try {
     const user = await User.findOne({ email });
 
@@ -211,12 +210,6 @@ const forgotPassword = async (req, res) => {
     user.resetPasswordExpiresAt = Date.now() + 5 * 60 * 1000; // 5 phút
 
     await user.save();
-
-    console.log(
-      "resetToken:",
-      `${process.env.CLIENT_URL}/reset-password/${resetToken}`
-    );
-
     // Gửi email chứa token gốc
     await sendPasswordResetEmail(
       user.email,

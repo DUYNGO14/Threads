@@ -1,6 +1,6 @@
 import { Avatar, Button, Divider, Flex, Image, Spinner, Text } from "@chakra-ui/react";
 import Actions from "../components/Actions";
-import { useEffect, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Comment from "../components/Comment";
 import useGetUserProfile from "../hooks/useGetUserProfile";
 import useShowToast from "../hooks/useShowToast";
@@ -18,32 +18,88 @@ const PostPage = () => {
     const showToast = useShowToast();
     const { pid } = useParams();
     const currentUser = useRecoilValue(userAtom);
+    const postId = pid;
     const navigate = useNavigate();
-
     const currentPost = posts[0];
 
+    const [page, setPage] = useState(1);
+    const [totalReplies, setTotalReplies] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
     const handlePostUpdate = useCallback((updatedPost) => {
         if (!updatedPost) return;
         setPosts([updatedPost]);
     }, [setPosts]);
+    const handleReplyUpdate = useCallback((data) => {
+        const updatedComment = data.comment; // Lấy thông tin bình luận mới từ dữ liệu trả về
 
+        setPosts(prevPosts => {
+            // Cập nhật lại bài viết với bình luận mới
+            return prevPosts.map(post => {
+                if (post._id === updatedComment.postId) {
+                    const updatedReplies = post.replies.map(reply =>
+                        reply._id === updatedComment._id
+                            ? { ...reply, ...updatedComment } // Thay thế bình luận cũ bằng bình luận mới
+                            : reply
+                    );
+
+                    return { ...post, replies: updatedReplies }; // Trả về bài viết mới với replies đã được cập nhật
+                }
+                return post; // Nếu không phải bài viết cần cập nhật, trả về bài viết cũ
+            });
+        });
+    }, [setPosts]);
+
+
+    const handleDeleteReply = useCallback((replyId) => {
+        setPosts(prevPosts =>
+            prevPosts.map(post => {
+                if (!post.replies) return post;
+
+                const updatedReplies = post.replies.filter(reply => reply._id !== replyId);
+
+                return { ...post, replies: updatedReplies };
+            })
+        );
+    }, [setPosts]);
+
+    // Hàm tải bài viết và bình luận với phân trang
     useEffect(() => {
         const getPost = async () => {
-            setPosts([]);
             try {
-                const res = await fetch(`/api/posts/${pid}`);
+                const res = await fetch(`/api/posts/${pid}?page=${page}`);
                 const data = await res.json();
+
                 if (data.error) {
                     showToast("Error", data.error, "error");
                     return;
                 }
-                setPosts([data]);
+
+                setTotalReplies(data.totalReplies);
+                setTotalPages(data.totalPages);
+
+                setPosts(prevPosts => {
+                    if (page === 1 || prevPosts.length === 0) {
+                        return [{ ...data.post, replies: data.replies }];
+                    } else {
+                        const existingPost = prevPosts[0];
+                        const updatedReplies = [...existingPost.replies, ...data.replies];
+
+                        const uniqueReplies = Array.from(
+                            new Map(updatedReplies.map(reply => [reply._id, reply])).values()
+                        );
+
+                        return [{ ...existingPost, replies: uniqueReplies }];
+                    }
+                });
+
             } catch (error) {
                 showToast("Error", error.message, "error");
             }
         };
+
         getPost();
-    }, [showToast, pid, setPosts]);
+    }, [showToast, pid, page, setPosts]);
+
 
     const handleDeletePost = async () => {
         try {
@@ -73,6 +129,13 @@ const PostPage = () => {
     }
 
     if (!currentPost) return null;
+
+    const handleLoadMoreReplies = () => {
+        if (page < totalPages) {
+            setPage(prevPage => prevPage + 1);
+        }
+    };
+
     return (
         <>
             <Flex mt={5}>
@@ -110,10 +173,21 @@ const PostPage = () => {
             {currentPost.replies.map((reply) => (
                 <Comment
                     key={reply._id}
+                    postId={currentPost._id}
                     reply={reply}
                     lastReply={reply._id === currentPost.replies[currentPost.replies.length - 1]._id}
+                    currentUser={currentUser}
+                    onReplyUpdate={handleReplyUpdate}
+                    onReplyDelete={handleDeleteReply}
                 />
             ))}
+
+            {/* Hiển thị nút "Xem thêm bình luận" */}
+            {page < totalPages && (
+                <Button onClick={handleLoadMoreReplies} mt={4}>
+                    Xem thêm bình luận
+                </Button>
+            )}
         </>
     );
 };

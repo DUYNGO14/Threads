@@ -14,7 +14,6 @@ export default function Tabs({ tabs, onTabChange, initialTab = tabs[0].value, re
     const showToast = useShowToast();
 
     const handleTabClick = (tabValue) => {
-        console.log(tabValue)
         if (requireAuth) {
             const tab = tabs.find(t => t.value === tabValue);
             if (tab && tab.requireAuth && !currentUser) {

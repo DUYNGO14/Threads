@@ -7,6 +7,11 @@ const postSchema = mongoose.Schema(
       ref: "User",
       required: true,
     },
+    status: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
+    },
     text: {
       type: String,
       maxLength: 500,
@@ -36,21 +41,8 @@ const postSchema = mongoose.Schema(
     },
     replies: [
       {
-        userId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
-          required: true,
-        },
-        text: {
-          type: String,
-          required: true,
-        },
-        userProfilePic: {
-          type: String,
-        },
-        username: {
-          type: String,
-        },
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Reply", // Tham chiếu tới model Reply
       },
     ],
   },
