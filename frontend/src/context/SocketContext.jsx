@@ -15,7 +15,7 @@ export const SocketContextProvider = ({ children }) => {
   useEffect(() => {
     if (!user?._id) return;
 
-    const BACKEND_URL = import.meta.env.PROD
+    const BACKEND_URL = import.meta.env.NODE_ENV === "production"
       ? "https://threads-0m08.onrender.com"
       : "http://localhost:5000";
 

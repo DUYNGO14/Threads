@@ -4,6 +4,7 @@ import postRoutes from "../routes/postRouters.js";
 import messageRoutes from "../routes/messageRouters.js";
 import repliesRoutes from "../routes/repliesRouters.js";
 import path from "path";
+import express from "express";
 
 const __dirname = path.resolve();
 
