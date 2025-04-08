@@ -5,10 +5,7 @@ import userAtom from "../atoms/userAtom";
 import PropTypes from 'prop-types';
 
 const SocketContext = createContext();
-
-export const useSocket = () => {
-  return useContext(SocketContext);
-};
+export const useSocket = () => useContext(SocketContext);
 
 export const SocketContextProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
@@ -16,18 +13,25 @@ export const SocketContextProvider = ({ children }) => {
   const user = useRecoilValue(userAtom);
 
   useEffect(() => {
-    const socket = io("/", {
-      query: {
-        userId: user?._id,
-      },
+    if (!user?._id) return;
+
+    const BACKEND_URL = import.meta.env.PROD
+      ? "https://threads-0m08.onrender.com"
+      : "http://localhost:5000";
+
+    const newSocket = io(BACKEND_URL, {
+      transports: ["websocket"], // 👈 ép dùng websocket để tránh polling
+      query: { userId: user._id },
+      withCredentials: true, // nếu có cookie/session
     });
 
-    setSocket(socket);
+    setSocket(newSocket);
 
-    socket.on("getOnlineUsers", (users) => {
+    newSocket.on("getOnlineUsers", (users) => {
       setOnlineUsers(users);
     });
-    return () => socket && socket.close();
+
+    return () => newSocket.disconnect();
   }, [user?._id]);
 
   return (

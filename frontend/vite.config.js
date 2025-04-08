@@ -8,15 +8,16 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
-      port: isProduction ? 5000 : 3000,
-      // Get rid of the CORS error
+      port: 3000,
       proxy: {
         "/api": {
-          target: isProduction
-            ? "https://threads-0m08.onrender.com"
-            : "http://localhost:5000",
+          target: "http://localhost:5000",
           changeOrigin: true,
           secure: false,
+        },
+        "/socket.io": {
+          target: "http://localhost:5000",
+          ws: true, // ⚠ Quan trọng để WebSocket hoạt động
         },
       },
     },

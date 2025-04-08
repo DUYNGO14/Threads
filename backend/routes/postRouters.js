@@ -12,6 +12,7 @@ import {
 } from "../controllers/postController.js";
 import protectRoute from "../middlewares/protectRoute.js";
 import multer from "multer";
+import { uploadMedia } from "../middlewares/multer.js";
 
 const router = express.Router();
 
@@ -21,7 +22,7 @@ router.get("/followed", protectRoute, getFeedPosts);
 router.get("/propose", protectRoute, getAllPosts);
 router.get("/:id", getPost);
 router.get("/user/:username", getUserPosts);
-router.post("/create", protectRoute, upload.array("media", 10), createPost);
+router.post("/create", protectRoute, uploadMedia, createPost);
 router.delete("/:id", protectRoute, deletePost);
 router.put("/like/:id", protectRoute, likeUnlikePost);
 router.put("/reply/:id", protectRoute, replyToPost);

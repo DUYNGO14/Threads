@@ -22,46 +22,53 @@ const deleteMediaFromCloudinary = async (publicId) => {
 const createPost = async (req, res) => {
   try {
     const { postedBy, text } = req.body;
+
     const user = await User.findById(postedBy);
     if (!user) return res.status(404).json({ error: "User not found" });
 
     if (text.length > MAX_CHAR) {
-      return res
-        .status(400)
-        .json({ error: `Text must be less than ${MAX_CHAR} characters` });
+      return res.status(400).json({
+        error: `Text must be less than ${MAX_CHAR} characters`,
+      });
     }
 
     const { ok, message, cleanedText } = moderateText(text);
     if (!ok) {
       return res.status(400).json({ error: message });
     }
+
     let mediaFiles = [];
-    if (req.files && req.files.length > 0) {
+    if (req.files?.length > 0) {
       if (req.files.length > MAX_FILES) {
-        return res
-          .status(400)
-          .json({ error: `You can only upload up to ${MAX_FILES} files` });
+        return res.status(400).json({
+          error: `You can only upload up to ${MAX_FILES} files`,
+        });
       }
+
       mediaFiles = await uploadFiles(req.files);
+
+      if (mediaFiles.length === 0) {
+        return res.status(400).json({ error: "All media uploads failed" });
+      }
     }
 
-    // Create new post
     const newPost = new Post({
       postedBy,
       text: cleanedText,
       media: mediaFiles,
     });
+
     await newPost.save();
 
-    // Populate to return full information
     const populatedPost = await Post.findById(newPost._id).populate(
       "postedBy",
       "_id username name profilePic"
     );
+
     res.status(201).json(populatedPost);
   } catch (err) {
-    console.error("Post error:", err.message);
-    res.status(500).json({ error: err.message });
+    console.error("Post creation error:", err.message);
+    res.status(500).json({ error: "Something went wrong. Try again." });
   }
 };
 

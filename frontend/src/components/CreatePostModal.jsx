@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
     Button, CloseButton, Flex, FormControl, Image, Input, Modal,
     ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalHeader,
@@ -7,7 +7,7 @@ import {
 } from "@chakra-ui/react";
 import { BsFillImageFill, BsFillCameraVideoFill, BsFillMicFill } from "react-icons/bs";
 import PostPreview from "./PostPreview";
-import { MAX_CHAR, MAX_FILES, ALLOWED_TYPES } from "../constant/uploads";
+import { MAX_CHAR, MAX_FILES, ALLOWED_TYPES, MAX_FILE_SIZE_MB } from "../constant/uploads";
 import useShowToast from "../hooks/useShowToast";
 import { useRecoilState, useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
@@ -17,12 +17,13 @@ import useDebounceSubmit from "../hooks/useDebounceSubmit";
 const CreatePostModal = ({ isOpen, onClose, username }) => {
     const [postText, setPostText] = useState("");
     const [mediaFiles, setMediaFiles] = useState([]);
-    const imageRef = useRef(null);
     const [remainingChar, setRemainingChar] = useState(MAX_CHAR);
+    const imageRef = useRef(null);
     const user = useRecoilValue(userAtom);
-    const showToast = useShowToast();
     const [posts, setPosts] = useRecoilState(postsAtom);
+    const showToast = useShowToast();
 
+    // Cleanup preview URLs on mediaFiles change
     useEffect(() => {
         return () => {
             mediaFiles.forEach((file) => URL.revokeObjectURL(file.preview));
@@ -30,34 +31,48 @@ const CreatePostModal = ({ isOpen, onClose, username }) => {
     }, [mediaFiles]);
 
     const handleTextChange = (e) => {
-        const inputText = e.target.value;
-        setPostText(inputText.slice(0, MAX_CHAR));
+        const inputText = e.target.value.slice(0, MAX_CHAR);
+        setPostText(inputText);
         setRemainingChar(MAX_CHAR - inputText.length);
     };
 
-    const handleFileChange = (e) => {
-        const files = Array.from(e.target.files);
+    const isValidFile = (file) => {
+        if (!ALLOWED_TYPES.includes(file.type)) {
+            showToast("Error", `Invalid file type: ${file.name}`, "error");
+            return false;
+        }
 
-        if (mediaFiles.length + files.length > MAX_FILES) {
+        if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+            showToast("Error", `File too large (max ${MAX_FILE_SIZE_MB}MB): ${file.name}`, "error");
+            return false;
+        }
+
+        return true;
+    };
+
+    const handleFileChange = (e) => {
+        const selected = Array.from(e.target.files);
+        const spaceLeft = MAX_FILES - mediaFiles.length;
+
+        if (spaceLeft <= 0) {
             showToast("Error", `You can upload up to ${MAX_FILES} files`, "error");
             return;
         }
 
-        const validFiles = files.filter((file) => {
-            if (!ALLOWED_TYPES.includes(file.type)) {
-                showToast("Error", `Invalid file type: ${file.name}`, "error");
-                return false;
-            }
-            return true;
-        });
+        const limitedFiles = selected.slice(0, spaceLeft);
+        const validFiles = limitedFiles.filter(isValidFile);
 
         const newFiles = validFiles.map((file) => ({
             file,
             preview: URL.createObjectURL(file),
-            type: file.type.startsWith("video") ? "video" : file.type.startsWith("audio") ? "audio" : "image",
+            type: file.type.startsWith("video")
+                ? "video"
+                : file.type.startsWith("audio")
+                    ? "audio"
+                    : "image",
         }));
 
-        setMediaFiles([...mediaFiles, ...newFiles]);
+        setMediaFiles((prev) => [...prev, ...newFiles]);
     };
 
     const handleRemoveFile = (index) => {
@@ -66,7 +81,7 @@ const CreatePostModal = ({ isOpen, onClose, username }) => {
     };
 
     const submitPost = async () => {
-        if (postText.length === 0) {
+        if (!postText.trim()) {
             showToast("Error", "Please enter some text", "error");
             return;
         }
@@ -75,9 +90,7 @@ const CreatePostModal = ({ isOpen, onClose, username }) => {
         formData.append("postedBy", user._id);
         formData.append("text", postText);
 
-        mediaFiles.forEach(({ file }) => {
-            formData.append("media", file);
-        });
+        mediaFiles.forEach(({ file }) => formData.append("media", file));
 
         const res = await fetch("/api/posts/create", {
             method: "POST",
@@ -91,8 +104,9 @@ const CreatePostModal = ({ isOpen, onClose, username }) => {
         }
 
         showToast("Success", "Post created successfully", "success");
+
         if (username === user.username) {
-            setPosts([data, ...posts]);
+            setPosts((prev) => [data, ...prev]);
         }
 
         onClose();
@@ -133,19 +147,18 @@ const CreatePostModal = ({ isOpen, onClose, username }) => {
                                         <Text fontSize="xs" fontWeight="bold" color={remainingChar < 50 ? "red.500" : "gray.500"}>
                                             {remainingChar}/{MAX_CHAR} characters remaining
                                         </Text>
-                                        <Flex gap={2}>
-                                            <Tooltip label="Add images">
-                                                <IconButton
-                                                    icon={<BsFillImageFill />}
-                                                    onClick={() => imageRef.current.click()}
-                                                    colorScheme="blue"
-                                                    variant="ghost"
-                                                    aria-label="Add images"
-                                                    _hover={{ transform: "scale(1.1)" }}
-                                                    transition="all 0.2s"
-                                                />
-                                            </Tooltip>
-                                        </Flex>
+                                        <Tooltip label="Add media">
+                                            <IconButton
+                                                icon={<BsFillImageFill />}
+                                                onClick={() => imageRef.current.click()}
+                                                colorScheme="blue"
+                                                variant="ghost"
+                                                aria-label="Add media"
+                                                _hover={{ transform: "scale(1.1)" }}
+                                                transition="all 0.2s"
+                                                isDisabled={mediaFiles.length >= MAX_FILES}
+                                            />
+                                        </Tooltip>
                                     </Flex>
 
                                     <Input
@@ -155,7 +168,9 @@ const CreatePostModal = ({ isOpen, onClose, username }) => {
                                         multiple
                                         accept="image/*,video/*,audio/*"
                                         onChange={handleFileChange}
+                                        disabled={mediaFiles.length >= MAX_FILES}
                                     />
+                                    <Text fontSize="xs" mt={2}>Allowed types: {ALLOWED_TYPES.join(", ")}</Text>
                                 </FormControl>
 
                                 {mediaFiles.length > 0 && (
@@ -184,13 +199,9 @@ const CreatePostModal = ({ isOpen, onClose, username }) => {
                                                             h="full"
                                                             objectFit="cover"
                                                         />
-                                                    ) : file.type === "video" ? (
-                                                        <Box w="full" h="full" bg="gray.100" p={2}>
-                                                            <BsFillCameraVideoFill size={24} style={{ margin: "auto" }} />
-                                                        </Box>
                                                     ) : (
-                                                        <Box w="full" h="full" bg="gray.100" p={2}>
-                                                            <BsFillMicFill size={24} style={{ margin: "auto" }} />
+                                                        <Box w="full" h="full" bg="gray.100" p={2} display="flex" alignItems="center" justifyContent="center">
+                                                            {file.type === "video" ? <BsFillCameraVideoFill size={24} /> : <BsFillMicFill size={24} />}
                                                         </Box>
                                                     )}
                                                     <CloseButton
