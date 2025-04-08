@@ -12,26 +12,25 @@ export const SocketContextProvider = ({ children }) => {
   const [onlineUsers, setOnlineUsers] = useState([]);
   const user = useRecoilValue(userAtom);
 
+  const BACKEND_URL = import.meta.env.PROD
+    ? "https://threads-0m08.onrender.com" // 👉 URL Render của bạn
+    : "http://localhost:5000"; // 👉 localhost khi dev
+
   useEffect(() => {
     if (!user?._id) return;
 
-    const BACKEND_URL = import.meta.env.NODE_ENV === "production"
-      ? "https://threads-0m08.onrender.com"
-      : "http://localhost:5000";
-
-    const newSocket = io(BACKEND_URL, {
-      transports: ["websocket"], // 👈 ép dùng websocket để tránh polling
+    const socket = io(BACKEND_URL, {
       query: { userId: user._id },
-      withCredentials: true, // nếu có cookie/session
+      transports: ["websocket", "polling"], // fallback nếu websocket không có
     });
 
-    setSocket(newSocket);
+    setSocket(socket);
 
-    newSocket.on("getOnlineUsers", (users) => {
+    socket.on("getOnlineUsers", (users) => {
       setOnlineUsers(users);
     });
 
-    return () => newSocket.disconnect();
+    return () => socket.disconnect();
   }, [user?._id]);
 
   return (
