@@ -1,90 +1,117 @@
-import { Avatar, Box, Flex, Image, Skeleton, Text } from "@chakra-ui/react";
+import { Avatar, Box, Flex, Image, Skeleton, Text, Tooltip } from "@chakra-ui/react";
 import { selectedConversationAtom } from "../atoms/messagesAtom";
 import { useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
-import { BsCheck2All } from "react-icons/bs";
+import { TiTick } from "react-icons/ti";
 import { useState } from "react";
-import PropTypes from 'prop-types';
+import PropTypes from "prop-types";
+import formatRelativeTime from "../../utils/formatRelativeTime";
+
 const Message = ({ ownMessage, message }) => {
     const selectedConversation = useRecoilValue(selectedConversationAtom);
     const user = useRecoilValue(userAtom);
-    const [imgLoaded, setImgLoaded] = useState(false);
-    return (
-        <>
-            {ownMessage ? (
-                <Flex gap={2} alignSelf={"flex-end"}>
-                    {message.text && (
-                        <Flex bg={"green.800"} maxW={"350px"} p={1} borderRadius={"md"}>
-                            <Text color={"white"}>{message.text}</Text>
-                            <Box
-                                alignSelf={"flex-end"}
-                                ml={1}
-                                color={message.seen ? "blue.400" : ""}
-                                fontWeight={"bold"}
-                            >
-                                <BsCheck2All size={16} />
-                            </Box>
-                        </Flex>
-                    )}
-                    {message.img && !imgLoaded && (
-                        <Flex mt={5} w={"200px"}>
-                            <Image
-                                src={message.img}
-                                hidden
-                                onLoad={() => setImgLoaded(true)}
-                                alt='Message image'
-                                borderRadius={4}
-                            />
-                            <Skeleton w={"200px"} h={"200px"} />
-                        </Flex>
-                    )}
+    const [loadedMedia, setLoadedMedia] = useState({});
 
-                    {message.img && imgLoaded && (
-                        <Flex mt={5} w={"200px"}>
-                            <Image src={message.img} alt='Message image' borderRadius={4} />
-                            <Box
-                                alignSelf={"flex-end"}
-                                ml={1}
-                                color={message.seen ? "blue.400" : ""}
-                                fontWeight={"bold"}
-                            >
-                                <BsCheck2All size={16} />
-                            </Box>
-                        </Flex>
-                    )}
+    const handleMediaLoad = (url) => {
+        setLoadedMedia((prev) => ({ ...prev, [url]: true }));
+    };
 
-                    <Avatar src={user.profilePic} w='7' h={7} />
-                </Flex>
-            ) : (
-                <Flex gap={2}>
-                    <Avatar src={selectedConversation.userProfilePic} w='7' h={7} />
+    const renderMedia = (media) => {
+        return media.map((item, idx) => {
+            const { url, type } = item;
 
-                    {message.text && (
-                        <Text maxW={"350px"} bg={"gray.400"} p={1} borderRadius={"md"} color={"black"}>
-                            {message.text}
-                        </Text>
-                    )}
-                    {message.img && !imgLoaded && (
-                        <Flex mt={5} w={"200px"}>
-                            <Image
-                                src={message.img}
-                                hidden
-                                onLoad={() => setImgLoaded(true)}
-                                alt='Message image'
-                                borderRadius={4}
-                            />
-                            <Skeleton w={"200px"} h={"200px"} />
-                        </Flex>
-                    )}
+            if (type === "image") {
+                return (
+                    <Box key={idx} mt={2} w="200px">
+                        {!loadedMedia[url] && (
+                            <>
+                                <Image src={url} hidden onLoad={() => handleMediaLoad(url)} />
+                                <Skeleton w="200px" h="200px" />
+                            </>
+                        )}
+                        {loadedMedia[url] && <Image src={url} borderRadius={4} alt="image" />}
+                    </Box>
+                );
+            }
 
-                    {message.img && imgLoaded && (
-                        <Flex mt={5} w={"200px"}>
-                            <Image src={message.img} alt='Message image' borderRadius={4} />
-                        </Flex>
-                    )}
-                </Flex>
-            )}
-        </>
+            if (type === "video") {
+                return (
+                    <Box key={idx} mt={2} w="200px">
+                        <video
+                            width="200"
+                            height="auto"
+                            controls
+                            onLoadedData={() => handleMediaLoad(url)}
+                            style={{ borderRadius: "4px", display: loadedMedia[url] ? "block" : "none" }}
+                        >
+                            <source src={url} type="video/mp4" />
+                            Your browser does not support video.
+                        </video>
+                        {!loadedMedia[url] && <Skeleton w="200px" h="200px" />}
+                    </Box>
+                );
+            }
+
+            if (type === "audio") {
+                return (
+                    <Box key={idx} mt={2} w="200px">
+                        <audio
+                            controls
+                            onLoadedData={() => handleMediaLoad(url)}
+                            style={{ width: "100%", display: loadedMedia[url] ? "block" : "none" }}
+                        >
+                            <source src={url} type="audio/mpeg" />
+                            Your browser does not support audio.
+                        </audio>
+                        {!loadedMedia[url] && <Skeleton w="200px" h="50px" />}
+                    </Box>
+                );
+            }
+
+            return null;
+        });
+    };
+
+    const content = (
+        <Tooltip
+            label={formatRelativeTime(message.createdAt)}
+            placement="top-start"
+            hasArrow
+        >
+            <Flex direction="column" gap={1} maxW="350px">
+                {message.text && (
+                    <Text
+                        bg={ownMessage ? "green.800" : "gray.400"}
+                        p={2}
+                        borderRadius="md"
+                        color={ownMessage ? "white" : "black"}
+                    >
+                        {message.text}
+                    </Text>
+
+                )}
+                {Array.isArray(message.media) && renderMedia(message.media)}
+            </Flex>
+        </Tooltip>
+    );
+
+    return ownMessage ? (
+        <Flex gap={2} alignSelf="flex-end">
+            {content}
+            <Box
+                alignSelf="flex-end"
+                color={message.seen ? "blue.400" : ""}
+                fontWeight="bold"
+            >
+                <TiTick size={10} />
+            </Box>
+            <Avatar src={user.profilePic} w="7" h={7} />
+        </Flex>
+    ) : (
+        <Flex gap={2}>
+            <Avatar src={selectedConversation.userProfilePic} w="7" h={7} />
+            {content}
+        </Flex>
     );
 };
 
@@ -92,4 +119,5 @@ Message.propTypes = {
     ownMessage: PropTypes.bool.isRequired,
     message: PropTypes.object.isRequired,
 };
+
 export default Message;

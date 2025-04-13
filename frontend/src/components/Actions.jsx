@@ -22,6 +22,7 @@ import useShowToast from "../hooks/useShowToast";
 import { PropTypes } from "prop-types";
 import { BsHeart, BsHeartFill, BsChat, BsShare, BsRepeat } from "react-icons/bs";
 import { FaRepeat } from "react-icons/fa6";
+import { useSocket } from "../context/SocketContext";
 const Actions = ({ post, onPostUpdate }) => {
     const user = useRecoilValue(userAtom);
     const [liked, setLiked] = useState(post?.likes?.includes(user?._id) || false);
@@ -32,7 +33,7 @@ const Actions = ({ post, onPostUpdate }) => {
     const [reply, setReply] = useState("");
     const showToast = useShowToast();
     const { isOpen, onOpen, onClose } = useDisclosure();
-
+    const socket = useSocket();
     useEffect(() => {
         if (post && user) {
             setLiked(post.likes?.includes(user._id) || false);
@@ -43,6 +44,7 @@ const Actions = ({ post, onPostUpdate }) => {
     if (!post) return null;
 
     const handleLikeAndUnlike = async () => {
+
         if (!user) {
             showToast("Error", "You must be logged in to like posts", "error");
             return;

@@ -28,7 +28,6 @@ const ProtectedRoute = ({ children }) => {
 function App() {
   const user = useRecoilValue(userAtom);
   const { pathname } = useLocation();
-
   // Auth routes that use BaseLayout
   const authRoutes = ['/auth', '/oauth-success', '/oauth-failure', '/reset-password'];
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));

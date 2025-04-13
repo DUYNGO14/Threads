@@ -6,23 +6,26 @@ const messageSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Conversation",
     },
-    sender: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    text: String,
+    sender: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    text: {
+      type: String,
+      default: "",
+    },
+    media: [
+      {
+        url: String,
+        type: {
+          type: String, // "image", "video", "audio", "gif"
+          enum: ["image", "video", "audio", "gif"],
+        },
+      },
+    ],
     seen: {
       type: Boolean,
       default: false,
-    },
-    img: {
-      type: String,
-      default: "",
-    },
-    video: {
-      type: String,
-      default: "",
-    },
-    audio: {
-      type: String,
-      default: "",
     },
   },
   { timestamps: true }

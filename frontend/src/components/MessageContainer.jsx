@@ -1,4 +1,4 @@
-import { Avatar, Divider, Flex, Image, Skeleton, SkeletonCircle, Text, useColorModeValue } from "@chakra-ui/react";
+import { Avatar, AvatarBadge, Badge, Divider, Flex, Image, Skeleton, SkeletonCircle, Text, useColorModeValue, WrapItem } from "@chakra-ui/react";
 import Message from "./Message";
 import MessageInput from "./MessageInput";
 import { useEffect, useRef, useState } from "react";
@@ -8,7 +8,8 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import userAtom from "../atoms/userAtom";
 import { useSocket } from "../context/SocketContext.jsx";
 import messageSound from "../assets/sounds/message.mp3";
-const MessageContainer = () => {
+import { useNavigate } from "react-router-dom";
+const MessageContainer = ({ isOnline }) => {
     const showToast = useShowToast();
     const selectedConversation = useRecoilValue(selectedConversationAtom);
     const [loadingMessages, setLoadingMessages] = useState(true);
@@ -17,7 +18,7 @@ const MessageContainer = () => {
     const { socket } = useSocket();
     const setConversations = useSetRecoilState(conversationsAtom);
     const messageEndRef = useRef(null);
-
+    const navigate = useNavigate();
     useEffect(() => {
         socket.on("newMessage", (message) => {
             if (selectedConversation._id === message.conversationId) {
@@ -103,26 +104,44 @@ const MessageContainer = () => {
 
         getMessages();
     }, [showToast, selectedConversation.userId, selectedConversation.mock]);
-
     return (
+
         <Flex
-            flex='70'
+            flex="70"
             bg={useColorModeValue("gray.200", "gray.dark")}
             borderRadius={"md"}
             p={2}
             flexDirection={"column"}
+            overflow={"hidden"}
+            position={"relative"}
+            h={"full"}
+
         >
             {/* Message header */}
-            <Flex w={"full"} h={12} alignItems={"center"} gap={2}>
-                <Avatar src={selectedConversation.userProfilePic} size={"sm"} />
-                <Text display={"flex"} alignItems={"center"}>
-                    {selectedConversation.username} <Image src='/verified.png' w={4} h={4} ml={1} />
+            <Flex cursor={"pointer"} w={"full"} h={12} alignItems={"center"} gap={2} onClick={() => { navigate(`/${selectedConversation.username}`) }}>
+                <WrapItem>
+                    <Avatar
+                        size={{
+                            base: "xs",
+                            sm: "sm",
+                            md: "md",
+                        }}
+                        src={selectedConversation.userProfilePic}
+                    >
+                        {isOnline ? <AvatarBadge boxSize='1em' bg='green.500' /> : <AvatarBadge boxSize='1em' bg='red.500' />}
+                    </Avatar>
+                </WrapItem>
+                <Text display={"flex"} alignItems={"center"} >
+                    {selectedConversation.username}
+                    <br />
+
                 </Text>
+                {isOnline ? (<Badge colorScheme="green">Online</Badge>) : (<Badge colorScheme="red">Offline</Badge>)}
             </Flex>
 
-            <Divider />
+            <Divider my={2} />
 
-            <Flex flexDir={"column"} gap={4} my={4} p={2} height={"400px"} overflowY={"auto"}>
+            <Flex flexDir={"column"} gap={4} my={4} p={2} height={"400px"} w={"full"} overflowY={"auto"}>
                 {loadingMessages &&
                     [...Array(5)].map((_, i) => (
                         <Flex
@@ -145,6 +164,7 @@ const MessageContainer = () => {
 
                 {!loadingMessages &&
                     messages.map((message) => (
+
                         <Flex
                             key={message._id}
                             direction={"column"}

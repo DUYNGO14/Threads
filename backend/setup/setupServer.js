@@ -6,8 +6,8 @@ import setupMiddlewares from "./setupMiddlewares.js";
 import setupRoutes from "./setupRoutes.js";
 import setupSession from "./setupSession.js";
 import { setupErrorHandler } from "./setupErrorHandler.js";
-
-import { socketHandler, getRecipientSocketId } from "../sockets/socket.js";
+import { getRecipientSocketId } from "../utils/socketUsers.js";
+import { socketHandler } from "../sockets/socket.js";
 
 const app = express();
 const server = http.createServer(app);

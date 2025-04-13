@@ -227,14 +227,14 @@ const HomePage = () => {
 
                         {!hasMore[feedType] && posts[feedType].length > 0 && (
                             <Flex justifyContent="center" mb={4} color="gray.500">
-                                <Text fontSize="sm">📌 Đã hết bài viết</Text>
+                                <Text fontSize="sm">📌No more posts</Text>
                             </Flex>
                         )}
                     </Box>
                 </GridItem>
 
                 {/* Phần Gợi Ý Người Dùng */}
-                {/* <GridItem
+                <GridItem
                     display={{ base: "none", xl: "block" }}
                     position="sticky"
                     top="20px"
@@ -245,7 +245,7 @@ const HomePage = () => {
 
                 >
                     {currentUser && <SuggestedUsers />}
-                </GridItem> */}
+                </GridItem>
             </Grid>
         </Box>
     );

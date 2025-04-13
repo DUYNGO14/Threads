@@ -3,6 +3,7 @@ import userRoutes from "../routes/userRouters.js";
 import postRoutes from "../routes/postRouters.js";
 import messageRoutes from "../routes/messageRouters.js";
 import repliesRoutes from "../routes/repliesRouters.js";
+import conversationRoutes from "../routes/conversationRoutes.js";
 import path from "path";
 import express from "express";
 
@@ -14,6 +15,7 @@ export default function setupRoutes(app) {
   app.use("/api/posts", postRoutes);
   app.use("/api/messages", messageRoutes);
   app.use("/api/replies", repliesRoutes);
+  app.use("/api/conversations", conversationRoutes);
 
   if (process.env.NODE_ENV === "production") {
     app.use(express.static(path.join(__dirname, "/frontend/dist")));

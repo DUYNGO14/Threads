@@ -9,6 +9,7 @@ import {
   replyToPost,
   getAllPosts,
   repost,
+  getReposts,
 } from "../controllers/postController.js";
 import protectRoute from "../middlewares/protectRoute.js";
 import multer from "multer";
@@ -20,6 +21,7 @@ const upload = multer({ dest: "uploads/" });
 
 router.get("/followed", protectRoute, getFeedPosts);
 router.get("/propose", protectRoute, getAllPosts);
+router.get("/reposts", protectRoute, getReposts);
 router.get("/:id", getPost);
 router.get("/user/:username", getUserPosts);
 router.post("/create", protectRoute, uploadMedia, createPost);
@@ -28,4 +30,5 @@ router.put("/like/:id", protectRoute, likeUnlikePost);
 router.put("/reply/:id", protectRoute, replyToPost);
 router.put("/update/:id", protectRoute, upload.array("media", 10), createPost);
 router.put("/repost/:id", protectRoute, repost);
+
 export default router;

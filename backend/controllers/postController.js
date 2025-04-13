@@ -6,10 +6,8 @@ import { uploadFiles } from "../utils/uploadUtils.js";
 import { MAX_FILES, MAX_CHAR } from "../constants/upload.js";
 import { cleanCommentText, moderateText } from "../utils/moderateText.js";
 import Reply from "../models/replyModel.js";
-import {
-  LIMIT_PAGINATION_REPLY,
-  LIMIT_PAGINATION_POST,
-} from "../constants/pagination.js";
+import { LIMIT_PAGINATION_REPLY } from "../constants/pagination.js";
+import getPaginationParams from "../utils/helpers/getPaginationParams.js";
 const deleteMediaFromCloudinary = async (publicId) => {
   try {
     const result = await cloudinary.uploader.destroy(publicId);
@@ -312,33 +310,64 @@ const replyToPost = async (req, res) => {
   }
 };
 
-//Lấy danh sách bài đăng
+// Lấy reposts của user
+const getReposts = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const { page, limit, skip } = getPaginationParams(req);
+
+    const [posts, totalPosts] = await Promise.all([
+      Post.find({ repostedBy: userId })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("postedBy", "_id username name profilePic"),
+
+      Post.countDocuments({ repostedBy: userId }),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      page,
+      limit,
+      totalPages: Math.ceil(totalPosts / limit),
+      posts,
+    });
+  } catch (err) {
+    console.error("Error in getReposts:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// Lấy bài viết từ người dùng đang theo dõi
 const getFeedPosts = async (req, res) => {
   try {
-    const userId = req.user._id; // ID của user hiện tại
+    const userId = req.user?._id;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
     const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
+    if (!user) return res.status(404).json({ error: "User not found" });
 
-    const following = user.following;
+    const { page, limit, skip } = getPaginationParams(req);
 
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || LIMIT_PAGINATION_POST;
-    const skip = (page - 1) * limit;
+    const query = {
+      postedBy: { $in: user.following, $ne: userId },
+    };
 
-    const posts = await Post.find({
-      postedBy: { $in: following, $ne: userId },
-    })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate("postedBy", "_id username name profilePic");
+    const [posts, totalPosts] = await Promise.all([
+      Post.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("postedBy", "_id username name profilePic"),
 
-    // Tổng số bài viết (chỉ tính bài từ người khác)
-    const totalPosts = await Post.countDocuments({
-      postedBy: { $in: following, $ne: userId },
-    });
+      Post.countDocuments(query),
+    ]);
 
     res.status(200).json({
       page,
@@ -352,30 +381,22 @@ const getFeedPosts = async (req, res) => {
   }
 };
 
+// Lấy tất cả bài đăng (trừ bài của bản thân nếu đã đăng nhập)
 const getAllPosts = async (req, res) => {
   try {
-    let page = parseInt(req.query.page, 10) || 1;
-    let limit =
-      parseInt(req.query.limit, LIMIT_PAGINATION_POST) || LIMIT_PAGINATION_POST;
+    const { page, limit, skip } = getPaginationParams(req);
 
-    if (limit > 50) limit = 50; // Giới hạn max tránh tải quá nhiều dữ liệu
-    const skip = (page - 1) * limit;
-    let query = {};
+    const query = req.user?._id ? { postedBy: { $ne: req.user._id } } : {};
 
-    // Nếu có user đăng nhập, loại trừ bài viết của họ
-    if (req.user && req.user._id) {
-      query.postedBy = { $ne: req.user._id };
-    }
+    const [posts, totalPosts] = await Promise.all([
+      Post.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("postedBy", "_id username name profilePic"),
 
-    // Lấy tất cả bài viết
-    const posts = await Post.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate("postedBy", "_id username name profilePic");
-
-    // Đếm tổng số bài viết theo query
-    const totalPosts = await Post.countDocuments(query);
+      Post.countDocuments(query),
+    ]);
 
     res.status(200).json({
       page,
@@ -390,21 +411,32 @@ const getAllPosts = async (req, res) => {
   }
 };
 
+// Lấy bài viết của 1 người dùng cụ thể theo username
 const getUserPosts = async (req, res) => {
-  const { username } = req.params;
   try {
+    const { username } = req.params;
+    const { page, limit, skip } = getPaginationParams(req);
+
     const user = await User.findOne({ username });
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
+    if (!user) return res.status(404).json({ error: "User not found" });
 
-    const posts = await Post.find({ postedBy: user._id })
-      .sort({
-        createdAt: -1,
-      })
-      .populate("postedBy", "_id username name profilePic");
+    const [posts, totalPosts] = await Promise.all([
+      Post.find({ postedBy: user._id })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("postedBy", "_id username name profilePic"),
 
-    res.status(200).json(posts);
+      Post.countDocuments({ postedBy: user._id }),
+    ]);
+
+    res.status(200).json({
+      page,
+      limit,
+      totalPosts,
+      totalPages: Math.ceil(totalPosts / limit),
+      posts,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -481,6 +513,7 @@ export {
   replyToPost,
   getFeedPosts,
   getUserPosts,
+  getReposts,
   getAllPosts,
   updatePost,
   repost,

@@ -13,7 +13,9 @@ import { BsFillChatQuoteFill, BsSun, BsMoonStars, BsSearch, BsPlusSquare } from 
 import { MdOutlineSettings } from "react-icons/md";
 import { HamburgerIcon } from "@chakra-ui/icons";
 import CreatePostModal from "./CreatePostModal";
-
+import { unreadConversationsCountAtom } from "../atoms/messagesAtom";
+import ChatIconWithBadge from "./ChatIconWithBadge";
+import { IoMdNotificationsOutline } from "react-icons/io";
 const Header = () => {
     const { colorMode, toggleColorMode } = useColorMode();
     const user = useRecoilValue(userAtom);
@@ -27,7 +29,7 @@ const Header = () => {
     const menuHoverBg = useColorModeValue("gray.100", "whiteAlpha.200");
 
     const isActive = (path) => location.pathname === path;
-
+    const unreadCount = useRecoilValue(unreadConversationsCountAtom);
     const getIconStyle = (path) => ({
         color: isActive(path) ? (colorMode === "dark" ? "white" : "black") : "gray.500",
         bg: isActive(path) ? (colorMode === "dark" ? "whiteAlpha.200" : "gray.100") : "transparent",
@@ -58,7 +60,8 @@ const Header = () => {
                             <>
                                 <IconButton as={RouterLink} to={`/${user.username}`} icon={<RxAvatar size={24} />} {...getIconStyle(`/${user.username}`)} aria-label="Profile" />
                                 <IconButton onClick={onOpen} icon={<BsPlusSquare size={30} />} {...getIconStyle("/create-post")} aria-label="Create Post" />
-                                <IconButton as={RouterLink} to="/chat" icon={<BsFillChatQuoteFill size={24} />} {...getIconStyle("/chat")} aria-label="Messages" />
+                                <IconButton as={RouterLink} to="/chat" icon={<ChatIconWithBadge />} {...getIconStyle("/chat")} aria-label="Messages" />
+                                <IconButton as={RouterLink} to="/notifications" icon={<IoMdNotificationsOutline size={24} />} {...getIconStyle("/notifications")} aria-label="Notifications" />
                             </>
                         )}
                         <IconButton as={RouterLink} to="/search" icon={<BsSearch size={24} />} {...getIconStyle("/search")} aria-label="Search" />
@@ -98,8 +101,9 @@ const Header = () => {
                                 <IconButton as={RouterLink} to="/" icon={<AiFillHome size={24} />} {...getIconStyle("/")} aria-label="Home" />
                                 <IconButton as={RouterLink} to={`/${user.username}`} icon={<RxAvatar size={24} />} {...getIconStyle(`/${user.username}`)} aria-label="Profile" />
                                 <IconButton onClick={onOpen} icon={<BsPlusSquare size={30} />} {...getIconStyle("/create-post")} aria-label="Create Post" />
-                                <IconButton as={RouterLink} to="/chat" icon={<BsFillChatQuoteFill size={24} />} {...getIconStyle("/chat")} aria-label="Messages" />
+                                <IconButton as={RouterLink} to="/chat" icon={<ChatIconWithBadge />} {...getIconStyle("/chat")} aria-label="Messages" />
                                 <IconButton as={RouterLink} to="/search" icon={<BsSearch size={24} />} {...getIconStyle("/search")} aria-label="Search" />
+                                <IconButton as={RouterLink} to="/notifications" icon={<IoMdNotificationsOutline size={24} />} {...getIconStyle("/notifications")} aria-label="Notifications" />
                                 <Menu placement="top">
                                     <MenuButton as={IconButton} icon={<HamburgerIcon />} variant="ghost" color="gray.500" _hover={{ bg: menuHoverBg }} aria-label="Menu" />
                                     <MenuList bg={menuBg} borderColor={menuBorder}>

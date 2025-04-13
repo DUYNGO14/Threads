@@ -1,14 +1,8 @@
 import User from "../models/userModel.js";
-import Post from "../models/postModel.js";
+import Reply from "../models/replyModel.js";
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import { v2 as cloudinary } from "cloudinary";
-
-// Hàm hash mật khẩu
-const hashPassword = async (password) => {
-  const salt = await bcrypt.genSalt(10);
-  return await bcrypt.hash(password, salt);
-};
 
 // Hàm upload ảnh đại diện
 const uploadProfilePic = async (newPic, oldPic) => {
@@ -88,47 +82,85 @@ const getUserProfile = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+const searchUsers = async (req, res) => {
+  try {
+    const { query } = req.params;
 
+    if (!query || query.trim() === "") {
+      return res.status(400).json({ error: "Search query is required" });
+    }
+
+    const searchCondition = {
+      $or: [
+        { username: { $regex: query, $options: "i" } },
+        { name: { $regex: query, $options: "i" } },
+      ],
+    };
+
+    const users = await User.find(searchCondition)
+      .select("-password -updatedAt -email -followers -following") // tuỳ ý bỏ bớt các field không cần thiết
+      .limit(10); // giới hạn kết quả
+
+    if (!users.length) {
+      return res.status(404).json({ error: "No users found" });
+    }
+
+    res.status(200).json(users);
+  } catch (error) {
+    console.error("Error in searchUsersController:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
 // Cập nhật thông tin người dùng
 const updateUser = async (req, res) => {
   try {
-    const { name, email, username, password, bio, profilePic } = req.body;
+    const { name, username, bio, profilePic } = req.body;
     const userId = req.user._id;
 
-    let user = await User.findById(userId);
+    // Kiểm tra người dùng
+    const user = await User.findById(userId);
     if (!user) return res.status(400).json({ error: "User not found" });
 
+    // Không cho sửa thông tin của người khác
     if (req.params.id !== userId.toString()) {
       return res
-        .status(400)
-        .json({ error: "You cannot update another user's profile" });
+        .status(403)
+        .json({ error: "Bạn không được phép chỉnh sửa tài khoản này" });
     }
 
-    if (password) user.password = await hashPassword(password);
-    if (profilePic)
+    // Cập nhật avatar nếu có
+    if (profilePic) {
       user.profilePic = await uploadProfilePic(profilePic, user.profilePic);
+    }
 
-    Object.assign(user, { name, email, username, bio });
+    // Cập nhật thông tin
+    if (name) user.name = name;
+    if (username) user.username = username;
+    if (bio) user.bio = bio;
 
+    // Lưu lại user
     await user.save();
 
-    // Cập nhật username & profilePic trong các bài post mà user đã reply
-    await Post.updateMany(
-      { "replies.userId": userId },
-      {
-        $set: {
-          "replies.$[reply].username": user.username,
-          "replies.$[reply].userProfilePic": user.profilePic,
-        },
-      },
-      { arrayFilters: [{ "reply.userId": userId }] }
-    );
+    // Đồng bộ reply nếu có sửa username hoặc profilePic
+    if (username || profilePic) {
+      await Reply.updateMany(
+        { userId },
+        {
+          $set: {
+            ...(username && { username }),
+            ...(profilePic && { userProfilePic: user.profilePic }),
+          },
+        }
+      );
+    }
 
+    // Ẩn mật khẩu khi trả về
     user.password = null;
+
     res.status(200).json(user);
   } catch (error) {
     console.error("Error in updateUser:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Lỗi server, vui lòng thử lại sau" });
   }
 };
 const getSuggestedUsers = async (req, res) => {
@@ -224,6 +256,26 @@ const getCurrentUserProfile = async (req, res) => {
   }
 };
 
+const getListFollowers = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select("followers");
+    if (!user) return res.status(404).json({ error: "User not found" });
+    res.status(200).json(user);
+  } catch (error) {
+    console.error("Error in getListFollowers:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+const getListFollowing = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select("following");
+    if (!user) return res.status(404).json({ error: "User not found" });
+    res.status(200).json(user);
+  } catch (error) {
+    console.error("Error in getListFollowing:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
 export {
   followUnFollowUser,
   updateUser,
@@ -232,4 +284,7 @@ export {
   getSuggestedUsers,
   freezeAccount,
   deleteAccount,
+  getListFollowers,
+  getListFollowing,
+  searchUsers,
 };

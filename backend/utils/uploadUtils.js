@@ -3,12 +3,7 @@ import fs from "fs/promises";
 import pLimit from "p-limit";
 
 // Constants
-import {
-  audioFormats,
-  imageFormats,
-  videoFormats,
-  MAX_FILE_SIZE_MB,
-} from "../constants/upload.js";
+import { MAX_FILE_SIZE_MB } from "../constants/upload.js";
 
 // Upload một file đơn lẻ
 const uploadFile = async (file) => {
@@ -35,6 +30,9 @@ const uploadFile = async (file) => {
     } else if (type === "audio") {
       resourceType = "video"; // Cloudinary xử lý audio như video
       fileType = "audio";
+    } else if (type === "gif") {
+      resourceType = "video";
+      fileType = "gif";
     }
 
     const uploadedResponse = await cloudinary.uploader.upload(path, {
