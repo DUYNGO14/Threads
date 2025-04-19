@@ -1,47 +1,64 @@
 import { useState } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useNavigate } from "react-router-dom";
+import { followingAtom, followersAtom } from "../atoms/followAtoms";
 import useShowToast from "./useShowToast";
 import userAtom from "../atoms/userAtom";
-import { useRecoilValue } from "recoil";
 
-const useFollowUnfollow = (user) => {
+const useFollowUnfollow = (user, onSuccess) => {
   const currentUser = useRecoilValue(userAtom);
-  const [following, setFollowing] = useState(
-    user.followers.includes(currentUser?._id)
-  );
-  const [updating, setUpdating] = useState(false);
+  const setFollowers = useSetRecoilState(followersAtom);
+  const setFollowing = useSetRecoilState(followingAtom);
+  const navigate = useNavigate();
   const showToast = useShowToast();
 
+  const [following, setFollowingLocal] = useState(
+    user.followers?.includes(currentUser?._id) || false
+  );
+  const [updating, setUpdating] = useState(false);
+
   const handleFollowUnfollow = async () => {
+    // 👉 Kiểm tra đăng nhập
     if (!currentUser) {
-      showToast("Error", "Please login to follow", "error");
-      return;
+      showToast("Warning", "You need to login first", "warning");
+      return navigate("/auth");
     }
+
     if (updating) return;
 
-    setUpdating(true);
+    const optimisticValue = !following;
+    setFollowingLocal(optimisticValue);
+
+    setFollowing(
+      optimisticValue
+        ? (prev) => [...prev, user]
+        : (prev) => prev.filter((u) => u._id !== user._id)
+    );
+
     try {
       const res = await fetch(`/api/users/follow/${user._id}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
       });
       const data = await res.json();
+
       if (data.error) {
+        setFollowingLocal(!optimisticValue);
+        setFollowing((prev) => prev.filter((u) => u._id !== user._id));
         showToast("Error", data.error, "error");
         return;
       }
 
-      if (following) {
-        showToast("Success", `Unfollowed ${user.name}`, "success");
-        user.followers.pop(); // simulate removing from followers
-      } else {
-        showToast("Success", `Followed ${user.name}`, "success");
-        user.followers.push(currentUser?._id); // simulate adding to followers
-      }
-      setFollowing(!following);
-    } catch (error) {
-      showToast("Error", error, "error");
+      showToast(
+        "Success",
+        `${optimisticValue ? "Followed" : "Unfollowed"} ${user.name}`,
+        "success"
+      );
+
+      if (onSuccess) onSuccess(optimisticValue);
+    } catch (err) {
+      setFollowingLocal(!optimisticValue);
+      setFollowing((prev) => prev.filter((u) => u._id !== user._id));
+      showToast("Error", err.message || "Something went wrong", "error");
     } finally {
       setUpdating(false);
     }

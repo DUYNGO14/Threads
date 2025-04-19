@@ -21,7 +21,7 @@ const upload = multer({ dest: "uploads/" });
 
 router.get("/followed", protectRoute, getFeedPosts);
 router.get("/propose", protectRoute, getAllPosts);
-router.get("/reposts", protectRoute, getReposts);
+router.get("/reposts/:username", getReposts);
 router.get("/:id", getPost);
 router.get("/user/:username", getUserPosts);
 router.post("/create", protectRoute, uploadMedia, createPost);

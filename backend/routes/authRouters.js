@@ -4,6 +4,7 @@ import generateTokenAndSetCookie from "../utils/helpers/generateTokenAndSetCooki
 import {
   changePassword,
   forgotPassword,
+  getMe,
   loginUser,
   logoutUser,
   resendOTP,
@@ -157,4 +158,5 @@ router.post("/forgot-password", forgotPassword);
 router.post("/reset-password/:resetToken", resetPassword);
 router.post("/resend-otp", resendOTP);
 router.put("/change-password", protectRoute, changePassword);
+router.get("/user", protectRoute, getMe);
 export default router;

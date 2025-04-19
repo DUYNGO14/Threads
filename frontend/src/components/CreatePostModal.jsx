@@ -170,7 +170,7 @@ const CreatePostModal = ({ isOpen, onClose, username }) => {
                                         onChange={handleFileChange}
                                         disabled={mediaFiles.length >= MAX_FILES}
                                     />
-                                    <Text fontSize="xs" mt={2}>Allowed types: {ALLOWED_TYPES.join(", ")}</Text>
+                                    {/* <Text fontSize="xs" mt={2}>Allowed types: {ALLOWED_TYPES.join(", ")}</Text> */}
                                 </FormControl>
 
                                 {mediaFiles.length > 0 && (

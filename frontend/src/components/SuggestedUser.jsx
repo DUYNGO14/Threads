@@ -4,7 +4,6 @@ import useFollowUnfollow from "../hooks/useFollowUnfollow";
 import PropTypes from "prop-types";
 const SuggestedUser = ({ user }) => {
     const { handleFollowUnfollow, following, updating } = useFollowUnfollow(user);
-
     return (
         <Flex
             gap={3}

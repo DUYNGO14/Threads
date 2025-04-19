@@ -98,7 +98,6 @@ async function sendMessage(req, res) {
 async function getMessages(req, res) {
   const { otherUserId } = req.params;
   const userId = req.user._id;
-
   try {
     const conversation = await Conversation.findOne({
       participants: { $all: [userId, otherUserId] },

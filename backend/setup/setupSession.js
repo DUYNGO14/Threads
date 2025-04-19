@@ -2,6 +2,7 @@ import session from "express-session";
 import MongoStore from "connect-mongo";
 import "../config/connectDB.config.js";
 import "../config/passport.config.js";
+import "../config/redis.config.js";
 export default function setupSession(app) {
   app.use(
     session({

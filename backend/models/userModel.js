@@ -71,11 +71,18 @@ const userSchema = mongoose.Schema(
     verificationOTPExpiresAt: Date,
     googleId: { type: String, unique: true, sparse: true },
     facebookId: { type: String, unique: true, sparse: true },
+    socialLinks: {
+      type: Map,
+      of: String, // Lưu trữ liên kết dạng chuỗi (URL)
+      default: {},
+    },
   },
   {
     timestamps: true,
   }
 );
+// Thêm chỉ mục văn bản cho các trường 'username' và 'name' để hỗ trợ tìm kiếm
+userSchema.index({ username: "text", name: "text" });
 
 const User = mongoose.model("User", userSchema);
 

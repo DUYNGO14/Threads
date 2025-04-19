@@ -19,7 +19,7 @@ import MainLayout from "./layouts/MainLayout";
 import BaseLayout from "./layouts/BaseLayout";
 import SearchPage from "./pages/SearchPage";
 
-// Component bảo vệ route cần đăng nhập
+
 const ProtectedRoute = ({ children }) => {
   const user = useRecoilValue(userAtom);
   return user ? children : <Navigate to="/auth" />;
@@ -28,11 +28,10 @@ const ProtectedRoute = ({ children }) => {
 function App() {
   const user = useRecoilValue(userAtom);
   const { pathname } = useLocation();
-  // Auth routes that use BaseLayout
+
   const authRoutes = ['/auth', '/oauth-success', '/oauth-failure', '/reset-password'];
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
 
-  // Routes that don't need any layout
   const noLayoutRoutes = ['/404'];
   const needsNoLayout = noLayoutRoutes.some(route => pathname.startsWith(route));
 
@@ -62,19 +61,15 @@ function App() {
   return (
     <MainLayout>
       {user && <CreatePost />}
-      <Routes>
+      <Routes key={pathname}> {/* Force remount on same path */}
         <Route path="/" element={<HomePage />} />
+        <Route path="/home" element={<HomePage />} />
         <Route path="/update" element={<ProtectedRoute><UpdateProfilePage /></ProtectedRoute>} />
         <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         <Route path="/change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
         <Route path="/search" element={<SearchPage />} />
-        {/* Profile & Post routes */}
-
-        <Route path="/:username" element={user ? <>
-          <UserPage />
-        </> : <UserPage />}
-        />
+        <Route path="/:username" element={<UserPage />} />
         <Route path="/:username/post/:pid" element={<PostPage />} />
       </Routes>
     </MainLayout>

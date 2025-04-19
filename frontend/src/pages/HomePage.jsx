@@ -1,66 +1,63 @@
-import { useEffect, useState, useCallback } from "react";
-import { Spinner, Box, Flex, Text, useColorModeValue, Stack, VStack, Icon, useColorMode, Grid, GridItem } from "@chakra-ui/react";
-import useShowToast from "../hooks/useShowToast";
+import {
+    Box, Grid, GridItem, Stack, Spinner, useColorMode, useColorModeValue,
+    VStack, Icon, Text, Flex,
+    Button
+} from "@chakra-ui/react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRecoilValue } from "recoil";
-import SuggestedUsers from "../components/SuggestedUsers";
-import Post from "../components/Post";
-import Tabs from "../components/Tabs";
+import { useLocation, useNavigate } from "react-router-dom";
 import { debounce } from "lodash";
-import userAtom from "../atoms/userAtom";
-import PostSkeleton from "../components/PostSkeleton";
 import { BsPostcard } from "react-icons/bs";
-import RightSidebar from "../components/RightSidebar";
 
-const INITIAL_POSTS_LIMIT = 5;
+import Tabs from "../components/Tabs";
+import Post from "../components/Post";
+import PostSkeleton from "../components/PostSkeleton";
+import SuggestedUsers from "../components/SuggestedUsers";
+
+import userAtom from "../atoms/userAtom";
+import useShowToast from "../hooks/useShowToast";
+import { FaThreads } from "react-icons/fa6";
+
+const INITIAL_POSTS_LIMIT = 10;
 const SCROLL_POSTS_LIMIT = 10;
 
 const HomePage = () => {
+    const currentUser = useRecoilValue(userAtom);
+    const showToast = useShowToast();
+    const { colorMode } = useColorMode();
+    const location = useLocation();
+    const navigate = useNavigate();
+
     const [feedType, setFeedType] = useState("propose");
-    const [posts, setPosts] = useState({ propose: [], followed: [] });
+    const [posts, setPosts] = useState([]);
+    const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
-    const [page, setPage] = useState({ propose: 1, followed: 1 });
-    const [hasMore, setHasMore] = useState({ propose: true, followed: true });
-    const [initialLoadComplete, setInitialLoadComplete] = useState({ propose: false, followed: false });
+    const [hasMore, setHasMore] = useState(true);
+    const [initialLoadDone, setInitialLoadDone] = useState(false);
+    const [refreshKey, setRefreshKey] = useState(Date.now()); // Dùng để force reload
 
-    const showToast = useShowToast();
-    const currentUser = useRecoilValue(userAtom);
-    const { colorMode } = useColorMode();
-    const emptyStateBg = useColorModeValue('white', 'gray.dark');
-    const emptyStateBorder = useColorModeValue('gray.200', 'gray.700');
+    const emptyBg = useColorModeValue('white', 'gray.dark');
+    const emptyBorder = useColorModeValue('gray.200', 'gray.700');
 
-    const updatePostInFeed = useCallback((updatedPost) => {
-        if (!updatedPost) {
-            // Nếu updatedPost là null (post đã bị xóa), xóa post khỏi cả hai loại feed
-            setPosts(prev => ({
-                propose: prev.propose.filter(p => p._id !== updatedPost?._id),
-                followed: prev.followed.filter(p => p._id !== updatedPost?._id)
-            }));
-            return;
-        }
+    const scrollHandlerRef = useRef();
 
-        setPosts(prev => ({
-            ...prev,
-            [feedType]: prev[feedType].map(post =>
-                post._id === updatedPost._id ? updatedPost : post
-            )
-        }));
-    }, [feedType, setPosts]);
+    const tabs = [
+        { value: "propose", label: "For you" },
+        { value: "followed", label: "Following", requireAuth: true },
+    ];
 
-    const getFeedPost = useCallback(async (feed, pageNumber, isInitialLoad = false) => {
-        if ((loading || loadingMore) && !isInitialLoad) return;
-        if (!hasMore[feed]) return;
+    const fetchPosts = useCallback(async (pageNum = 1, isInit = false) => {
+        if ((loading || loadingMore) && !isInit) return;
+        if (!hasMore && !isInit) return;
 
-        if (isInitialLoad) {
-            setLoading(true);
-        } else {
-            setLoadingMore(true);
-        }
+        isInit ? setLoading(true) : setLoadingMore(true);
 
         try {
-            const endpoint = feed === "propose" ? "/api/posts/propose" : "/api/posts/followed";
-            const limit = isInitialLoad ? INITIAL_POSTS_LIMIT : SCROLL_POSTS_LIMIT;
-            const res = await fetch(`${endpoint}?page=${pageNumber}&limit=${limit}`);
+            const endpoint = feedType === "propose" ? "/api/posts/propose" : "/api/posts/followed";
+            const limit = isInit ? INITIAL_POSTS_LIMIT : SCROLL_POSTS_LIMIT;
+
+            const res = await fetch(`${endpoint}?page=${pageNum}&limit=${limit}`);
             const data = await res.json();
 
             if (data.error) {
@@ -68,134 +65,135 @@ const HomePage = () => {
                 return;
             }
 
-            const processedPosts = data.posts.map(post => ({
-                ...post,
-                postedBy: post.postedBy || null
-            }));
+            const newPosts = data.posts || [];
 
-            setPosts((prev) => ({
-                ...prev,
-                [feed]: isInitialLoad
-                    ? processedPosts
-                    : [...prev[feed], ...processedPosts].reduce((acc, post) => {
-                        if (!acc.some((p) => p._id === post._id)) acc.push(post);
-                        return acc;
-                    }, []),
-            }));
+            setPosts(prev =>
+                isInit
+                    ? newPosts
+                    : [...prev, ...newPosts].filter((post, i, self) =>
+                        i === self.findIndex(p => p._id === post._id)
+                    )
+            );
 
-            setHasMore((prev) => ({
-                ...prev,
-                [feed]: processedPosts.length > 0 && processedPosts.length >= limit
-            }));
+            setHasMore(newPosts.length >= limit);
+            if (isInit) setInitialLoadDone(true);
 
-            if (isInitialLoad && processedPosts.length >= INITIAL_POSTS_LIMIT) {
-                setInitialLoadComplete(prev => ({ ...prev, [feed]: true }));
-            }
-        } catch (error) {
-            showToast("Lỗi", error.message, "error");
+        } catch (err) {
+            showToast("Lỗi", err.message, "error");
         } finally {
-            if (isInitialLoad) {
-                setLoading(false);
-            } else {
-                setLoadingMore(false);
-            }
+            isInit ? setLoading(false) : setLoadingMore(false);
         }
-    }, [loading, loadingMore, hasMore, showToast, setPosts, setHasMore, setInitialLoadComplete, setLoading, setLoadingMore]);
+    }, [feedType, loading, loadingMore, hasMore]);
 
-    // Khi đổi tab, reset state và load lại từ đầu
+    // Load khi feedType hoặc refreshKey đổi
     useEffect(() => {
-        setPosts({ propose: [], followed: [] });
-        setPage({ propose: 1, followed: 1 });
-        setHasMore({ propose: true, followed: true });
-        setInitialLoadComplete({ propose: false, followed: false });
-        getFeedPost(feedType, 1, true);
-    }, [feedType]);  // Mỗi khi `feedType` thay đổi, dữ liệu sẽ được tải lại
 
 
-    const handleScroll = useCallback(
-        debounce(() => {
-            const scrollPosition = window.innerHeight + window.scrollY;
-            const documentHeight = document.documentElement.scrollHeight;
-            const scrollThreshold = 300; // Tăng khoảng cách để load sớm hơn
+        setPosts([]);
+        setPage(1);
+        setHasMore(true);
+        setInitialLoadDone(false);
+        fetchPosts(1, true);
+    }, [feedType, refreshKey]);
 
-            if (scrollPosition >= documentHeight - scrollThreshold) {
-                if (!loading && !loadingMore && hasMore[feedType] && initialLoadComplete[feedType]) {
-                    setPage((prev) => {
-                        const newPage = prev[feedType] + 1;
-                        getFeedPost(feedType, newPage, false);
-                        return { ...prev, [feedType]: newPage };
-                    });
+    // Infinite scroll
+    useEffect(() => {
+        scrollHandlerRef.current = debounce(() => {
+            const bottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 300;
+            if (bottom && !loading && !loadingMore && hasMore && initialLoadDone) {
+                const nextPage = page + 1;
+                setPage(nextPage);
+                fetchPosts(nextPage);
+            }
+        }, 100);
+
+        window.addEventListener("scroll", scrollHandlerRef.current);
+        return () => window.removeEventListener("scroll", scrollHandlerRef.current);
+    }, [loading, loadingMore, hasMore, initialLoadDone, page, fetchPosts]);
+
+    // Scroll đến bài viết từ trang khác
+    useEffect(() => {
+        if (location.state?.fromPostPage && location.state?.postId) {
+            if (posts.length > 0) {
+                const el = document.getElementById(`post-${location.state.postId}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: "smooth", block: "start" });
+                    navigate(location.pathname, { replace: true, state: {} });
                 }
             }
-        }, 100),
-        [loading, loadingMore, hasMore, feedType, initialLoadComplete]
-    );
-
-    useEffect(() => {
-        window.addEventListener("scroll", handleScroll);
-        return () => window.removeEventListener("scroll", handleScroll);
-    }, [handleScroll]);
-
-    // Thêm useEffect để theo dõi thay đổi của posts
-    useEffect(() => {
-        if (posts[feedType].length >= INITIAL_POSTS_LIMIT && !initialLoadComplete[feedType]) {
-            setInitialLoadComplete(prev => ({ ...prev, [feedType]: true }));
         }
-    }, [posts, feedType, initialLoadComplete]);
-    const myTabs = [
-        { value: "propose", label: "For you" },
-        { value: "followed", label: "Following", requireAuth: true },
-    ];
+    }, [location, navigate, feedType, posts]);
+
+    const handlePostUpdate = useCallback((updatedPost) => {
+        if (!updatedPost) return;
+        setPosts(prev => prev.map(p => p._id === updatedPost._id ? updatedPost : p));
+    }, []);
+
+    // ✅ Khi click lại tab hiện tại → set lại refreshKey để trigger useEffect
+    const handleTabClick = (newTab) => {
+        if (newTab === feedType) {
+            setRefreshKey(Date.now());
+        } else {
+            setFeedType(newTab);
+        }
+    };
+
     return (
         <Box position="relative">
             <Grid
-                templateAreas={`"header header"`}
-                templateColumns={{ base: "1fr", xl: "minmax(auto, 1000px) 320px" }}
+                templateAreas={`"main aside"`}
+                templateColumns={{ base: "1fr", xl: "minmax(auto, 1200px) 260px" }}
                 gap={6}
                 alignItems="flex-start"
                 maxW="1600px"
                 mx="auto"
             >
-                {/* Phần Bài Viết */}
-                <GridItem area={'header'}>
+                <GridItem area="main">
                     <Box
                         position="fixed"
                         top="0"
                         left="0"
-                        w="full"
-                        bg={colorMode === "dark" ? "#101010" : "gray.50"}
+                        right="0"
                         zIndex="100"
+                        bg={colorMode === "dark" ? "#101010" : "gray.50"}
                         borderBottom="1px"
                         borderColor={colorMode === "dark" ? "whiteAlpha.100" : "gray.200"}
-                        backdropFilter="blur(12px)"
-                        py={2}
+                        pt={3}
+                        pb={2}
+                        px={4}
                     >
-                        <Tabs tabs={myTabs} onTabChange={setFeedType} initialTab={feedType} requireAuth={true} />
+                        <Flex direction="column" align="center">
+                            <Tabs
+                                tabs={tabs}
+                                onTabChange={handleTabClick}
+                                initialTab={feedType}
+                                requireAuth
+                            />
+                        </Flex>
                     </Box>
-                    <Box height="60px" /> {/* Thêm khoảng trống tránh nội dung bị che mất */}
-                </GridItem>
-                <GridItem>
-                    {/* Danh sách bài viết */}
-                    <Box minH="calc(100vh - 200px)" overflowY="auto" w="full">
-                        {posts[feedType].length === 0 && !loading && (
+
+                    <Box pt="70px">
+                        {loading && posts.length === 0 && (
+                            <Stack spacing={4} mt={4}><PostSkeleton /><PostSkeleton /><PostSkeleton /></Stack>
+                        )}
+
+                        {!loading && posts.length === 0 && (
                             <Box
+                                bg={emptyBg}
+                                borderColor={emptyBorder}
+                                borderWidth="1px"
+                                borderRadius="xl"
+                                p={6}
+                                mt={4}
+                                minH="50vh"
                                 display="flex"
                                 flexDirection="column"
                                 alignItems="center"
                                 justifyContent="center"
-                                minH="50vh"
-                                bg={emptyStateBg}
-                                borderRadius="xl"
-                                p={6}
-                                mt={4}
-                                borderWidth="1px"
-                                borderColor={emptyStateBorder}
                             >
                                 <VStack spacing={4}>
                                     <Icon as={BsPostcard} boxSize={10} color="gray.500" />
-                                    <Text fontSize="lg" fontWeight="bold" color="gray.500">
-                                        Không có bài viết nào
-                                    </Text>
+                                    <Text fontSize="lg" fontWeight="bold" color="gray.500">Không có bài viết</Text>
                                     <Text fontSize="md" color="gray.500" textAlign="center">
                                         {feedType === "followed"
                                             ? "Hãy theo dõi bạn bè để xem bài viết tại đây!"
@@ -205,17 +203,15 @@ const HomePage = () => {
                             </Box>
                         )}
 
-                        {loading && posts[feedType].length === 0 && (
-                            <Stack spacing={4} mt={4}>
-                                <PostSkeleton />
-                                <PostSkeleton />
-                                <PostSkeleton />
-                            </Stack>
-                        )}
-
                         <Stack spacing={6}>
-                            {posts[feedType].map((post) => (
-                                <Post key={post._id} post={post} postedBy={post?.postedBy} onPostUpdate={updatePostInFeed} />
+                            {posts.map(post => (
+                                <Post
+                                    key={post._id}
+                                    post={post}
+                                    postedBy={post.postedBy}
+                                    onPostUpdate={handlePostUpdate}
+                                    referrer={{ url: "/", page: "home" }}
+                                />
                             ))}
                         </Stack>
 
@@ -225,26 +221,49 @@ const HomePage = () => {
                             </Stack>
                         )}
 
-                        {!hasMore[feedType] && posts[feedType].length > 0 && (
-                            <Flex justifyContent="center" mb={4} color="gray.500">
-                                <Text fontSize="sm">📌No more posts</Text>
+                        {!hasMore && posts.length > 0 && (
+                            <Flex justifyContent="center" my={6} color="gray.500">
+                                <Text fontSize="sm">📌 No more posts</Text>
                             </Flex>
                         )}
                     </Box>
                 </GridItem>
 
-                {/* Phần Gợi Ý Người Dùng */}
-                <GridItem
-                    display={{ base: "none", xl: "block" }}
-                    position="sticky"
-                    top="20px"
-                    maxH="calc(100vh - 40px)"
-                    overflowY="auto"
-                    p={2}
-                    w="250px"
-
-                >
-                    {currentUser && <SuggestedUsers />}
+                <GridItem area="aside" display={{ base: "none", xl: "block" }} pt={"70px"}>
+                    {currentUser ? <SuggestedUsers /> : (
+                        <Box
+                            p={6}
+                            bg={colorMode === "dark" ? "#101010" : "gray.50"}
+                            borderRadius="xl"
+                            border="1px solid"
+                            borderColor={colorMode === "dark" ? "whiteAlpha.100" : "gray.200"}
+                            textAlign="center"
+                        >
+                            <Text fontSize="xl" fontWeight="bold" mb={2}>
+                                Log in or sign up to Threads
+                            </Text>
+                            <Text fontSize="sm" color="gray.400" mb={6}>
+                                See what people are talking about and join the conversation.
+                            </Text>
+                            <Button
+                                leftIcon={<Icon as={FaThreads} />}
+                                bg="whiteAlpha.200"
+                                _hover={{ bg: "whiteAlpha.300" }}
+                                size="lg"
+                                w="full"
+                                fontWeight="bold"
+                                color="white"
+                                borderRadius="xl"
+                                mb={4}
+                                onClick={() => navigate("/auth")}
+                            >
+                                Login in now
+                            </Button>
+                            <Text fontSize="sm" color="gray.500" mt={2}>
+                                Log in with username or email
+                            </Text>
+                        </Box>
+                    )}
                 </GridItem>
             </Grid>
         </Box>

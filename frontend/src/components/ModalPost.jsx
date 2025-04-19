@@ -64,7 +64,7 @@ const ModalPost = ({ mediaUrl, mediaType, isOpen, onClose }) => {
                                 src={mediaUrl}
                                 alt="Post Image"
                                 maxW="100%"
-                                maxH="95vh"
+                                maxH="100vh"
                                 objectFit="contain"
                                 transition="transform 0.2s ease-out"
                             />
@@ -78,7 +78,7 @@ const ModalPost = ({ mediaUrl, mediaType, isOpen, onClose }) => {
                                 style={{
                                     width: "100%",
                                     height: "auto",
-                                    maxHeight: "95vh",
+                                    maxHeight: "100vh",
                                     objectFit: "contain",
                                     backgroundColor: "black",
                                 }}

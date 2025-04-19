@@ -30,13 +30,17 @@ const SuggestedUsers = () => {
     }, [showToast]);
 
     return (
-        <Flex direction={"column"} gap={4} w="100%" j >
-            <Text mb={4} fontWeight={"bold"}>
+        <Flex direction={"column"} gap={4} w="100%"  >
+            <Text my={4} fontWeight={"bold"}>
                 Suggested Users
             </Text>
             <Flex direction={"column"} gap={4} w="100%">
                 <Box>
-                    {!loading && suggestedUsers.map((user) => <SuggestedUser key={user._id} user={user} />)}
+                    {!loading &&
+                        suggestedUsers.slice(0, 5).map((user) => (
+                            <SuggestedUser key={user._id} user={user} />
+                        ))}
+
                     {loading &&
                         [0, 1, 2, 3, 4].map((_, idx) => (
                             <Flex key={idx} gap={2} alignItems={"center"} p={"1"} borderRadius={"md"}>

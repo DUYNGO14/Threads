@@ -11,5 +11,5 @@ const ALLOWED_TYPES = [
   "audio/wav", // ✅ Hỗ trợ file .wav
   "audio/ogg", // ✅ Hỗ trợ file .ogg
 ];
-const MAX_FILE_SIZE_MB = 50;
+const MAX_FILE_SIZE_MB = 100;
 export { MAX_CHAR, MAX_FILES, ALLOWED_TYPES, MAX_FILE_SIZE_MB };

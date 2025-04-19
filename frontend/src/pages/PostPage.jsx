@@ -1,6 +1,7 @@
-import { Avatar, Button, Divider, Flex, Image, Spinner, Text } from "@chakra-ui/react";
+import { Avatar, Box, Button, Divider, Flex, IconButton, Image, Spinner, Text, useColorMode, useColorModeValue } from "@chakra-ui/react";
 import Actions from "../components/Actions";
 import { useEffect, useState, useCallback } from "react";
+import { IoArrowBackOutline } from "react-icons/io5";
 import Comment from "../components/Comment";
 import useGetUserProfile from "../hooks/useGetUserProfile";
 import useShowToast from "../hooks/useShowToast";
@@ -16,15 +17,16 @@ const PostPage = () => {
     const { user, loading } = useGetUserProfile();
     const [posts, setPosts] = useRecoilState(postsAtom);
     const showToast = useShowToast();
-    const { pid } = useParams();
+    const { username, pid } = useParams();
     const currentUser = useRecoilValue(userAtom);
     const postId = pid;
     const navigate = useNavigate();
-    const currentPost = posts[0];
-
+    const currentPost = posts.find(post => post._id === pid);
+    const { colorMode } = useColorMode();
     const [page, setPage] = useState(1);
     const [totalReplies, setTotalReplies] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
+
     const handlePostUpdate = useCallback((updatedPost) => {
         if (!updatedPost) return;
         setPosts([updatedPost]);
@@ -119,6 +121,35 @@ const PostPage = () => {
             showToast("Error", error.message, "error");
         }
     };
+    useEffect(() => {
+        return () => setPosts([]); // Clear posts khi rời trang
+    }, [setPosts]);
+    const handleBack = useCallback(async () => {
+        try {
+            const referrerData = localStorage.getItem("referrer");
+            const postId = localStorage.getItem("scrollToPostId");
+
+            if (referrerData) {
+                const referrer = JSON.parse(referrerData);
+                console.log(referrer);
+
+                if (referrer.page === "home") {
+                    navigate(referrer.url, { state: { fromPostPage: true, postId } });
+                } else if (referrer.page === "user") {
+                    navigate(referrer.url, { state: { fromPostPage: true, postId } });
+                }
+            } else {
+                console.warn("No referrer data in localStorage");
+            }
+
+            // Remove items after processing
+            localStorage.removeItem("referrer");
+            localStorage.removeItem("scrollToPostId");
+
+        } catch (error) {
+            console.error("Error parsing referrer data from localStorage:", error);
+        }
+    }, [navigate]);
 
     if (!user && loading) {
         return (
@@ -138,6 +169,42 @@ const PostPage = () => {
 
     return (
         <>
+            <Box
+                position="fixed"
+                top="0"
+                left="0"
+                w="full"
+                bg={colorMode === "dark" ? "#121212" : "white"}
+                zIndex="100"
+                borderBottom="1px solid"
+                borderColor={colorMode === "dark" ? "whiteAlpha.200" : "gray.300"}
+                backdropFilter="blur(10px)"
+                py={3}
+            >
+                <Flex justify="space-between" align="center" px={4} maxW="600px" mx="auto">
+                    <IconButton
+                        icon={<IoArrowBackOutline />}
+                        variant="ghost"
+                        size="sm"
+                        aria-label="Back"
+                        onClick={handleBack}
+                    />
+
+                    <Box textAlign="center" flex="1" ml="-40px">
+                        <Text
+                            fontSize="md"
+                            fontWeight="bold"
+                            color={colorMode === "dark" ? "whiteAlpha.900" : "gray.800"}
+                        >
+                            Thread
+                        </Text>
+                        <Text fontSize="xs" color="gray.500">{user.username}</Text>
+                    </Box>
+
+                </Flex>
+            </Box>
+
+            <Box height="60px" />
             <Flex mt={5}>
                 <Flex w={"full"} alignItems={"center"} gap={3}>
                     <Avatar src={user.profilePic} size={"md"} name={user.username} />
@@ -154,12 +221,12 @@ const PostPage = () => {
                     </Text>
 
                     {currentUser?._id === user._id && (
-                        <DeleteIcon size={20} cursor={"pointer"} onClick={handleDeletePost} />
+                        <DeleteIcon size={20} cursor={"pointer"} onClick={handleDeletePost} color={"red.300"} _hover={{ color: "red.500" }} />
                     )}
                 </Flex>
             </Flex>
 
-            <Text my={3}>{currentPost.text}</Text>
+            <Text whiteSpace="pre-line" my={3}>{currentPost.text}</Text>
 
             {currentPost.media?.length > 0 && (
                 <Carousels medias={currentPost.media} />

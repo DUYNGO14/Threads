@@ -10,6 +10,7 @@ import {
     useColorModeValue,
     GridItem,
     useColorMode,
+    IconButton,
 } from "@chakra-ui/react";
 import Post from "../components/Post";
 import useGetUserProfile from "../hooks/useGetUserProfile";
@@ -18,8 +19,9 @@ import postsAtom from "../atoms/postsAtom";
 import PostSkeleton from "../components/PostSkeleton";
 import NotFound from "../components/NotFound";
 import Tabs from "../components/Tabs";
-
-const POST_LIMIT = 2;
+import { useLocation, useNavigate } from "react-router-dom";
+import { IoArrowBackOutline } from "react-icons/io5";
+const POST_LIMIT = 10;
 
 const UserPage = () => {
     const { username } = useParams();
@@ -31,7 +33,8 @@ const UserPage = () => {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const { colorMode } = useColorMode();
-
+    const navigate = useNavigate();
+    const location = useLocation();
     const myTabs = [
         { value: "threads", label: "Threads" },
         { value: "reposts", label: "Reposts" },
@@ -67,7 +70,7 @@ const UserPage = () => {
             let endpoint =
                 feedType === "threads"
                     ? `/api/posts/user/${username}?page=${page}&limit=${POST_LIMIT}`
-                    : `/api/posts/reposts?page=${page}&limit=${POST_LIMIT}`;
+                    : `/api/posts/reposts/${username}?page=${page}&limit=${POST_LIMIT}`;
 
             const res = await fetch(endpoint);
             const data = await res.json();
@@ -98,7 +101,18 @@ const UserPage = () => {
     const loadMore = () => {
         setPage((prev) => prev + 1);
     };
+    useEffect(() => {
+        if (location.state?.fromPostPage && location.state?.postId) {
+            if (posts.length > 0) {
+                const el = document.getElementById(`post-${location.state.postId}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: "smooth", block: "start" });
+                    navigate(location.pathname, { replace: true, state: {} });
+                }
+            }
 
+        }
+    }, [location, navigate, feedType, posts]);
     if (loading) {
         return (
             <Box>
@@ -115,26 +129,41 @@ const UserPage = () => {
 
     return (
         <>
-            <GridItem area={"header"}>
-                <Box
-                    position="fixed"
-                    top="0"
-                    left="0"
-                    w="full"
-                    bg={colorMode === "dark" ? "#101010" : "gray.50"}
-                    zIndex="100"
-                    borderColor={colorMode === "dark" ? "whiteAlpha.100" : "gray.200"}
-                    backdropFilter="blur(12px)"
-                    py={2}
-                >
-                    <Flex justify="center" align="center">
-                        <Text fontSize="md" fontWeight="bold">
-                            Profile
+            <Box
+                position="fixed"
+                top="0"
+                left="0"
+                w="full"
+                bg={colorMode === "dark" ? "#121212" : "white"}
+                zIndex="100"
+                borderBottom="1px solid"
+                borderColor={colorMode === "dark" ? "whiteAlpha.200" : "gray.300"}
+                backdropFilter="blur(10px)"
+                py={3}
+            >
+                <Flex justify="space-between" align="center" px={4} maxW="600px" mx="auto">
+                    <IconButton
+                        icon={<IoArrowBackOutline />}
+                        variant="ghost"
+                        size="sm"
+                        aria-label="Back"
+                        color={colorMode === "dark" ? "white" : "black"}
+                        onClick={() => navigate(-1)}
+                    />
+
+                    <Box textAlign="center" flex="1" ml="-40px">
+                        <Text
+                            fontSize="md"
+                            fontWeight="bold"
+                            color={colorMode === "dark" ? "whiteAlpha.900" : "gray.800"}
+                        >
+                            Thread
                         </Text>
-                    </Flex>
-                </Box>
-                <Box height="60px" />
-            </GridItem>
+                        <Text fontSize="xs" color="gray.500">{user.username}</Text>
+                    </Box>
+
+                </Flex>
+            </Box>
 
             <UserHeader user={user} onTabChange={handleTabChange} />
 
@@ -163,6 +192,10 @@ const UserPage = () => {
                             post={post}
                             postedBy={post.postedBy}
                             onPostUpdate={updatePost}
+                            referrer={{
+                                url: `/${username}`,
+                                page: "user",
+                            }}
                         />
                     ))}
 

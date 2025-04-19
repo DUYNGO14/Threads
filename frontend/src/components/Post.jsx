@@ -14,7 +14,7 @@ import postsAtom from "../atoms/postsAtom";
 import { PropTypes } from "prop-types";
 import Carousels from "./Carousels";
 
-const Post = ({ post, postedBy, onPostUpdate }) => {
+const Post = ({ post, postedBy, onPostUpdate, referrer }) => {
     const showToast = useShowToast();
     const currentUser = useRecoilValue(userAtom);
     const [posts, setPosts] = useRecoilState(postsAtom);
@@ -56,7 +56,7 @@ const Post = ({ post, postedBy, onPostUpdate }) => {
 
     return (
         <>
-            <Box w="full">
+            <Box w="full" id={`post-${post._id}`}>
                 <Flex gap={4} p={4}>
                     <Flex flexDirection={"column"} alignItems={"center"}>
                         <Avatar
@@ -79,21 +79,24 @@ const Post = ({ post, postedBy, onPostUpdate }) => {
                                     {postedBy?.username || "Unknown"}
                                 </Text>
                                 <Text fontSize={"xs"} color={"gray.500"}>
-                                    {post.createdAt ? formatDistanceToNow(new Date(post.createdAt)) : "Just now"} ago
+                                    {post.createdAt ? formatDistanceToNow(new Date(post.createdAt)) : "Just now"}
                                 </Text>
                             </Flex>
                             {currentUser?._id === postedBy?._id && (
                                 <IconButton
                                     size="sm"
                                     icon={<DeleteIcon />}
-                                    colorScheme="red"
+                                    colorScheme="red" _hover={{ color: "red.500" }}
                                     variant="ghost"
                                     onClick={onOpen}
                                 />
                             )}
                         </Flex>
-                        <Link to={`/${postedBy.username}/post/${post._id}`}>
-                            <Text fontSize={"sm"}>{post.text}</Text>
+                        <Link to={`/${postedBy.username}/post/${post._id}`} onClick={() => {
+                            localStorage.setItem("scrollToPostId", post._id);
+                            localStorage.setItem("referrer", JSON.stringify(referrer));
+                        }}>
+                            <Text whiteSpace="pre-line" fontSize={"sm"}>{post.text}</Text>
                         </Link>
                         {/* Hiển thị ảnh/video theo dạng lưới */}
                         {post.media?.length > 0 && (
@@ -124,7 +127,7 @@ const Post = ({ post, postedBy, onPostUpdate }) => {
                         <Button variant="ghost" mr={3} onClick={onClose}>
                             Cancel
                         </Button>
-                        <Button colorScheme="red" onClick={handleDeletePost}>
+                        <Button colorScheme="red" _hover={{ color: "red.500" }} onClick={handleDeletePost}>
                             Delete
                         </Button>
                     </ModalFooter>
@@ -138,5 +141,6 @@ Post.propTypes = {
     post: PropTypes.object.isRequired,
     postedBy: PropTypes.object,
     onPostUpdate: PropTypes.func.isRequired,
+    referrer: PropTypes.object,
 };
 export default Post;

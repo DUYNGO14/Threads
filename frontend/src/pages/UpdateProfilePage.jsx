@@ -16,7 +16,7 @@ import userAtom from "../atoms/userAtom";
 import usePreviewImg from "../hooks/usePreviewImg";
 import useShowToast from "../hooks/useShowToast";
 import { useNavigate } from "react-router-dom";
-
+import SocialLinksInput from "../components/SocialLinksInput";
 export default function UpdateProfilePage() {
     const [user, setUser] = useRecoilState(userAtom);
     const [inputs, setInputs] = useState({
@@ -24,8 +24,10 @@ export default function UpdateProfilePage() {
         username: user.username,
         email: user.email,
         bio: user.bio,
+        socialLinks: user.socialLinks || {}, // ✅ sửa thành đúng key
         password: "",
     });
+
     const navigate = useNavigate();
     const fileRef = useRef(null);
     const [updating, setUpdating] = useState(false);
@@ -38,13 +40,18 @@ export default function UpdateProfilePage() {
         e.preventDefault();
         if (updating) return;
         setUpdating(true);
+        const updatedUser = {
+            ...inputs,
+            profilePic: imgUrl,
+            socialLinks: inputs.socialLinks, // ✅ dùng đúng key
+        };
         try {
             const res = await fetch(`/api/users/update/${user._id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ ...inputs, profilePic: imgUrl }),
+                body: JSON.stringify(updatedUser),
             });
             const data = await res.json(); // updated user object
             if (data.error) {
@@ -53,13 +60,14 @@ export default function UpdateProfilePage() {
             }
             showToast("Success", "Profile updated successfully", "success");
             setUser(data);
-            localStorage.setItem("user-threads", JSON.stringify(data));
+
         } catch (error) {
             showToast("Error", error, "error");
         } finally {
             setUpdating(false);
         }
     };
+
     return (
         <form onSubmit={handleSubmit}>
             <Flex align={"center"} justify={"center"} my={6}>
@@ -75,65 +83,75 @@ export default function UpdateProfilePage() {
                     <Heading lineHeight={1.1} fontSize={{ base: "2xl", sm: "3xl" }}>
                         User Profile Edit
                     </Heading>
-                    <FormControl id='userName'>
+                    <FormControl id="userName">
                         <Stack direction={["column", "row"]} spacing={6}>
                             <Center>
-                                <Avatar size='xl' boxShadow={"md"} src={imgUrl || user.profilePic} />
+                                <Avatar size="xl" boxShadow={"md"} src={imgUrl || user.profilePic} />
                             </Center>
-                            <Center w='full'>
-                                <Button w='full' onClick={() => fileRef.current.click()}>
+                            <Center w="full">
+                                <Button w="full" onClick={() => fileRef.current.click()}>
                                     Change Avatar
                                 </Button>
-                                <Input type='file' hidden ref={fileRef} onChange={handleImageChange} />
+                                <Input type="file" hidden ref={fileRef} onChange={handleImageChange} />
                             </Center>
                         </Stack>
                     </FormControl>
                     <FormControl>
                         <FormLabel>Full name</FormLabel>
                         <Input
-                            placeholder='John Doe'
+                            placeholder="John Doe"
                             value={inputs.name}
                             onChange={(e) => setInputs({ ...inputs, name: e.target.value })}
                             _placeholder={{ color: "gray.500" }}
-                            type='text'
+                            type="text"
                         />
                     </FormControl>
                     <FormControl>
                         <FormLabel>User name</FormLabel>
                         <Input
-                            placeholder='johndoe'
+                            placeholder="johndoe"
                             value={inputs.username}
                             onChange={(e) => setInputs({ ...inputs, username: e.target.value })}
                             _placeholder={{ color: "gray.500" }}
-                            type='text'
+                            type="text"
                         />
                     </FormControl>
                     <FormControl>
                         <FormLabel>Email address</FormLabel>
                         <Input
-                            placeholder='your-email@example.com'
+                            placeholder="your-email@example.com"
                             value={inputs.email}
                             onChange={(e) => setInputs({ ...inputs, email: e.target.value })}
                             _placeholder={{ color: "gray.500" }}
-                            type='email'
+                            type="email"
                             disabled={true}
                         />
                     </FormControl>
                     <FormControl>
                         <FormLabel>Bio</FormLabel>
                         <Input
-                            placeholder='Your bio.'
+                            placeholder="Your bio."
                             value={inputs.bio}
                             onChange={(e) => setInputs({ ...inputs, bio: e.target.value })}
                             _placeholder={{ color: "gray.500" }}
-                            type='text'
+                            type="text"
                         />
                     </FormControl>
+                    {/* Thêm các trường liên kết mạng xã hội */}
+                    <SocialLinksInput
+                        value={Object.entries(inputs.socialLinks || {}).map(([platform, url]) => ({
+                            platform,
+                            url,
+                        }))}
+                        onChange={(map) => setInputs({ ...inputs, socialLinks: map })}
+                    />
+
+
                     <Stack spacing={6} direction={["column", "row"]}>
                         <Button
                             bg={"red.400"}
                             color={"white"}
-                            w='full'
+                            w="full"
                             _hover={{
                                 bg: "red.500",
                             }}
@@ -144,11 +162,11 @@ export default function UpdateProfilePage() {
                         <Button
                             bg={"green.400"}
                             color={"white"}
-                            w='full'
+                            w="full"
                             _hover={{
                                 bg: "green.500",
                             }}
-                            type='submit'
+                            type="submit"
                             isLoading={updating}
                         >
                             Submit

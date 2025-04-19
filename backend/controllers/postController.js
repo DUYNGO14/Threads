@@ -8,6 +8,13 @@ import { cleanCommentText, moderateText } from "../utils/moderateText.js";
 import Reply from "../models/replyModel.js";
 import { LIMIT_PAGINATION_REPLY } from "../constants/pagination.js";
 import getPaginationParams from "../utils/helpers/getPaginationParams.js";
+import {
+  setRedis,
+  getRedis,
+  removePostFromCache,
+  appendToCache,
+  deleteRedis,
+} from "../utils/redisCache.js";
 const deleteMediaFromCloudinary = async (publicId) => {
   try {
     const result = await cloudinary.uploader.destroy(publicId);
@@ -17,13 +24,13 @@ const deleteMediaFromCloudinary = async (publicId) => {
     throw new Error("Failed to delete media from Cloudinary");
   }
 };
+
 const createPost = async (req, res) => {
   try {
     const { postedBy, text } = req.body;
-
     const user = await User.findById(postedBy);
     if (!user) return res.status(404).json({ error: "User not found" });
-
+    const redisKey = `posts:${user.username}`;
     if (text.length > MAX_CHAR) {
       return res.status(400).json({
         error: `Text must be less than ${MAX_CHAR} characters`,
@@ -49,20 +56,22 @@ const createPost = async (req, res) => {
         return res.status(400).json({ error: "All media uploads failed" });
       }
     }
-
+    console.log("tags", tags);
     const newPost = new Post({
       postedBy,
       text: cleanedText,
       media: mediaFiles,
+      status: "approved",
+      tags: tags,
     });
 
     await newPost.save();
-
+    // await deleteRedis(redisKey);
     const populatedPost = await Post.findById(newPost._id).populate(
       "postedBy",
       "_id username name profilePic"
     );
-
+    await appendToCache(redisKey, populatedPost);
     res.status(201).json(populatedPost);
   } catch (err) {
     console.error("Post creation error:", err.message);
@@ -73,7 +82,9 @@ const createPost = async (req, res) => {
 const updatePost = async (req, res) => {
   try {
     const id = req.params.id;
+    const redisKey = `posts:${req.user.username}`;
     const { text, deleteMedia } = req.body; // Nhận các public_id của media cần xóa
+    cons;
     const post = await Post.findById(id);
     if (!post) {
       return res.status(404).json({ error: "Post not found" });
@@ -112,7 +123,7 @@ const updatePost = async (req, res) => {
 
     // Lưu bài viết đã cập nhật
     await post.save();
-
+    await deleteRedis(redisKey);
     res.status(200).json(post);
   } catch (err) {
     console.error("Error in updatePost:", err.message);
@@ -180,6 +191,8 @@ const deletePost = async (req, res) => {
         "postedBy",
         "_id username name profilePic"
       );
+      const keyRedis = `posts:${req.user.username}`;
+      console.log("deletePost", keyRedis);
       if (!post) {
         return res.status(404).json({ error: "Post not found" });
       }
@@ -214,7 +227,7 @@ const deletePost = async (req, res) => {
 
       // Xóa bài viết
       await Post.findByIdAndDelete(post._id, { session });
-
+      await removePostFromCache(keyRedis, post._id);
       await session.commitTransaction();
       res.status(200).json({
         message: "Post deleted successfully",
@@ -313,34 +326,50 @@ const replyToPost = async (req, res) => {
 // Lấy reposts của user
 const getReposts = async (req, res) => {
   try {
-    const userId = req.user?._id;
-    if (!userId) return res.status(401).json({ error: "Unauthorized" });
-
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ error: "User not found" });
-
+    const { username } = req.params;
+    const redisKey = `reposted:${username}`;
+    console.log(`\n[Redis Log] Key: ${redisKey}`);
     const { page, limit, skip } = getPaginationParams(req);
 
-    const [posts, totalPosts] = await Promise.all([
-      Post.find({ repostedBy: userId })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .populate("postedBy", "_id username name profilePic"),
+    const cached = await getRedis(redisKey); // Kiểm tra cache (nếu đã có)
 
-      Post.countDocuments({ repostedBy: userId }),
-    ]);
+    if (cached) {
+      // Nếu dữ liệu có trong cache, phân trang và trả về
+      const paginated = cached.slice(skip, skip + limit);
+      return res.json({
+        page,
+        limit,
+        totalPosts: cached.length,
+        totalPages: Math.ceil(cached.length / limit),
+        posts: paginated,
+      });
+    }
+
+    // Tìm người dùng và lấy danh sách các bài viết đã repost
+    const user = await User.findOne({ username }).select("_id reposts");
+    console.log(user);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // Lấy tất cả các bài đăng mà người dùng đã repost
+    const posts = await Post.find({ _id: { $in: user.reposts } })
+      .sort({ createdAt: -1 })
+      .populate("postedBy", "_id username name profilePic");
+
+    await setRedis(redisKey, posts, 1800); // Cache kết quả trong 30 phút
+
+    // Phân trang bài viết
+    const paginated = posts.slice(skip, skip + limit);
 
     res.status(200).json({
-      success: true,
       page,
       limit,
-      totalPages: Math.ceil(totalPosts / limit),
-      posts,
+      totalPosts: posts.length,
+      totalPages: Math.ceil(posts.length / limit),
+      posts: paginated,
     });
-  } catch (err) {
-    console.error("Error in getReposts:", err);
-    res.status(500).json({ error: "Internal Server Error" });
+  } catch (error) {
+    console.error("getRepostedPosts error", error);
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -415,29 +444,42 @@ const getAllPosts = async (req, res) => {
 const getUserPosts = async (req, res) => {
   try {
     const { username } = req.params;
+    const redisKey = `posts:${username}`;
     const { page, limit, skip } = getPaginationParams(req);
 
-    const user = await User.findOne({ username });
+    const cached = await getRedis(redisKey); // đã là object
+
+    if (cached) {
+      const paginated = cached.slice(skip, skip + limit);
+      return res.json({
+        page,
+        limit,
+        totalPosts: cached.length,
+        totalPages: Math.ceil(cached.length / limit),
+        posts: paginated,
+      });
+    }
+
+    const user = await User.findOne({ username }).select("_id");
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    const [posts, totalPosts] = await Promise.all([
-      Post.find({ postedBy: user._id })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .populate("postedBy", "_id username name profilePic"),
+    const posts = await Post.find({ postedBy: user._id })
+      .sort({ createdAt: -1 })
+      .populate("postedBy", "_id username name profilePic");
 
-      Post.countDocuments({ postedBy: user._id }),
-    ]);
+    await setRedis(redisKey, posts, 1800); // cache 30 phút
+
+    const paginated = posts.slice(skip, skip + limit);
 
     res.status(200).json({
       page,
       limit,
-      totalPosts,
-      totalPages: Math.ceil(totalPosts / limit),
-      posts,
+      totalPosts: posts.length,
+      totalPages: Math.ceil(posts.length / limit),
+      posts: paginated,
     });
   } catch (error) {
+    console.error("getUserPosts error", error);
     res.status(500).json({ error: error.message });
   }
 };
