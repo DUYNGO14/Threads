@@ -1,3 +1,4 @@
+// constants/badWords.js
 const badWordsVietnameseStrict = [
   "lồn",
   "địt",
@@ -23,7 +24,6 @@ const badWordsVietnameseStrict = [
   "đĩ",
   "phò",
   "bitch",
-  "fuck",
   "shit",
 ];
 

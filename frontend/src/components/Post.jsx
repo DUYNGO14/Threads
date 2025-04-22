@@ -4,7 +4,7 @@ import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
 import Actions from "./Actions";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import useShowToast from "../hooks/useShowToast";
 import { formatDistanceToNow } from "date-fns";
 import { DeleteIcon } from "@chakra-ui/icons";
@@ -20,8 +20,10 @@ const Post = ({ post, postedBy, onPostUpdate, referrer }) => {
     const [posts, setPosts] = useRecoilState(postsAtom);
     const navigate = useNavigate();
     const { isOpen, onOpen, onClose } = useDisclosure();
+    const [isDeleting, setIsDeleting] = useState(false);
     const handleDeletePost = useCallback(async () => {
         try {
+            setIsDeleting(true);
             const res = await fetch(`/api/posts/${post?._id}`, {
                 method: "DELETE",
             });
@@ -42,6 +44,8 @@ const Post = ({ post, postedBy, onPostUpdate, referrer }) => {
             onClose();
         } catch (error) {
             showToast("Error", error.message, "error");
+        } finally {
+            setIsDeleting(false);
         }
     }, [post?._id, showToast, onPostUpdate, posts, setPosts, onClose]);
 
@@ -61,7 +65,7 @@ const Post = ({ post, postedBy, onPostUpdate, referrer }) => {
                     <Flex flexDirection={"column"} alignItems={"center"}>
                         <Avatar
                             size="md"
-                            name={postedBy?.username || "Unknown"}
+                            name={postedBy?.username}
                             src={postedBy?.profilePic}
                             onClick={handleNavigateToProfile}
                             cursor="pointer"
@@ -127,7 +131,7 @@ const Post = ({ post, postedBy, onPostUpdate, referrer }) => {
                         <Button variant="ghost" mr={3} onClick={onClose}>
                             Cancel
                         </Button>
-                        <Button colorScheme="red" _hover={{ color: "red.500" }} onClick={handleDeletePost}>
+                        <Button colorScheme="red" _hover={{ color: "red.500" }} onClick={handleDeletePost} isLoading={isDeleting}>
                             Delete
                         </Button>
                     </ModalFooter>

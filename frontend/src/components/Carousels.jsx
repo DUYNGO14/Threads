@@ -72,6 +72,7 @@ const Carousels = ({ medias }) => {
             >
                 {medias.map((media, index) => (
                     <SwiperSlide
+
                         key={index}
                         style={{
                             width: "auto",
@@ -85,6 +86,7 @@ const Carousels = ({ medias }) => {
                     >
                         <Box
                             display="flex"
+                            cursor="pointer"
                             justifyContent="center"
                             alignItems="center"
                             maxW="100%"

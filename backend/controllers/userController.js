@@ -2,19 +2,13 @@ import User from "../models/userModel.js";
 import Reply from "../models/replyModel.js";
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
-import { v2 as cloudinary } from "cloudinary";
 import detectAndFormatLinks from "../utils/helpers/detectAndFormatLinks.js";
 import redis from "../config/redis.config.js";
 import { LIMIT_PAGINATION_SUGGESTION } from "../constants/pagination.js";
 import Post from "../models/postModel.js";
+import { uploadProfilePic } from "../utils/uploadUtils.js";
 // Hàm upload ảnh đại diện
-const uploadProfilePic = async (newPic, oldPic) => {
-  if (oldPic) {
-    await cloudinary.uploader.destroy(oldPic.split("/").pop().split(".")[0]);
-  }
-  const uploadedResponse = await cloudinary.uploader.upload(newPic);
-  return uploadedResponse.secure_url;
-};
+
 const followUnFollowUser = async (req, res) => {
   try {
     const { id } = req.params;
@@ -119,7 +113,6 @@ const updateUser = async (req, res) => {
   try {
     const { name, username, bio, profilePic, socialLinks } = req.body;
     const userId = req.user._id;
-    console.log(req.body);
     // Kiểm tra người dùng
     const user = await User.findById(userId);
     if (!user) return res.status(400).json({ error: "User not found" });
@@ -133,7 +126,11 @@ const updateUser = async (req, res) => {
 
     // Cập nhật avatar nếu có
     if (profilePic) {
-      user.profilePic = await uploadProfilePic(profilePic, user.profilePic);
+      user.profilePic = await uploadProfilePic(
+        profilePic,
+        user.profilePic,
+        user.username
+      );
     }
 
     // Cập nhật thông tin người dùng

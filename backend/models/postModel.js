@@ -9,7 +9,7 @@ const postSchema = mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected"],
+      enum: ["pending", "approved", "rejected", "pending_review"],
       default: "pending",
     },
     text: {
@@ -25,6 +25,7 @@ const postSchema = mongoose.Schema(
           enum: ["image", "video", "audio"],
           required: true,
         }, // Kiểu file
+        public_id: String, // ID của file trong Cloudinary
       },
     ],
     likes: {

@@ -1,10 +1,9 @@
 import Post from "../models/postModel.js";
 import User from "../models/userModel.js";
-import { v2 as cloudinary } from "cloudinary";
 import mongoose from "mongoose";
-import { uploadFiles } from "../utils/uploadUtils.js";
+import { uploadFiles, deleteMediaFiles } from "../utils/uploadUtils.js";
 import { MAX_FILES, MAX_CHAR } from "../constants/upload.js";
-import { cleanCommentText, moderateText } from "../utils/moderateText.js";
+import { moderateTextSmart } from "../utils/moderateText.js";
 import Reply from "../models/replyModel.js";
 import { LIMIT_PAGINATION_REPLY } from "../constants/pagination.js";
 import getPaginationParams from "../utils/helpers/getPaginationParams.js";
@@ -15,34 +14,43 @@ import {
   appendToCache,
   deleteRedis,
 } from "../utils/redisCache.js";
-const deleteMediaFromCloudinary = async (publicId) => {
-  try {
-    const result = await cloudinary.uploader.destroy(publicId);
-    return result;
-  } catch (err) {
-    console.error("Error deleting media from Cloudinary:", err);
-    throw new Error("Failed to delete media from Cloudinary");
-  }
-};
-
+import { moderateMedia } from "../utils/moderate/moderateMediaWithSightengine.js";
+import { moderateTextWithSightengine } from "../utils/moderate/moderateTextWithSightengine.js";
+import {
+  checkVideoModerationResult,
+  requestVideoModeration,
+} from "../utils/moderate/moderateVideoWithSightengine.js";
 const createPost = async (req, res) => {
   try {
     const { postedBy, text } = req.body;
     const user = await User.findById(postedBy);
     if (!user) return res.status(404).json({ error: "User not found" });
+
     const redisKey = `posts:${user.username}`;
-    if (text.length > MAX_CHAR) {
+
+    // ✅ Kiểm tra độ dài
+    if (text && text.length > MAX_CHAR) {
       return res.status(400).json({
         error: `Text must be less than ${MAX_CHAR} characters`,
       });
     }
 
-    const { ok, message, cleanedText } = moderateText(text);
-    if (!ok) {
-      return res.status(400).json({ error: message });
+    // ✅ Kiểm duyệt văn bản
+    const moderationResult = await moderateTextWithSightengine(text || "");
+    console.log("Text moderation:", moderationResult);
+
+    if (!moderationResult.ok) {
+      return res.status(400).json({
+        error: moderationResult.message,
+        detail: moderationResult.message,
+      });
     }
 
+    const cleanedText = moderationResult.cleanedText || text || "";
+
+    // ✅ Kiểm duyệt media nếu có
     let mediaFiles = [];
+
     if (req.files?.length > 0) {
       if (req.files.length > MAX_FILES) {
         return res.status(400).json({
@@ -50,31 +58,77 @@ const createPost = async (req, res) => {
         });
       }
 
-      mediaFiles = await uploadFiles(req.files);
+      mediaFiles = await uploadFiles(req.files, user.username, "post");
 
       if (mediaFiles.length === 0) {
         return res.status(400).json({ error: "All media uploads failed" });
       }
+
+      for (const file of mediaFiles) {
+        if (file.type === "image" || file.type === "audio") {
+          const moderation = await moderateMedia(file.url, file.type);
+          if (!moderation.ok) {
+            await deleteMediaFiles(mediaFiles);
+            return res.status(400).json({
+              error: `Media moderation failed: ${file.type} contains unsafe content`,
+            });
+          }
+        }
+      }
     }
-    console.log("tags", tags);
+
+    // ✅ Tạo bài viết
     const newPost = new Post({
       postedBy,
       text: cleanedText,
       media: mediaFiles,
       status: "approved",
-      tags: tags,
     });
+    // const hasVideo = mediaFiles.some((file) => file.type === "video");
+    // if (hasVideo) newPost.status = "pending_review";
 
     await newPost.save();
-    // await deleteRedis(redisKey);
+    // kiểm duyệt video
+    // if (hasVideo) {
+    //   for (const file of mediaFiles) {
+    //     if (file.type === "video") {
+    //       const result = await requestVideoModeration(file.url);
+    //       console.log("Video moderation:", result);
+    //       if (result.ok && result.requestId) {
+    //         // Delay kiểm tra kết quả sau 1 phút (hoặc sử dụng Queue/Cronjob)
+    //         setTimeout(async () => {
+    //           const moderation = await checkVideoModerationResult(
+    //             result.requestId
+    //           );
+    //           if (!moderation.ok || !moderation.isSafe) {
+    //             console.warn(
+    //               `❌ Video unsafe for post ${newPost._id}:`,
+    //               moderation.issues
+    //             );
+    //             await Post.findByIdAndUpdate(newPost._id, {
+    //               status: "rejected",
+    //               moderationIssues: moderation.issues,
+    //             });
+    //           } else {
+    //             await Post.findByIdAndUpdate(newPost._id, {
+    //               status: "approved",
+    //             });
+    //           }
+    //         }, 60000); // 60s hoặc dùng queue
+    //       }
+    //     }
+    //   }
+    // }
     const populatedPost = await Post.findById(newPost._id).populate(
       "postedBy",
       "_id username name profilePic"
     );
+
     await appendToCache(redisKey, populatedPost);
+
     res.status(201).json(populatedPost);
   } catch (err) {
-    console.error("Post creation error:", err.message);
+    console.error("❌ Post creation error:", err.message);
     res.status(500).json({ error: "Something went wrong. Try again." });
   }
 };
@@ -201,20 +255,7 @@ const deletePost = async (req, res) => {
         return res.status(401).json({ error: "Unauthorized to delete post" });
       }
 
-      // Xóa tất cả media files trên Cloudinary
-      if (post.media && post.media.length > 0) {
-        const deletePromises = post.media.map(async (media) => {
-          const publicId = media.url.split("/").pop().split(".")[0];
-          try {
-            await cloudinary.uploader.destroy(publicId, {
-              resource_type: media.type === "video" ? "video" : "image",
-            });
-          } catch (error) {
-            console.error("Error deleting media from Cloudinary:", error);
-          }
-        });
-        await Promise.all(deletePromises);
-      }
+      await deleteMediaFiles(post.media);
 
       // Xóa post ID khỏi mảng reposts của tất cả users đã repost
       if (post.repostedBy && post.repostedBy.length > 0) {
@@ -292,7 +333,7 @@ const replyToPost = async (req, res) => {
     }
 
     // Tiến hành làm sạch text nếu có
-    const cleanReply = await moderateText(text);
+    const cleanReply = await moderateTextSmart(text);
     if (!cleanReply.ok) {
       return res.status(400).json({ error: cleanReply.message });
     }
@@ -386,6 +427,7 @@ const getFeedPosts = async (req, res) => {
 
     const query = {
       postedBy: { $in: user.following, $ne: userId },
+      status: "approved",
     };
 
     const [posts, totalPosts] = await Promise.all([
@@ -415,7 +457,9 @@ const getAllPosts = async (req, res) => {
   try {
     const { page, limit, skip } = getPaginationParams(req);
 
-    const query = req.user?._id ? { postedBy: { $ne: req.user._id } } : {};
+    const query = req.user?._id
+      ? { postedBy: { $ne: req.user._id }, status: "approved" }
+      : {};
 
     const [posts, totalPosts] = await Promise.all([
       Post.find(query)

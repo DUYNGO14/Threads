@@ -42,7 +42,7 @@ async function sendMessage(req, res) {
     // Upload media nếu có
     let media = [];
     if (files && files.length > 0) {
-      media = await uploadFiles(files);
+      media = await uploadFiles(files, req.user.username, "message");
     }
 
     // Tạo tin nhắn mới

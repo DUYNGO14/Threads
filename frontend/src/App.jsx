@@ -18,7 +18,8 @@ import CreatePost from "./components/CreatePost";
 import MainLayout from "./layouts/MainLayout";
 import BaseLayout from "./layouts/BaseLayout";
 import SearchPage from "./pages/SearchPage";
-
+import "slick-carousel/slick/slick.css";
+import "slick-carousel/slick/slick-theme.css";
 
 const ProtectedRoute = ({ children }) => {
   const user = useRecoilValue(userAtom);

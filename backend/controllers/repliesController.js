@@ -1,6 +1,6 @@
 import Reply from "../models/replyModel.js";
 import Post from "../models/postModel.js";
-import { moderateText } from "../utils/moderateText.js";
+import { moderateTextSmart } from "../utils/moderateText.js";
 
 const getComment = async (req, res) => {
   try {
