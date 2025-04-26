@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
@@ -7,7 +7,14 @@ import useSocketSetup from "./useSocketSetup";
 
 const SocketContext = createContext();
 export const useSocket = () => useContext(SocketContext);
-
+const requestNotificationPermission = async () => {
+  if (Notification.permission === "default") {
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      console.log("User denied notification permission");
+    }
+  }
+};
 export const SocketContextProvider = ({ children }) => {
   const socketRef = useRef(null);
   const user = useRecoilValue(userAtom);
@@ -15,7 +22,10 @@ export const SocketContextProvider = ({ children }) => {
 
   useInitUserData(user);
   useSocketSetup(user, socketRef, setOnlineUsers);
-
+  // 🚀 Gọi xin quyền notification khi app load
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
   return (
     <SocketContext.Provider value={{ socket: socketRef.current, onlineUsers }}>
       {children}

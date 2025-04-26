@@ -3,7 +3,7 @@ import {
     Box, Button, FormControl, FormLabel, Input, Stack, Text, useColorModeValue
 } from "@chakra-ui/react";
 import { useSetRecoilState } from "recoil";
-import authScreenAtom from "../atoms/authAtom";
+import { authScreenAtom } from "../atoms/authAtom";
 import useShowToast from "../hooks/useShowToast";
 
 const ForgotPasswordCard = () => {

@@ -4,6 +4,7 @@ import { useSetRecoilState } from "recoil";
 import userAtom from "../atoms/userAtom";
 import { Spinner, Text, VStack, Box, useColorModeValue } from "@chakra-ui/react";
 import useShowToast from "../hooks/useShowToast";
+import { saveEncryptedData } from "../../utils/encryptedData";
 
 const OAuthSuccess = () => {
     const navigate = useNavigate();
@@ -17,7 +18,7 @@ const OAuthSuccess = () => {
                 const data = await res.json();
 
                 if (data._id) {
-                    localStorage.setItem("user-threads", JSON.stringify(data));
+                    saveEncryptedData("user-threads", data);
                     setUser(data);
                     //showToast("Success", "Đăng nhập thành công!", "success");
                     navigate("/");

@@ -1,5 +1,5 @@
 import { useRecoilValue } from "recoil";
-import authScreenAtom from "../atoms/authAtom";
+import { authScreenAtom } from "../atoms/authAtom";
 import LoginCard from "../components/LoginCard";
 import SignupCard from "../components/SignupCard";
 import ForgotPasswordCard from "../components/ForgotPasswordCard";

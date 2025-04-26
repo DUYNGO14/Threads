@@ -1,8 +1,6 @@
 import Reply from "../models/replyModel.js";
 import Post from "../models/postModel.js";
 import { moderateTextSmart } from "../utils/moderateText.js";
-import { io } from "../setup/setupServer.js";
-import { getRecipientSocketId } from "../utils/socketUsers.js";
 const getComment = async (req, res) => {
   try {
     const { id } = req.params; // ID của comment được truyền qua params
@@ -34,7 +32,7 @@ const updateComment = async (req, res) => {
     if (!comment) {
       return res.status(404).json({ error: "Comment not found" });
     }
-    const moderatedText = await moderateText(text);
+    const moderatedText = await moderateTextSmart(text);
     if (!moderatedText.ok) {
       return res.status(400).json({ error: moderatedText.message });
     }

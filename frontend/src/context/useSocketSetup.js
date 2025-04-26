@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import io from "socket.io-client";
-import { useSetRecoilState } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import {
   unreadConversationsCountAtom,
   conversationsAtom,
@@ -9,8 +9,9 @@ import {
   unreadNotificationCountAtom,
   notificationAtom,
 } from "../atoms/notificationAtom";
+import { useNavigate } from "react-router-dom";
 import useShowToast from "../hooks/useShowToast";
-import messageSound from "../assets/sounds/message.mp3";
+import userAtom from "../atoms/userAtom";
 const BACKEND_URL = import.meta.env.PROD
   ? "https://threads-0m08.onrender.com"
   : "http://localhost:5000";
@@ -22,8 +23,9 @@ const useSocketSetup = (user, socketRef, setOnlineUsers) => {
   const setUnreadNotificationCount = useSetRecoilState(
     unreadNotificationCountAtom
   );
+  const currentUser = useRecoilValue(userAtom);
   const showToast = useShowToast();
-
+  const navigate = useNavigate();
   useEffect(() => {
     if (!user?._id) return;
 
@@ -53,6 +55,30 @@ const useSocketSetup = (user, socketRef, setOnlineUsers) => {
     socket.on("notification:new", (notification) => {
       setNotification((prev) => [notification, ...prev]);
       setUnreadNotificationCount((prev) => prev + 1);
+      console.log("New notification:", notification);
+      if (Notification.permission === "granted") {
+        const browserNotification = new Notification(
+          notification.sender.username || "New notification",
+          {
+            body: notification.content,
+            icon: notification.sender.profilePic || "/default-avatar.png",
+          }
+        );
+
+        browserNotification.onclick = () => {
+          window.focus();
+          if (notification.type === "follow" && notification.sender) {
+            navigate(`/${notification.sender.username}`); // ✅ dùng navigate mượt hơn
+          } else if (notification.post) {
+            navigate(
+              `/${currentUser.username}/post/${
+                notification.post?._id || notification.post
+              }`
+            ); // ✅ dùng navigate mượt hơn
+          }
+        };
+      }
+
       showToast("🔔 Bạn có thông báo mới!");
     });
 

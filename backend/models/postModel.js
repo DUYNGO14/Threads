@@ -17,6 +17,12 @@ const postSchema = mongoose.Schema(
       maxLength: 500,
       required: true,
     },
+    taggedFriends: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User", // ID của những người bạn được gắn thẻ
+      },
+    ],
     media: [
       {
         url: { type: String, required: true }, // URL của file

@@ -20,10 +20,10 @@ import { useState } from 'react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import { useSetRecoilState } from 'recoil';
 import { useDebouncedCallback } from 'use-debounce';
-import authScreenAtom from '../atoms/authAtom';
+import { authScreenAtom } from '../atoms/authAtom';
 import useShowToast from '../hooks/useShowToast';
 import userAtom from '../atoms/userAtom';
-
+import { saveEncryptedData } from '../../utils/encryptedData';
 const LoginCard = () => {
     const [state, setState] = useState({
         showPassword: false,
@@ -66,7 +66,7 @@ const LoginCard = () => {
             const data = await res.json();
             if (data.error) throw new Error(data.error);
 
-            localStorage.setItem("user-threads", JSON.stringify(data));
+            saveEncryptedData("user-threads", data);
             setUser(data);
         } catch (error) {
             showToast("Error", error.message || "Something went wrong", "error");

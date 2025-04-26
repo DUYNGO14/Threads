@@ -1,8 +1,9 @@
 import { atom } from "recoil";
+import { loadEncryptedData } from "../../utils/encryptedData";
 
 const userAtom = atom({
   key: "userAtom",
-  default: JSON.parse(localStorage.getItem("user-threads")),
+  default: loadEncryptedData("user-threads"),
 });
 
 export default userAtom;
