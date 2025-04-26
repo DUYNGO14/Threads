@@ -4,15 +4,21 @@ import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import detectAndFormatLinks from "../utils/helpers/detectAndFormatLinks.js";
 import redis from "../config/redis.config.js";
-import { LIMIT_PAGINATION_SUGGESTION } from "../constants/pagination.js";
 import Post from "../models/postModel.js";
 import { uploadProfilePic } from "../utils/uploadUtils.js";
+import { sendNotification } from "../services/notificationService.js";
+import Notification from "../models/notificationModel.js";
 // Hàm upload ảnh đại diện
 
 const followUnFollowUser = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params; // id của người bị follow / unfollow
     const userId = req.user._id;
+
+    // Kiểm tra xem id và userId có hợp lệ không
+    if (!id || !userId) {
+      return res.status(400).json({ error: "Invalid user ID" });
+    }
 
     if (id === userId.toString()) {
       return res
@@ -29,28 +35,50 @@ const followUnFollowUser = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const isFollowing = currentUser.following.includes(id);
+    // Chuyển sang ObjectId để so sánh chính xác
+    const targetIdStr = id.toString(); // id phải là chuỗi
+    const isFollowing = currentUser.following.some(
+      (followedId) => followedId.toString() === targetIdStr
+    );
 
     const updateCurrentUser = isFollowing
-      ? { $pull: { following: id } }
-      : { $push: { following: id } };
+      ? { $pull: { following: userToModify._id } }
+      : { $addToSet: { following: userToModify._id } }; // Dùng addToSet để tránh trùng
 
     const updateUserToModify = isFollowing
-      ? { $pull: { followers: userId } }
-      : { $push: { followers: userId } };
+      ? { $pull: { followers: currentUser._id } }
+      : { $addToSet: { followers: currentUser._id } };
 
     await Promise.all([
       User.findByIdAndUpdate(userId, updateCurrentUser),
       User.findByIdAndUpdate(id, updateUserToModify),
     ]);
-    await Promise.all([redis.del(`suggestions:${userId}`)]);
+
+    // Nếu là follow thì tạo thông báo + socket
+    if (!isFollowing) {
+      await sendNotification({
+        sender: currentUser,
+        receivers: id,
+        type: "follow",
+        content: "Started following you.",
+      });
+    } else {
+      // Nếu unfollow thì đánh dấu thông báo không hợp lệ
+      await Notification.findOneAndUpdate(
+        { sender: userId, receiver: id, type: "follow" },
+        { isValid: false }
+      );
+    }
+    // await debounceFollow.saveAction(userId, id, now);
+    await redis.del(`suggestions:${userId}`);
+
     res.status(200).json({
       message: isFollowing
         ? "User unfollowed successfully"
         : "User followed successfully",
     });
   } catch (err) {
-    console.error("Error in followUnFollowUser:", err.message);
+    console.error("❌ Error in followUnFollowUser:", err.message);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -187,9 +215,8 @@ const getSuggestedUsers = async (req, res) => {
     const end = start + limit;
     const cacheKey = `suggestions:${userId}`;
 
-    // 1. Lấy danh sách gợi ý từ cache Redis
+    // 1. Lấy danh sách từ cache Redis nếu có
     let cachedIds = await redis.get(cacheKey);
-
     if (cachedIds) {
       const paginatedIds = cachedIds.slice(start, end);
       const users = await User.find({ _id: { $in: paginatedIds } })
@@ -198,7 +225,7 @@ const getSuggestedUsers = async (req, res) => {
       return res.json(users);
     }
 
-    // 2. Nếu chưa có cache → tạo danh sách gợi ý mới
+    // 2. Nếu không có cache → xử lý gợi ý mới
     const currentUser = await User.findById(userId).lean();
     if (!currentUser)
       return res.status(404).json({ message: "User not found" });
@@ -211,25 +238,38 @@ const getSuggestedUsers = async (req, res) => {
     const mutuals = await User.aggregate([
       { $match: { _id: { $in: followingIds } } },
       { $unwind: "$following" },
-      { $group: { _id: "$following", count: { $sum: 1 } } },
+      {
+        $group: {
+          _id: "$following",
+          count: { $sum: 1 },
+        },
+      },
       { $sort: { count: -1 } },
       { $limit: 100 },
     ]);
 
     const mutualIds = mutuals
       .map((u) => u._id.toString())
-      .filter((id) => id !== userId && !currentUser.following.includes(id));
+      .filter(
+        (id) =>
+          id !== userId &&
+          !currentUser.following.some((fid) => fid.toString() === id)
+      );
 
-    // 2.2 Gợi ý theo người hay like bài viết
+    // 2.2 Gợi ý theo người like bài viết của bạn
     const yourPosts = await Post.find({ postedBy: userId })
       .select("likes")
       .lean();
+
     const likedBy = yourPosts.flatMap((p) =>
       p.likes.map((id) => id.toString())
     );
 
     const likeMap = likedBy.reduce((acc, id) => {
-      if (id !== userId && !currentUser.following.includes(id)) {
+      if (
+        id !== userId &&
+        !currentUser.following.some((fid) => fid.toString() === id)
+      ) {
         acc[id] = (acc[id] || 0) + 1;
       }
       return acc;
@@ -239,27 +279,41 @@ const getSuggestedUsers = async (req, res) => {
       .sort((a, b) => b[1] - a[1])
       .map(([id]) => id);
 
-    // 2.3 Gộp lại danh sách
+    // 2.3 Gộp lại
     const allSuggested = [...new Set([...mutualIds, ...likeIds])];
 
-    // 2.4 Nếu chưa đủ thì thêm người nổi bật (nhiều follower)
+    // 2.4 Nếu chưa đủ → thêm người nổi bật (nhiều followers)
     if (allSuggested.length < 100) {
-      const exclude = [...currentUser.following, userId, ...allSuggested];
+      const excludeIds = [
+        ...currentUser.following.map((id) => id.toString()),
+        userId,
+        ...allSuggested,
+      ];
+
       const topUsers = await User.aggregate([
         {
           $match: {
-            _id: { $nin: exclude.map((id) => new mongoose.Types.ObjectId(id)) },
+            _id: {
+              $nin: excludeIds.map((id) => new mongoose.Types.ObjectId(id)),
+            },
           },
         },
-        { $project: { followersCount: { $size: "$followers" } } },
+        {
+          $addFields: {
+            followersCount: {
+              $size: { $ifNull: ["$followers", []] },
+            },
+          },
+        },
         { $sort: { followersCount: -1 } },
         { $limit: 100 - allSuggested.length },
       ]);
+
       const topUserIds = topUsers.map((u) => u._id.toString());
       allSuggested.push(...topUserIds);
     }
 
-    // 3. Lưu danh sách ID vào cache Redis
+    // 3. Lưu cache Redis
     await redis.set(cacheKey, JSON.stringify(allSuggested), { ex: 900 }); // 15 phút
 
     // 4. Trả về trang đầu tiên

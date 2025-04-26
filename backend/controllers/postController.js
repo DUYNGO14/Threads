@@ -5,8 +5,10 @@ import { uploadFiles, deleteMediaFiles } from "../utils/uploadUtils.js";
 import { MAX_FILES, MAX_CHAR } from "../constants/upload.js";
 import { moderateTextSmart } from "../utils/moderateText.js";
 import Reply from "../models/replyModel.js";
+import Notification from "../models/notificationModel.js";
 import { LIMIT_PAGINATION_REPLY } from "../constants/pagination.js";
 import getPaginationParams from "../utils/helpers/getPaginationParams.js";
+import { populateNotification } from "../utils/populateNotification.js";
 import {
   setRedis,
   getRedis,
@@ -16,14 +18,14 @@ import {
 } from "../utils/redisCache.js";
 import { moderateMedia } from "../utils/moderate/moderateMediaWithSightengine.js";
 import { moderateTextWithSightengine } from "../utils/moderate/moderateTextWithSightengine.js";
-import {
-  checkVideoModerationResult,
-  requestVideoModeration,
-} from "../utils/moderate/moderateVideoWithSightengine.js";
+import { io } from "../setup/setupServer.js";
+import { getRecipientSocketId } from "../utils/socketUsers.js";
+import { sendNotification } from "../services/notificationService.js";
 const createPost = async (req, res) => {
   try {
     const { postedBy, text } = req.body;
     const user = await User.findById(postedBy);
+    console.log(user.followers);
     if (!user) return res.status(404).json({ error: "User not found" });
 
     const redisKey = `posts:${user.username}`;
@@ -37,7 +39,6 @@ const createPost = async (req, res) => {
 
     // ✅ Kiểm duyệt văn bản
     const moderationResult = await moderateTextWithSightengine(text || "");
-    console.log("Text moderation:", moderationResult);
 
     if (!moderationResult.ok) {
       return res.status(400).json({
@@ -125,6 +126,31 @@ const createPost = async (req, res) => {
     );
 
     await appendToCache(redisKey, populatedPost);
+
+    const followers = user.followers || [];
+    const notifications = followers.map((follower) => ({
+      sender: postedBy,
+      receiver: follower._id,
+      type: "post",
+      post: newPost._id,
+      content: `${user.username} just posted a new article.`,
+    }));
+
+    const insertedNotifications = await Notification.insertMany(notifications);
+
+    const populatedNotifications = await Promise.all(
+      insertedNotifications.map((notification) =>
+        populateNotification(notification._id)
+      )
+    );
+
+    // ✅ Gửi real-time qua socket
+    populatedNotifications.forEach((notification) => {
+      const recipientSocketId = getRecipientSocketId(notification.receiver._id);
+      if (recipientSocketId) {
+        io.to(recipientSocketId).emit("notification:new", notification);
+      }
+    });
 
     res.status(201).json(populatedPost);
   } catch (err) {
@@ -295,25 +321,42 @@ const likeUnlikePost = async (req, res) => {
     const userId = req.user._id;
 
     const post = await Post.findById(postId);
-
-    if (!post) {
-      return res.status(404).json({ error: "Post not found" });
-    }
+    if (!post) return res.status(404).json({ error: "Post not found" });
 
     const userLikedPost = post.likes.includes(userId);
 
     if (userLikedPost) {
-      // Unlike post
+      // Unlike
       await Post.updateOne({ _id: postId }, { $pull: { likes: userId } });
-      res.status(200).json({ message: "Post unliked successfully" });
-    } else {
-      // Like post
-      post.likes.push(userId);
-      await post.save();
-      res.status(200).json({ message: "Post liked successfully" });
+
+      // Không xóa, chỉ đánh dấu isValid: false
+      await Notification.findOneAndUpdate(
+        { sender: userId, receiver: post.postedBy, type: "like", post: postId },
+        { isValid: false }
+      );
+
+      return res.status(200).json({ message: "Post unliked successfully" });
     }
+
+    // Like
+    post.likes.push(userId);
+    await post.save();
+
+    // Không tự gửi thông báo cho mình
+    if (post.postedBy.toString() !== userId.toString()) {
+      await sendNotification({
+        sender: req.user,
+        receivers: post.postedBy,
+        type: "like",
+        content: "Liked your post ❤️",
+        post: postId,
+      });
+    }
+
+    res.status(200).json({ message: "Post liked successfully" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("❌ likeUnlikePost error:", err.message);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -354,6 +397,17 @@ const replyToPost = async (req, res) => {
     // Cập nhật trường replies trong Post (chỉ lưu reference đến reply)
     post.replies.push(newReply._id);
     await post.save();
+    const truncatedText = cleanReply.cleanedText.slice(0, 20) + "...";
+    if (post.postedBy.toString() !== userId.toString()) {
+      await sendNotification({
+        sender: req.user,
+        receivers: post.postedBy,
+        type: "reply",
+        content: `Replied to your post ✍: "${truncatedText}."`,
+        reply: newReply._id,
+        post: postId,
+      });
+    }
 
     res
       .status(200)

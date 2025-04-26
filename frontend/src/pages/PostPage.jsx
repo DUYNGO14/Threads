@@ -139,7 +139,7 @@ const PostPage = () => {
                     navigate(referrer.url, { state: { fromPostPage: true, postId } });
                 }
             } else {
-                console.warn("No referrer data in localStorage");
+                navigate(-1);
             }
 
             // Remove items after processing
@@ -181,7 +181,7 @@ const PostPage = () => {
                 backdropFilter="blur(10px)"
                 py={3}
             >
-                <Flex justify="space-between" align="center" px={4} maxW="600px" mx="auto">
+                <Flex justify="space-between" align="center" px={4} maxW="100%" mx="auto">
                     <IconButton
                         icon={<IoArrowBackOutline />}
                         variant="ghost"

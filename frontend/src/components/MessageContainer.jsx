@@ -1,4 +1,5 @@
-import { Avatar, AvatarBadge, Badge, Divider, Flex, Image, Skeleton, SkeletonCircle, Text, useColorModeValue, WrapItem } from "@chakra-ui/react";
+import { Avatar, AvatarBadge, Badge, Divider, Flex, IconButton, Image, Skeleton, SkeletonCircle, Text, useColorModeValue, WrapItem } from "@chakra-ui/react";
+import { CloseIcon } from "@chakra-ui/icons";
 import Message from "./Message";
 import MessageInput from "./MessageInput";
 import { useEffect, useRef, useState } from "react";
@@ -9,7 +10,7 @@ import userAtom from "../atoms/userAtom";
 import { useSocket } from "../context/SocketContext.jsx";
 import messageSound from "../assets/sounds/message.mp3";
 import { useNavigate } from "react-router-dom";
-const MessageContainer = ({ isOnline }) => {
+const MessageContainer = ({ isOnline, onClose }) => {
     const showToast = useShowToast();
     const selectedConversation = useRecoilValue(selectedConversationAtom);
     const [loadingMessages, setLoadingMessages] = useState(true);
@@ -19,64 +20,65 @@ const MessageContainer = ({ isOnline }) => {
     const setConversations = useSetRecoilState(conversationsAtom);
     const messageEndRef = useRef(null);
     const navigate = useNavigate();
+    const selectedConversationRef = useRef(selectedConversation);
     useEffect(() => {
-        socket.on("newMessage", (message) => {
-            if (selectedConversation._id === message.conversationId) {
+        selectedConversationRef.current = selectedConversation;
+    }, [selectedConversation]);
+
+    useEffect(() => {
+        const handleNewMessage = (message) => {
+            if (selectedConversationRef.current._id === message.conversationId) {
                 setMessages((prev) => [...prev, message]);
             }
 
-            // make a sound if the window is not focused
             if (!document.hasFocus()) {
                 const sound = new Audio(messageSound);
                 sound.play();
             }
 
             setConversations((prev) => {
-                const updatedConversations = prev.map((conversation) => {
-                    if (conversation._id === message.conversationId) {
-                        return {
+                return prev.map((conversation) =>
+                    conversation._id === message.conversationId
+                        ? {
                             ...conversation,
                             lastMessage: {
                                 text: message.text,
                                 sender: message.sender,
                             },
-                        };
-                    }
-                    return conversation;
-                });
-                return updatedConversations;
+                        }
+                        : conversation
+                );
             });
-        });
+        };
 
-        return () => socket.off("newMessage");
-    }, [socket, selectedConversation, setConversations]);
+        socket.on("newMessage", handleNewMessage);
+        return () => socket.off("newMessage", handleNewMessage);
+    }, [socket, setConversations]);
+
 
     useEffect(() => {
-        const lastMessageIsFromOtherUser = messages.length && messages[messages.length - 1].sender !== currentUser._id;
-        if (lastMessageIsFromOtherUser) {
+        if (
+            messages.length &&
+            messages[messages.length - 1].sender !== currentUser._id
+        ) {
             socket.emit("markMessagesAsSeen", {
                 conversationId: selectedConversation._id,
                 userId: selectedConversation.userId,
             });
         }
-
-        socket.on("messagesSeen", ({ conversationId }) => {
+    }, [messages, currentUser._id, selectedConversation, socket]);
+    useEffect(() => {
+        const handleSeen = ({ conversationId }) => {
             if (selectedConversation._id === conversationId) {
-                setMessages((prev) => {
-                    const updatedMessages = prev.map((message) => {
-                        if (!message.seen) {
-                            return {
-                                ...message,
-                                seen: true,
-                            };
-                        }
-                        return message;
-                    });
-                    return updatedMessages;
-                });
+                setMessages((prev) =>
+                    prev.map((message) => ({ ...message, seen: true }))
+                );
             }
-        });
-    }, [socket, currentUser._id, messages, selectedConversation]);
+        };
+
+        socket.on("messagesSeen", handleSeen);
+        return () => socket.off("messagesSeen", handleSeen);
+    }, [selectedConversation._id, socket]);
 
     useEffect(() => {
         messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -102,8 +104,9 @@ const MessageContainer = ({ isOnline }) => {
             }
         };
 
-        getMessages();
+        if (selectedConversation.userId) getMessages();
     }, [showToast, selectedConversation.userId, selectedConversation.mock]);
+
     return (
 
         <Flex
@@ -118,25 +121,36 @@ const MessageContainer = ({ isOnline }) => {
 
         >
             {/* Message header */}
-            <Flex cursor={"pointer"} w={"full"} h={12} alignItems={"center"} gap={2} onClick={() => { navigate(`/${selectedConversation.username}`) }}>
-                <WrapItem>
-                    <Avatar
-                        size={{
-                            base: "xs",
-                            sm: "sm",
-                            md: "md",
-                        }}
-                        src={selectedConversation.userProfilePic}
-                    >
-                        {isOnline ? <AvatarBadge boxSize='1em' bg='green.500' /> : <AvatarBadge boxSize='1em' bg='red.500' />}
-                    </Avatar>
-                </WrapItem>
-                <Text display={"flex"} alignItems={"center"} >
-                    {selectedConversation.username}
-                    <br />
+            <Flex cursor={"pointer"} w={"full"} h={12} alignItems={"center"} gap={2} >
+                <Flex onClick={() => { navigate(`/${selectedConversation.username}`) }}>
+                    <WrapItem>
+                        <Avatar
+                            size={{
+                                base: "xs",
+                                sm: "sm",
+                                md: "md",
+                            }}
+                            src={selectedConversation.userProfilePic}
+                        >
+                            {isOnline ? <AvatarBadge boxSize='1em' bg='green.500' /> : <AvatarBadge boxSize='1em' bg='red.500' />}
+                        </Avatar>
+                    </WrapItem>
+                    <Text display={"flex"} alignItems={"center"} >
+                        {selectedConversation.username}
+                        <br />
 
-                </Text>
+                    </Text>
+
+                </Flex>
                 {isOnline ? (<Badge colorScheme="green">Online</Badge>) : (<Badge colorScheme="red">Offline</Badge>)}
+                <IconButton
+                    icon={<CloseIcon />}
+                    aria-label="Close conversation"
+                    onClick={onClose}
+                    variant="ghost"
+                    colorScheme="red"
+                    ml="auto"
+                />
             </Flex>
 
             <Divider my={2} />

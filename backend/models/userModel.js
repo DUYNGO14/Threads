@@ -36,14 +36,18 @@ const userSchema = mongoose.Schema(
       type: Date,
       default: null,
     },
-    followers: {
-      type: [String],
-      default: [],
-    },
-    following: {
-      type: [String],
-      default: [],
-    },
+    followers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    following: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
     reposts: {
       type: [
         {

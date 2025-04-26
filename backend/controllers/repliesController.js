@@ -1,7 +1,8 @@
 import Reply from "../models/replyModel.js";
 import Post from "../models/postModel.js";
 import { moderateTextSmart } from "../utils/moderateText.js";
-
+import { io } from "../setup/setupServer.js";
+import { getRecipientSocketId } from "../utils/socketUsers.js";
 const getComment = async (req, res) => {
   try {
     const { id } = req.params; // ID của comment được truyền qua params

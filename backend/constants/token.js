@@ -1,4 +1,4 @@
-const JWT_EXPIRES_IN = "7d";
-const JWT_EXPIRES_IN_REFRESH = "30d";
+const JWT_EXPIRES_IN = "30m";
+const JWT_EXPIRES_IN_REFRESH = "7d";
 
 export { JWT_EXPIRES_IN, JWT_EXPIRES_IN_REFRESH };

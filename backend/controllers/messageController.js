@@ -97,7 +97,7 @@ async function sendMessage(req, res) {
 // Lấy tất cả tin nhắn giữa user và người còn lại
 async function getMessages(req, res) {
   const { otherUserId } = req.params;
-  const userId = req.user._id;
+  const userId = req.user?._id;
   try {
     const conversation = await Conversation.findOne({
       participants: { $all: [userId, otherUserId] },

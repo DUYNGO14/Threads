@@ -1,5 +1,6 @@
 import Message from "../models/messageModel.js";
 import Conversation from "../models/conversationModel.js";
+import Notification from "../models/notificationModel.js";
 import { getUnreadCountsForUser } from "../utils/getUnreadCounts.js";
 import {
   setUserSocket,
@@ -49,15 +50,21 @@ export const socketHandler = (io) => {
         console.error("❌ Lỗi khi đánh dấu đã xem:", err);
       }
     });
-
-    socket.on("postLiked", ({ postId, likedBy }) => {
-      console.log(`💥 Post ${postId} liked by ${likedBy}`);
+    socket.on("notification:seen", async ({ notificationId }) => {
+      try {
+        const updated = await Notification.findByIdAndUpdate(
+          notificationId,
+          { $set: { isRead: true } },
+          { new: true }
+        ).populate("sender", "username profilePic");
+        if (updated) {
+          // Gửi lại notification đã cập nhật về client để đồng bộ UI
+          io.to(socket.id).emit("markNotificationsAsSeen", updated);
+        }
+      } catch (err) {
+        console.error("Error marking notification as seen:", err);
+      }
     });
-
-    socket.on("postReplied", ({ postId, reply }) => {
-      console.log(`💬 New reply on post ${postId}`);
-    });
-
     socket.on("disconnect", () => {
       console.log(`🔌 User disconnected: ${userId}`);
       removeUserSocket(userId);

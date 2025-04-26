@@ -60,7 +60,7 @@ const Post = ({ post, postedBy, onPostUpdate, referrer }) => {
 
     return (
         <>
-            <Box w="full" id={`post-${post._id}`}>
+            <Box w="full" id={`post-${post._id}`} >
                 <Flex gap={4} p={4}>
                     <Flex flexDirection={"column"} alignItems={"center"}>
                         <Avatar

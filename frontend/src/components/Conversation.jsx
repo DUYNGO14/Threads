@@ -60,6 +60,12 @@ const Conversation = ({ conversation, isOnline, isMobile = false, onDelete }) =>
             onClose();
         }
     };
+    const getLastMessageText = () => {
+        if (!lastMessage?.text) return <BsFillImageFill size={16} />;
+        return lastMessage.text.length > 18
+            ? lastMessage.text.substring(0, 18) + "..."
+            : lastMessage.text;
+    };
 
     return (
         <>
@@ -116,12 +122,7 @@ const Conversation = ({ conversation, isOnline, isMobile = false, onDelete }) =>
                                     <TiTick size={16} />
                                 </Box>
                             )}
-                            {lastMessage.text?.length > 18
-                                ? lastMessage.text.substring(0, 18) + "..."
-                                : lastMessage.text || <BsFillImageFill size={16} />}
-                            <Text fontSize="xs" ml={1} color="gray.500">
-                                {lastMessage.createdAt ? moment(lastMessage.createdAt).calendar() : "Now"}
-                            </Text>
+                            {getLastMessageText()}
                         </Text>
                     </Stack>
                 </Flex>

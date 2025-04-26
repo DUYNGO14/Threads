@@ -299,8 +299,23 @@ const getMe = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+const refreshToken = async (req, res) => {
+  try {
+    const token = req.cookies.refreshToken;
+    if (!token) return res.status(401).json({ error: "No refresh token" });
 
+    const decoded = jwt.verify(token, process.env.JWT_SECRET_REFRESH);
+
+    const newAccessToken = generateAccessToken(decoded.userId);
+
+    res.json({ accessToken: newAccessToken });
+  } catch (error) {
+    console.error(error);
+    res.status(401).json({ error: "Invalid refresh token" });
+  }
+};
 export {
+  refreshToken,
   loginUser,
   signupUser,
   verifyEmail,

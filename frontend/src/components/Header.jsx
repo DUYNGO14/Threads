@@ -15,8 +15,7 @@ import {
 import { MdOutlineSettings } from "react-icons/md";
 import { HamburgerIcon } from "@chakra-ui/icons";
 import CreatePostModal from "./CreatePostModal";
-import { unreadConversationsCountAtom } from "../atoms/messagesAtom";
-import ChatIconWithBadge from "./ChatIconWithBadge";
+import { ChatIconWithBadge, NotificationIconWithBadge } from "./IconWithBadge";
 import { IoMdNotificationsOutline } from "react-icons/io";
 
 const Header = () => {
@@ -70,7 +69,7 @@ const Header = () => {
                     <IconButton onClick={() => handleNav(`/${user.username}`)} icon={<RxAvatar size={24} />} {...getIconStyle(`/${user.username}`)} aria-label="Profile" />
                     <IconButton onClick={onOpen} icon={<BsPlusSquare size={30} />} aria-label="Create Post" />
                     <IconButton onClick={() => handleNav("/chat")} icon={<ChatIconWithBadge />} {...getIconStyle("/chat")} aria-label="Messages" />
-                    <IconButton onClick={() => handleNav("/notifications")} icon={<IoMdNotificationsOutline size={24} />} {...getIconStyle("/notifications")} aria-label="Notifications" />
+                    <IconButton onClick={() => handleNav("/notifications")} icon={<NotificationIconWithBadge />} {...getIconStyle("/notifications")} aria-label="Notifications" />
                 </>
             ) : (
                 <IconButton onClick={() => handleNav("/auth")} icon={<FiLogIn size={20} />} {...getIconStyle("/auth")} aria-label="Login" />
