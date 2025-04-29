@@ -13,13 +13,14 @@ import Notification from "../models/notificationModel.js";
 const followUnFollowUser = async (req, res) => {
   try {
     const { id } = req.params; // id của người bị follow / unfollow
-    const userId = req.user._id;
+    const userId = req.user._id; // id của người đang thực hiện hành động follow / unfollow
+    console.log("Current user:", req.user);
+    console.log("ID to follow/unfollow:", id);
 
     // Kiểm tra xem id và userId có hợp lệ không
     if (!id || !userId) {
       return res.status(400).json({ error: "Invalid user ID" });
     }
-
     if (id === userId.toString()) {
       return res
         .status(400)
@@ -34,7 +35,8 @@ const followUnFollowUser = async (req, res) => {
     if (!userToModify || !currentUser) {
       return res.status(404).json({ error: "User not found" });
     }
-
+    console.log("User to modify:", userToModify);
+    console.log("Current user:", currentUser);
     // Chuyển sang ObjectId để so sánh chính xác
     const targetIdStr = id.toString(); // id phải là chuỗi
     const isFollowing = currentUser.following.some(
@@ -208,12 +210,12 @@ const updateUser = async (req, res) => {
 
 const getSuggestedUsers = async (req, res) => {
   try {
-    const userId = req.user._id.toString();
+    const userId = req.user?._id.toString(); // Chuyển đổi ObjectId thành chuỗi
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
     const start = (page - 1) * limit;
     const end = start + limit;
-    const cacheKey = `suggestions:${userId}`;
+    const cacheKey = `suggestions:${userId || "guest"}`; // Nếu chưa đăng nhập, sử dụng 'guest' làm key cache
 
     // 1. Lấy danh sách từ cache Redis nếu có
     let cachedIds = await redis.get(cacheKey);
@@ -225,79 +227,99 @@ const getSuggestedUsers = async (req, res) => {
       return res.json(users);
     }
 
-    // 2. Nếu không có cache → xử lý gợi ý mới
-    const currentUser = await User.findById(userId).lean();
-    if (!currentUser)
-      return res.status(404).json({ message: "User not found" });
+    let allSuggested = [];
 
-    const followingIds = currentUser.following.map(
-      (id) => new mongoose.Types.ObjectId(id)
-    );
+    if (req.user) {
+      // 2. Nếu đã đăng nhập, thực hiện gợi ý dựa trên các tiêu chí
+      const currentUser = await User.findById(userId).lean();
+      if (!currentUser)
+        return res.status(404).json({ message: "User not found" });
 
-    // 2.1 Gợi ý theo mutual following
-    const mutuals = await User.aggregate([
-      { $match: { _id: { $in: followingIds } } },
-      { $unwind: "$following" },
-      {
-        $group: {
-          _id: "$following",
-          count: { $sum: 1 },
-        },
-      },
-      { $sort: { count: -1 } },
-      { $limit: 100 },
-    ]);
-
-    const mutualIds = mutuals
-      .map((u) => u._id.toString())
-      .filter(
-        (id) =>
-          id !== userId &&
-          !currentUser.following.some((fid) => fid.toString() === id)
+      const followingIds = currentUser.following.map(
+        (id) => new mongoose.Types.ObjectId(id)
       );
 
-    // 2.2 Gợi ý theo người like bài viết của bạn
-    const yourPosts = await Post.find({ postedBy: userId })
-      .select("likes")
-      .lean();
-
-    const likedBy = yourPosts.flatMap((p) =>
-      p.likes.map((id) => id.toString())
-    );
-
-    const likeMap = likedBy.reduce((acc, id) => {
-      if (
-        id !== userId &&
-        !currentUser.following.some((fid) => fid.toString() === id)
-      ) {
-        acc[id] = (acc[id] || 0) + 1;
-      }
-      return acc;
-    }, {});
-
-    const likeIds = Object.entries(likeMap)
-      .sort((a, b) => b[1] - a[1])
-      .map(([id]) => id);
-
-    // 2.3 Gộp lại
-    const allSuggested = [...new Set([...mutualIds, ...likeIds])];
-
-    // 2.4 Nếu chưa đủ → thêm người nổi bật (nhiều followers)
-    if (allSuggested.length < 100) {
-      const excludeIds = [
-        ...currentUser.following.map((id) => id.toString()),
-        userId,
-        ...allSuggested,
-      ];
-
-      const topUsers = await User.aggregate([
+      // 2.1 Gợi ý theo mutual following
+      const mutuals = await User.aggregate([
+        { $match: { _id: { $in: followingIds } } },
+        { $unwind: "$following" },
         {
-          $match: {
-            _id: {
-              $nin: excludeIds.map((id) => new mongoose.Types.ObjectId(id)),
-            },
+          $group: {
+            _id: "$following",
+            count: { $sum: 1 },
           },
         },
+        { $sort: { count: -1 } },
+        { $limit: 100 },
+      ]);
+
+      const mutualIds = mutuals
+        .map((u) => u._id.toString())
+        .filter(
+          (id) =>
+            id !== userId &&
+            !currentUser.following.some((fid) => fid.toString() === id)
+        );
+
+      // 2.2 Gợi ý theo người like bài viết của bạn
+      const yourPosts = await Post.find({ postedBy: userId })
+        .select("likes")
+        .lean();
+
+      const likedBy = yourPosts.flatMap((p) =>
+        p.likes.map((id) => id.toString())
+      );
+
+      const likeMap = likedBy.reduce((acc, id) => {
+        if (
+          id !== userId &&
+          !currentUser.following.some((fid) => fid.toString() === id)
+        ) {
+          acc[id] = (acc[id] || 0) + 1;
+        }
+        return acc;
+      }, {});
+
+      const likeIds = Object.entries(likeMap)
+        .sort((a, b) => b[1] - a[1])
+        .map(([id]) => id);
+
+      // 2.3 Gộp lại
+      allSuggested = [...new Set([...mutualIds, ...likeIds])];
+
+      // 2.4 Nếu chưa đủ → thêm người nổi bật (nhiều followers)
+      if (allSuggested.length < 100) {
+        const excludeIds = [
+          ...currentUser.following.map((id) => id.toString()),
+          userId,
+          ...allSuggested,
+        ];
+
+        const topUsers = await User.aggregate([
+          {
+            $match: {
+              _id: {
+                $nin: excludeIds.map((id) => new mongoose.Types.ObjectId(id)),
+              },
+            },
+          },
+          {
+            $addFields: {
+              followersCount: {
+                $size: { $ifNull: ["$followers", []] },
+              },
+            },
+          },
+          { $sort: { followersCount: -1 } },
+          { $limit: 100 - allSuggested.length },
+        ]);
+
+        const topUserIds = topUsers.map((u) => u._id.toString());
+        allSuggested.push(...topUserIds);
+      }
+    } else {
+      // 3. Nếu chưa đăng nhập, lấy tất cả người dùng và sắp xếp theo followersCount
+      const topUsers = await User.aggregate([
         {
           $addFields: {
             followersCount: {
@@ -306,17 +328,16 @@ const getSuggestedUsers = async (req, res) => {
           },
         },
         { $sort: { followersCount: -1 } },
-        { $limit: 100 - allSuggested.length },
+        { $limit: 100 },
       ]);
 
-      const topUserIds = topUsers.map((u) => u._id.toString());
-      allSuggested.push(...topUserIds);
+      allSuggested = topUsers.map((u) => u._id.toString());
     }
 
-    // 3. Lưu cache Redis
+    // 4. Lưu cache Redis
     await redis.set(cacheKey, JSON.stringify(allSuggested), { ex: 900 }); // 15 phút
 
-    // 4. Trả về trang đầu tiên
+    // 5. Trả về trang đầu tiên
     const paginatedIds = allSuggested.slice(start, end);
     const users = await User.find({ _id: { $in: paginatedIds } })
       .select("name username profilePic bio")

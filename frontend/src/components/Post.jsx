@@ -13,7 +13,7 @@ import userAtom from "../atoms/userAtom";
 import postsAtom from "../atoms/postsAtom";
 import { PropTypes } from "prop-types";
 import Carousels from "./Carousels";
-
+import api from "../services/api.js";
 const Post = ({ post, postedBy, onPostUpdate, referrer }) => {
     const showToast = useShowToast();
     const currentUser = useRecoilValue(userAtom);
@@ -24,10 +24,8 @@ const Post = ({ post, postedBy, onPostUpdate, referrer }) => {
     const handleDeletePost = useCallback(async () => {
         try {
             setIsDeleting(true);
-            const res = await fetch(`/api/posts/${post?._id}`, {
-                method: "DELETE",
-            });
-            const data = await res.json();
+            const res = await api.delete(`/api/posts/${post?._id}`);
+            const data = res.data;
 
             if (data.error) {
                 showToast("Error", data.error, "error");

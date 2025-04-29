@@ -33,7 +33,7 @@ import { useNavigate } from "react-router-dom";
 import { MdLock, MdPassword, MdSettings, MdWarning, MdDelete } from "react-icons/md";
 import useDebounceSubmit from "../hooks/useDebounceSubmit";
 import { useState, useEffect } from "react";
-
+import api from "../services/api.js";
 export const SettingsPage = () => {
     const showToast = useShowToast();
     const logout = useLogout();
@@ -49,8 +49,8 @@ export const SettingsPage = () => {
     useEffect(() => {
         const fetchUserInfo = async () => {
             try {
-                const res = await fetch("/api/users/profile/me");
-                const data = await res.json();
+                const res = await api.get("/api/users/profile/me");
+                const data = await res.data;
                 if (data.googleId) {
                     setLoginMethod('google');
                 } else if (data.facebookId) {
@@ -64,11 +64,10 @@ export const SettingsPage = () => {
     }, []);
 
     const submitFreezeAccount = async () => {
-        const res = await fetch("/api/users/freeze", {
-            method: "PUT",
+        const res = await api.put("/api/users/freeze", {
             headers: { "Content-Type": "application/json" },
         });
-        const data = await res.json();
+        const data = await res.data;
 
         if (data.error) {
             return showToast("Error", data.error, "error");
@@ -83,12 +82,10 @@ export const SettingsPage = () => {
         try {
             // For social login accounts, no password needed
             if (loginMethod === 'google' || loginMethod === 'facebook') {
-                const res = await fetch("/api/users/delete", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ isSocialLogin: true })
+                const res = await api.post("/api/users/delete", {
+                    isSocialLogin: true
                 });
-                const data = await res.json();
+                const data = await res.data;
 
                 if (data.error) {
                     return showToast("Error", data.error, "error");
@@ -107,15 +104,11 @@ export const SettingsPage = () => {
                 return;
             }
 
-            const res = await fetch("/api/users/delete", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    password,
-                    isSocialLogin: false
-                })
+            const res = await api.post("/api/users/delete", {
+                password,
+                isSocialLogin: false
             });
-            const data = await res.json();
+            const data = await res.data;
 
             if (data.error) {
                 setPasswordError(data.error);

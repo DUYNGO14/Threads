@@ -28,7 +28,7 @@ import useShowToast from "../hooks/useShowToast";
 import { useNavigate } from "react-router-dom";
 import { FiMoreVertical } from "react-icons/fi";
 import userAtom from "../atoms/userAtom";
-
+import api from "../services/api.js";
 const NotificationPage = () => {
     const [notifications, setNotifications] = useRecoilState(notificationAtom);
     const [unreadOnly, setUnreadOnly] = useState(false);
@@ -41,14 +41,11 @@ const NotificationPage = () => {
     const borderColor = useColorModeValue("gray.200", "gray.600");
     const hoverBg = useColorModeValue("gray.100", "gray.600");
     const setUnreadNotificationCount = useSetRecoilState(unreadNotificationCountAtom);
-    console.log(notifications);
     const markAllAsRead = async () => {
         try {
-            const res = await fetch("/api/notifications/mark-all-read", {
-                method: "PATCH",
-            });
+            const res = await api.patch("/api/notifications/mark-all-read");
 
-            const data = await res.json();
+            const data = await res.data;
 
             if (data.error) {
                 return showToast("Error", data.error, "error");
@@ -63,11 +60,9 @@ const NotificationPage = () => {
 
     const deleteNotification = async (id) => {
         try {
-            const res = await fetch(`/api/notifications/delete/${id}`, {
-                method: "DELETE",
-            });
+            const res = await api.delete(`/api/notifications/delete/${id}`);
 
-            const data = await res.json();
+            const data = await res.data;
 
             if (data.error) {
                 return showToast("Lỗi", data.error, "error");

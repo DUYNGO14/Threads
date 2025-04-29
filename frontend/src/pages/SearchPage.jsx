@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 import useShowToast from "../hooks/useShowToast";
 import UserItemSuggest from "../components/UserItemSuggest";
 import useDebounce from "../hooks/useDebounce";
-
+import api from "../services/api.js";
 const SearchPage = () => {
     const { colorMode } = useColorMode();
     const showToast = useShowToast();
@@ -38,8 +38,8 @@ const SearchPage = () => {
             }
 
             try {
-                const res = await fetch(`/api/users/search?q=${debouncedSearchQuery}`);
-                const data = await res.json();
+                const res = await api.get(`/api/users/search?q=${debouncedSearchQuery}`);
+                const data = await res.data;
                 if (data.message) {
                     showToast("Error", data.message, "error");
                 } else if (Array.isArray(data)) {
@@ -59,8 +59,8 @@ const SearchPage = () => {
         const getSuggestedUsers = async () => {
             setLoading(true);
             try {
-                const res = await fetch("/api/users/suggested");
-                const data = await res.json();
+                const res = await api.get("/api/users/suggested");
+                const data = await res.data;
                 if (data.error) {
                     showToast("Error", data.error, "error");
                 } else if (Array.isArray(data)) {

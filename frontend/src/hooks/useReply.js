@@ -1,6 +1,6 @@
 import { useState } from "react";
 import useShowToast from "../hooks/useShowToast";
-
+import api from "../services/api.js";
 /**
  * Custom hook để xử lý logic thêm / sửa / xoá reply trong một bài post.
  * @param {string} postId - ID của bài viết.
@@ -14,12 +14,11 @@ const useReply = (postId, onSuccess) => {
   const submitReply = async (text) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/posts/reply/${postId}`, {
-        method: "PUT",
+      const res = await api.put(`/api/posts/reply/${postId}`, {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
       });
-      const data = await res.json();
+      const data = await res.data;
       if (data.error) throw new Error(data.error);
 
       onSuccess(data); // Gọi callback với dữ liệu mới
@@ -35,12 +34,11 @@ const useReply = (postId, onSuccess) => {
   const editReply = async (replyId, text) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/replies/${replyId}`, {
-        method: "PUT",
+      const res = await api.put(`/api/replies/${replyId}`, {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
       });
-      const data = await res.json();
+      const data = await res.data;
       if (data.error) throw new Error(data.error);
       onSuccess(data);
       showToast("Success", "Reply edited successfully", "success");
@@ -55,11 +53,13 @@ const useReply = (postId, onSuccess) => {
   const deleteReply = async (replyId, postId) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/replies/post/${postId}/reply/${replyId}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-      });
-      const data = await res.json();
+      const res = await api.delete(
+        `/api/replies/post/${postId}/reply/${replyId}`,
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      const data = await res.data;
       if (data.error) throw new Error(data.error);
 
       // Cập nhật lại state hoặc UI sau khi xóa reply

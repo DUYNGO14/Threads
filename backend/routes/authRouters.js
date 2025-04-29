@@ -3,10 +3,12 @@ import passport from "passport";
 import generateTokenAndSetCookie from "../utils/helpers/generateTokenAndSetCookie.js";
 import {
   changePassword,
+  checkToken,
   forgotPassword,
   getMe,
   loginUser,
   logoutUser,
+  refreshToken,
   resendOTP,
   resetPassword,
   signupUser,
@@ -59,7 +61,9 @@ router.get("/google/callback", (req, res, next) => {
           }/oauth-failure?error=${encodeURIComponent("Đăng nhập thất bại.")}`
         );
       }
-      generateTokenAndSetCookie(user._id, res);
+      const accessToken = generateTokenAndSetCookie(user._id, res);
+      console.log("🔑 Access Token:", accessToken); // In ra access token để kiểm tra
+      // localStorage.setItem("access-token", accessToken); // Lưu access token vào localStorage
       res.cookie("userData", JSON.stringify(user), {
         httpOnly: false,
         secure: process.env.NODE_ENV === "production",
@@ -71,7 +75,7 @@ router.get("/google/callback", (req, res, next) => {
           process.env.NODE_ENV === "production"
             ? "https://threads-0m08.onrender.com"
             : process.env.CLIENT_URL
-        }/oauth-success`
+        }/oauth-success?accessToken=${accessToken}`
       );
     });
   })(req, res, next);
@@ -125,7 +129,7 @@ router.get("/facebook/callback", (req, res, next) => {
         );
       }
 
-      generateTokenAndSetCookie(user._id, res);
+      const accessToken = generateTokenAndSetCookie(user._id, res);
       res.cookie("userData", JSON.stringify(user), {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -137,7 +141,7 @@ router.get("/facebook/callback", (req, res, next) => {
           process.env.NODE_ENV === "production"
             ? "https://threads-0m08.onrender.com"
             : process.env.CLIENT_URL
-        }/oauth-success`
+        }/oauth-success?accessToken=${accessToken}`
       );
     });
   })(req, res, next);
@@ -153,6 +157,8 @@ router.get("/me", (req, res) => {
 router.post("/signup", signupUser);
 router.post("/login", loginUser);
 router.post("/logout", logoutUser);
+router.get("/refresh-token", refreshToken);
+router.get("/check", checkToken);
 router.post("/verify-account", verifyEmail);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password/:resetToken", resetPassword);

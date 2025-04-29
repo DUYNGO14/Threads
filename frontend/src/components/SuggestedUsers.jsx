@@ -2,7 +2,7 @@ import { Box, Flex, Skeleton, SkeletonCircle, Text } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import SuggestedUser from "./SuggestedUser";
 import useShowToast from "../hooks/useShowToast";
-
+import api from "../services/api.js";
 const SuggestedUsers = () => {
     const [loading, setLoading] = useState(true);
     const [suggestedUsers, setSuggestedUsers] = useState([]);
@@ -12,8 +12,8 @@ const SuggestedUsers = () => {
         const getSuggestedUsers = async () => {
             setLoading(true);
             try {
-                const res = await fetch("/api/users/suggested");
-                const data = await res.json();
+                const res = await api.get("/api/users/suggested");
+                const data = await res.data;
                 if (data.error) {
                     showToast("Error", data.error, "error");
                     return;
@@ -30,11 +30,11 @@ const SuggestedUsers = () => {
     }, [showToast]);
 
     return (
-        <Flex direction={"column"} gap={4} w="100%"  >
+        <Flex direction={"column"} gap={2} w="100%"  >
             <Text my={4} fontWeight={"bold"}>
                 Suggested Users
             </Text>
-            <Flex direction={"column"} gap={4} w="100%">
+            <Flex direction={"column"} gap={2} w="100%">
                 <Box>
                     {!loading &&
                         suggestedUsers.slice(0, 5).map((user) => (

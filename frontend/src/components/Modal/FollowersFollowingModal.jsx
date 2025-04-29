@@ -17,6 +17,7 @@ import {
 import { useRecoilState } from "recoil";
 import { followersAtom, followingAtom } from "../../atoms/followAtoms";
 import FollowItem from "../FollowItem";
+import api from "../../services/api";
 
 const FollowersFollowingModal = ({ isOpen, onClose, username }) => {
     const [followers, setFollowers] = useRecoilState(followersAtom);
@@ -36,12 +37,12 @@ const FollowersFollowingModal = ({ isOpen, onClose, username }) => {
             setLoading(true);
             try {
                 const [resFollowers, resFollowing] = await Promise.all([
-                    fetch(`/api/users/${username}/followed`),
-                    fetch(`/api/users/${username}/following`),
+                    api.get(`/api/users/${username}/followed`),
+                    api.get(`/api/users/${username}/following`),
                 ]);
 
-                const dataFollowers = await resFollowers.json();
-                const dataFollowing = await resFollowing.json();
+                const dataFollowers = resFollowers.data;
+                const dataFollowing = resFollowing.data;
 
                 setFollowers(dataFollowers);
                 setFollowing(dataFollowing);

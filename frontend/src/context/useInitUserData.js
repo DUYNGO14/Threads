@@ -8,7 +8,7 @@ import {
   unreadNotificationCountAtom,
   notificationAtom,
 } from "../atoms/notificationAtom";
-
+import api from "../services/api.js";
 const useInitUserData = (user) => {
   const setConversations = useSetRecoilState(conversationsAtom);
   const setUnreadCount = useSetRecoilState(unreadConversationsCountAtom);
@@ -23,13 +23,13 @@ const useInitUserData = (user) => {
     const fetchInitData = async () => {
       try {
         const [convRes, notiRes] = await Promise.all([
-          fetch("/api/messages/conversations"),
-          fetch("/api/notifications/"),
+          api.get("/api/conversations/"),
+          api.get("/api/notifications/"),
         ]);
 
         const [convData, notiData] = await Promise.all([
-          convRes.json(),
-          notiRes.json(),
+          convRes.data,
+          notiRes.data,
         ]);
 
         if (!convData.error) {
@@ -40,10 +40,8 @@ const useInitUserData = (user) => {
 
         if (!notiData.error) {
           setNotification(notiData);
-          console.log(notiData);
           const unreadNoti = notiData.filter((n) => !n.isRead).length;
           setUnreadNotificationCount(unreadNoti);
-          console.log(unreadNoti);
         }
       } catch (err) {
         console.error("❌ Error fetching init data:", err.message);

@@ -5,7 +5,7 @@ import {
 import { useSetRecoilState } from "recoil";
 import { authScreenAtom } from "../atoms/authAtom";
 import useShowToast from "../hooks/useShowToast";
-
+import api from "../services/api.js";
 const ForgotPasswordCard = () => {
     const [email, setEmail] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -19,13 +19,9 @@ const ForgotPasswordCard = () => {
 
         try {
             setIsLoading(true);
-            const res = await fetch("/api/auth/forgot-password", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: email.trim() }),
-            });
+            const res = await api.post("/auth/forgot-password", { email: email.trim() });
 
-            const data = await res.json();
+            const data = res.data;
             if (data.error) throw new Error(data.error);
             showToast("Success", "Password reset link sent to your email!", "success");
         } catch (error) {

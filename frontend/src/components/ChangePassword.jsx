@@ -22,6 +22,7 @@ import useShowToast from '../hooks/useShowToast';
 import { useRecoilValue } from 'recoil';
 import userAtom from '../atoms/userAtom';
 import useDebounceSubmit from '../hooks/useDebounceSubmit';
+import api from "../services/api.js";
 
 const ChangePassword = () => {
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -37,7 +38,6 @@ const ChangePassword = () => {
     const user = useRecoilValue(userAtom);
     const bgColor = useColorModeValue('white', 'gray.dark');
 
-    // Kiểm tra xem người dùng có đăng nhập bằng OAuth không
     const isOAuthUser = user?.googleId || user?.facebookId;
 
     const handleChange = (e) => {
@@ -56,26 +56,22 @@ const ChangePassword = () => {
             return;
         }
 
-        const res = await fetch('/api/auth/change-password', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
+        try {
+            const res = await api.put('/api/auth/change-password', {
                 currentPassword: passwords.currentPassword,
                 newPassword: passwords.newPassword,
-            }),
-        });
+            });
 
-        const data = await res.json();
+            if (res.data.error) {
+                showToast("Error", res.data.error, "error");
+                return;
+            }
 
-        if (data.error) {
-            showToast("Error", data.error, "error");
-            return;
+            showToast("Success", "Password changed successfully", "success");
+            navigate('/settings');
+        } catch (error) {
+            showToast("Error", error.message, "error");
         }
-
-        showToast("Success", "Password changed successfully", "success");
-        navigate('/settings');
     };
 
     const { handleSubmit, isLoading } = useDebounceSubmit(submitPasswordChange);
@@ -224,3 +220,4 @@ const ChangePassword = () => {
 };
 
 export default ChangePassword;
+

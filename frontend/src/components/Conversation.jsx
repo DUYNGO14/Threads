@@ -28,6 +28,7 @@ import { useSocket } from "../context/SocketContext";
 import { useNavigate } from "react-router-dom";
 import DeleteConfirmationModal from "./Modal/DeleteConfirmationModal"; // Import modal đã tách
 import useShowToast from "../hooks/useShowToast";
+import api from "../services/api.js";
 
 const Conversation = ({ conversation, isOnline, isMobile = false, onDelete }) => {
     const [hovered, setHovered] = useState(false);
@@ -43,12 +44,9 @@ const Conversation = ({ conversation, isOnline, isMobile = false, onDelete }) =>
     const backgroundColor = useColorModeValue("white", "gray.dark");
     const handleDelete = async () => {
         try {
-            const res = await fetch(`/api/conversations/delete/${conversation._id}`, {
-                method: "DELETE",
-            });
-            const data = await res.json();
-            if (res.ok) {
-
+            const res = await api.delete(`/api/conversations/delete/${conversation._id}`);
+            const data = await res.data;
+            if (res.status === 200) {
                 onDelete(conversation._id);
                 showToast("Success", data.message, "success");
             } else {
@@ -169,3 +167,4 @@ Conversation.propTypes = {
 };
 
 export default Conversation;
+

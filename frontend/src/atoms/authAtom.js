@@ -7,5 +7,5 @@ export const authScreenAtom = atom({
 
 export const accessTokenAtom = atom({
   key: "accessTokenAtom",
-  default: "",
+  default: localStorage.getItem("access-token") || null,
 });

@@ -1,55 +1,36 @@
 import { Box, Image, useBreakpointValue } from "@chakra-ui/react";
 import { Swiper, SwiperSlide } from "swiper/react";
-import "swiper/css";
-import "swiper/css/navigation";
-import "swiper/css/pagination";
 import { Pagination } from "swiper/modules";
-import { useState, useEffect, useRef, useCallback } from "react";
+import "swiper/css";
+import "swiper/css/pagination";
+import { useState, useRef, useEffect } from "react";
 import ModalPost from "./ModalPost";
 import AudioPlayer from "./AudioPlayer";
 
 const Carousels = ({ medias }) => {
     const [selectedMedia, setSelectedMedia] = useState(null);
     const videoRefs = useRef([]);
-    const [imageSizes, setImageSizes] = useState({});
     const swiperRef = useRef(null);
 
-    // Kích thước responsive
-    const maxWidth = useBreakpointValue({ base: "90%", md: "400px", lg: "500px" });
     const maxHeight = useBreakpointValue({ base: "60vh", md: "70vh", lg: "80vh" });
 
-    // Tự động phát/dừng video khi vào/ra màn hình
     useEffect(() => {
         if (!videoRefs.current.length) return;
-
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {
                     const video = entry.target;
-                    if (entry.isIntersecting) {
-                        video.play();
-                    } else {
-                        video.pause();
-                    }
+                    if (entry.isIntersecting) video.play();
+                    else video.pause();
                 });
             },
             { threshold: 0.8 }
         );
-
         videoRefs.current.forEach((video) => video && observer.observe(video));
-
         return () => {
             videoRefs.current.forEach((video) => video && observer.unobserve(video));
         };
     }, [medias]);
-
-    const handleImageLoad = useCallback((index, event) => {
-        const { naturalWidth, naturalHeight } = event.target;
-        setImageSizes((prevSizes) => ({
-            ...prevSizes,
-            [index]: { width: naturalWidth, height: naturalHeight },
-        }));
-    }, []);
 
     return (
         <Box position="relative" overflow="hidden" w="100%">
@@ -59,75 +40,61 @@ const Carousels = ({ medias }) => {
                 spaceBetween={10}
                 slidesPerView={"auto"}
                 centeredSlides={false}
+                onSwiper={(swiper) => (swiperRef.current = swiper)}
+                onSlideChange={() => {
+                    document.querySelectorAll("audio").forEach((audio) => audio.pause());
+                }}
                 style={{
                     width: "100%",
                     paddingBottom: medias.length > 1 ? "8px" : "0",
                     display: "flex",
                     justifyContent: "flex-start",
                 }}
-                onSwiper={(swiper) => (swiperRef.current = swiper)}
-                onSlideChange={() => {
-                    document.querySelectorAll("audio").forEach((audio) => audio.pause());
-                }}
             >
                 {medias.map((media, index) => (
-                    <SwiperSlide
-
-                        key={index}
-                        style={{
-                            width: "auto",
-                            maxWidth: "100%",
-                            display: "flex",
-                            justifyContent: "flex-start",
-                            alignItems: "flex-start",
-                            borderRadius: "12px",
-                            overflow: "hidden",
-                        }}
-                    >
+                    <SwiperSlide key={index} style={{ width: "auto", maxWidth: "100%" }}>
                         <Box
-                            display="flex"
                             cursor="pointer"
-                            justifyContent="center"
-                            alignItems="center"
                             maxW="100%"
                             maxH="90vh"
                             overflow="hidden"
+                            display="flex"
+                            justifyContent="center"
+                            alignItems="center"
+                            borderRadius="12px"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                setSelectedMedia(media);
+                                setSelectedMedia({ medias, initialIndex: index });
                             }}
                         >
                             {media.type === "image" ? (
                                 <Image
                                     src={media.url}
                                     alt="Post Image"
-                                    maxWidth="100%"
-                                    maxHeight={maxHeight}
+                                    maxW="100%"
+                                    maxH={maxHeight}
                                     objectFit="contain"
                                     borderRadius="12px"
-                                    onLoad={(e) => handleImageLoad(index, e)}
                                 />
                             ) : media.type === "video" ? (
-                                <Box onClick={() => setSelectedMedia(media)} cursor="pointer" maxW="100%" overflow="hidden">
-                                    <video
-                                        ref={(el) => (videoRefs.current[index] = el)}
-                                        muted
-                                        loop
-                                        playsInline
-                                        controls
-                                        style={{
-                                            borderRadius: "12px",
-                                            width: "100%",
-                                            maxHeight: maxHeight,
-                                            objectFit: "contain",
-                                        }}
-                                    >
-                                        <source src={media.url} type="video/mp4" />
-                                        Your browser does not support the video tag.
-                                    </video>
+                                <Box as="video"
+                                    ref={(el) => (videoRefs.current[index] = el)}
+                                    muted
+                                    loop
+                                    playsInline
+                                    controls
+                                    sx={{
+                                        borderRadius: "12px",
+                                        width: "100%",
+                                        maxH: maxHeight,
+                                        objectFit: "contain",
+                                        bg: "black",
+                                    }}
+                                >
+                                    <source src={media.url} type="video/mp4" />
                                 </Box>
                             ) : (
-                                <AudioPlayer url={media.url} onModalClick={() => setSelectedMedia(media)} />
+                                <AudioPlayer url={media.url} onModalClick={() => setSelectedMedia({ medias, initialIndex: index })} />
                             )}
                         </Box>
                     </SwiperSlide>
@@ -136,8 +103,8 @@ const Carousels = ({ medias }) => {
 
             {selectedMedia && (
                 <ModalPost
-                    mediaUrl={selectedMedia.url}
-                    mediaType={selectedMedia.type}
+                    medias={selectedMedia.medias}
+                    initialIndex={selectedMedia.initialIndex}
                     isOpen={!!selectedMedia}
                     onClose={() => setSelectedMedia(null)}
                 />

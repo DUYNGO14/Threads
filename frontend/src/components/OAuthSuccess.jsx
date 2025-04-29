@@ -4,8 +4,7 @@ import { useSetRecoilState } from "recoil";
 import userAtom from "../atoms/userAtom";
 import { Spinner, Text, VStack, Box, useColorModeValue } from "@chakra-ui/react";
 import useShowToast from "../hooks/useShowToast";
-import { saveEncryptedData } from "../../utils/encryptedData";
-
+import api from "../services/api.js";
 const OAuthSuccess = () => {
     const navigate = useNavigate();
     const setUser = useSetRecoilState(userAtom);
@@ -14,13 +13,20 @@ const OAuthSuccess = () => {
     useEffect(() => {
         const fetchUser = async () => {
             try {
-                const res = await fetch("/api/auth/me", { credentials: "include" });
-                const data = await res.json();
+                // 1. Lấy accessToken từ URL
+                const params = new URLSearchParams(window.location.search);
+                const accessToken = params.get("accessToken");
+
+                if (accessToken) {
+                    localStorage.setItem("access-token", accessToken);
+                }
+
+                // 2. Gọi API lấy user
+                const res = await api.get("/api/auth/me", { credentials: "include" });
+                const data = res.data;
 
                 if (data._id) {
-                    saveEncryptedData("user-threads", data);
                     setUser(data);
-                    //showToast("Success", "Đăng nhập thành công!", "success");
                     navigate("/");
                 } else {
                     showToast("Error", "Không thể lấy thông tin người dùng", "error");

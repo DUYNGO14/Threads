@@ -1,0 +1,34 @@
+/* Swiper navigation buttons style */
+.swiper-button-next,
+.swiper-button-prev {
+  background-color: rgba(0, 0, 0, 0.6); /* Nền đen mờ */
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s ease, opacity 0.3s ease;
+  opacity: 0; /* Mặc định ẩn nút */
+}
+
+/* Mũi tên trắng xám */
+.swiper-button-next::after,
+.swiper-button-prev::after {
+  font-size: 18px;
+  color: #ccc;
+}
+
+/* Khi hover hoặc active Modal thì hiện nút */
+.swiper:hover .swiper-button-next,
+.swiper:hover .swiper-button-prev,
+.swiper-button-next.swiper-button-disabled,
+.swiper-button-prev.swiper-button-disabled {
+  opacity: 1;
+}
+
+/* Thêm hover đẹp hơn */
+.swiper-button-next:hover,
+.swiper-button-prev:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}

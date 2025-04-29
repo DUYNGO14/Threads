@@ -12,7 +12,7 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
 import postsAtom from "../atoms/postsAtom";
 import useDebounceSubmit from "../hooks/useDebounceSubmit";
-
+import api from "../services/api.js";
 const CreatePostModal = ({ isOpen, onClose, username }) => {
     const [postText, setPostText] = useState("");
     const [mediaFiles, setMediaFiles] = useState([]);
@@ -90,19 +90,23 @@ const CreatePostModal = ({ isOpen, onClose, username }) => {
         formData.append("text", postText);
         mediaFiles.forEach(({ file }) => formData.append("media", file));
 
-        const res = await fetch("/api/posts/create", {
-            method: "POST",
-            body: formData,
-        });
+        try {
+            const { data } = await api.post("/posts/create", formData, {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                },
+            });
 
-        const data = await res.json();
-        if (data.error) return showToast("Error", data.error, "error");
+            if (data.error) throw new Error(data.error);
 
-        showToast("Success", "Post created successfully", "success");
-        if (username === user.username) setPosts((prev) => [data, ...prev]);
+            showToast("Success", "Post created successfully", "success");
+            if (username === user.username) setPosts((prev) => [data, ...prev]);
 
-        onClose();
-        handleClearForm();
+            onClose();
+            handleClearForm();
+        } catch (error) {
+            showToast("Error", error.message, "error");
+        }
     };
 
     const { handleSubmit: handleCreatePost, isLoading } = useDebounceSubmit(submitPost);
@@ -111,7 +115,7 @@ const CreatePostModal = ({ isOpen, onClose, username }) => {
         <Modal isOpen={isOpen} onClose={onClose} size="xl" isCentered  >
             <ModalOverlay backdropFilter="blur(10px)" />
             <ModalContent bg={useColorModeValue('gray.100', '#101010')}>
-                <ModalHeader fontSize="xl" fontWeight="bold" textAlign="center" >Create a New Post</ModalHeader>
+                <ModalHeader fontSize="xl" fontWeight="bold" textAlign="center" >New thread</ModalHeader>
                 <ModalCloseButton />
                 <ModalBody>
                     <FormControl>

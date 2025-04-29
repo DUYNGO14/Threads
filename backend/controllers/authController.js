@@ -6,6 +6,7 @@ import {
   sendPasswordResetEmail,
   sendVerificationEmail,
 } from "../utils/helpers/sendEmail.js";
+import jwt from "jsonwebtoken";
 const generateOTP = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
 const signupUser = async (req, res) => {
@@ -94,19 +95,22 @@ const loginUser = async (req, res) => {
     }
 
     // Tạo token và gửi cookie
-    generateTokenAndSetCookie(user._id, res);
+    const accessToken = generateTokenAndSetCookie(user._id, res);
 
     // Cập nhật trạng thái user (nếu cần)
     await User.findByIdAndUpdate(user._id, { isFrozen: false });
 
     // Trả về dữ liệu user (trừ password)
     res.status(200).json({
-      _id: user._id,
-      name: user.name,
-      username: user.username,
-      email: user.email,
-      profilePic: user.profilePic,
-      bio: user.bio,
+      accessToken,
+      user: {
+        _id: user._id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        profilePic: user.profilePic,
+        bio: user.bio,
+      },
     });
   } catch (error) {
     console.error("Error in loginUser:", error.message);
@@ -116,7 +120,7 @@ const loginUser = async (req, res) => {
 
 const logoutUser = async (req, res) => {
   try {
-    res.clearCookie("jwt");
+    res.clearCookie("refreshToken");
     res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
     console.error("Error in logoutUser:", error.message);
@@ -300,6 +304,50 @@ const getMe = async (req, res) => {
   }
 };
 
+const refreshToken = async (req, res) => {
+  const token = req.cookies.refreshToken;
+
+  if (!token) {
+    return res.status(401).json({ error: "No refresh token provided" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET_REFRESH);
+
+    const user = await User.findById(decoded.userId).select("-password");
+    if (!user) {
+      return res
+        .status(401)
+        .json({ error: "Invalid refresh token: user not found" });
+    }
+
+    const accessToken = generateTokenAndSetCookie(user._id, res);
+    return res.status(200).json({ accessToken });
+  } catch (error) {
+    console.error("Error in refreshToken:", error.message);
+
+    if (error.name === "TokenExpiredError") {
+      return res.status(403).json({ error: "Refresh token expired" });
+    }
+
+    return res.status(403).json({ error: "Invalid refresh token" });
+  }
+};
+
+const checkToken = async (req, res) => {
+  const accessToken = req.headers.authorization?.split(" ")[1]; // Lấy access token từ header
+  if (!accessToken) {
+    return res.status(401).json({ success: false });
+  }
+
+  try {
+    jwt.verify(accessToken, process.env.JWT_SECRET); // Kiểm tra token
+    res.json({ success: true });
+  } catch (error) {
+    res.status(401).json({ success: false });
+  }
+};
+
 export {
   loginUser,
   signupUser,
@@ -310,4 +358,6 @@ export {
   resendOTP,
   changePassword,
   getMe,
+  refreshToken,
+  checkToken,
 };

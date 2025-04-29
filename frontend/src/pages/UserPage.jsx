@@ -21,6 +21,7 @@ import NotFound from "../components/NotFound";
 import Tabs from "../components/Tabs";
 import { useLocation, useNavigate } from "react-router-dom";
 import { IoArrowBackOutline } from "react-icons/io5";
+import api from "../services/api.js";
 const POST_LIMIT = 10;
 
 const UserPage = () => {
@@ -72,8 +73,8 @@ const UserPage = () => {
                     ? `/api/posts/user/${username}?page=${page}&limit=${POST_LIMIT}`
                     : `/api/posts/reposts/${username}?page=${page}&limit=${POST_LIMIT}`;
 
-            const res = await fetch(endpoint);
-            const data = await res.json();
+            const res = await api.get(endpoint);
+            const data = await res.data; // updated to use res.data
 
             if (!Array.isArray(data?.posts)) throw new Error("Invalid post data");
 

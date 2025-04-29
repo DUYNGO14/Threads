@@ -5,6 +5,7 @@ import {
 import useShowToast from "../hooks/useShowToast";
 import { ViewIcon, ViewOffIcon } from "@chakra-ui/icons";
 import { useParams, useNavigate } from "react-router-dom";
+import api from "../services/api.js";
 const ResetPasswordCard = () => {
     const [state, setState] = useState({
         showPassword: false,
@@ -36,13 +37,11 @@ const ResetPasswordCard = () => {
         try {
             setState((prev) => ({ ...prev, isLoading: true }));
 
-            const res = await fetch(`/api/auth/reset-password/${token}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ newPassword: state.password.trim() }),
+            const res = await api.post(`/api/auth/reset-password/${token}`, {
+                newPassword: state.password.trim(),
             });
 
-            const data = await res.json();
+            const data = res.data;
             if (!res.ok) throw new Error(data.error || "Failed to reset password");
 
             showToast("Success", "Password reset successful! Please login.", "success");

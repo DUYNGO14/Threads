@@ -23,7 +23,7 @@ import { useDebouncedCallback } from 'use-debounce';
 import { authScreenAtom } from '../atoms/authAtom';
 import useShowToast from '../hooks/useShowToast';
 import userAtom from '../atoms/userAtom';
-import { saveEncryptedData } from '../../utils/encryptedData';
+import api from '../services/api';
 const LoginCard = () => {
     const [state, setState] = useState({
         showPassword: false,
@@ -57,17 +57,16 @@ const LoginCard = () => {
 
         try {
             setState((prev) => ({ ...prev, isLoading: true }));
-            const res = await fetch("/api/auth/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ emailOrUsername: state.emailOrUsername.trim(), password: state.password.trim() }),
+            const res = await api.post("/api/auth/login", {
+                emailOrUsername: state.emailOrUsername.trim(),
+                password: state.password.trim(),
             });
 
-            const data = await res.json();
+            const data = await res.data;
+            console.log("Login response:", data); // Log the response for debugging
             if (data.error) throw new Error(data.error);
-
-            saveEncryptedData("user-threads", data);
-            setUser(data);
+            localStorage.setItem("access-token", data.accessToken);
+            setUser(data.user);
         } catch (error) {
             showToast("Error", error.message || "Something went wrong", "error");
         } finally {

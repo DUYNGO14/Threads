@@ -17,6 +17,7 @@ import usePreviewImg from "../hooks/usePreviewImg";
 import useShowToast from "../hooks/useShowToast";
 import { useNavigate } from "react-router-dom";
 import SocialLinksInput from "../components/SocialLinksInput";
+import api from "../services/api.js";
 export default function UpdateProfilePage() {
     const [user, setUser] = useRecoilState(userAtom);
     const [inputs, setInputs] = useState({
@@ -46,21 +47,14 @@ export default function UpdateProfilePage() {
             socialLinks: inputs.socialLinks, // ✅ dùng đúng key
         };
         try {
-            const res = await fetch(`/api/users/update/${user._id}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(updatedUser),
-            });
-            const data = await res.json(); // updated user object
+            const res = await api.put(`/api/users/update/${user._id}`, updatedUser);
+            const data = await res.data; // updated user object
             if (data.error) {
                 showToast("Error", data.error, "error");
                 return;
             }
             showToast("Success", "Profile updated successfully", "success");
             setUser(data);
-
         } catch (error) {
             showToast("Error", error, "error");
         } finally {

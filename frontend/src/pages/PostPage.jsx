@@ -12,7 +12,7 @@ import userAtom from "../atoms/userAtom";
 import { DeleteIcon } from "@chakra-ui/icons";
 import postsAtom from "../atoms/postsAtom";
 import Carousels from "../components/Carousels";
-
+import api from "../services/api.js";
 const PostPage = () => {
     const { user, loading } = useGetUserProfile();
     const [posts, setPosts] = useRecoilState(postsAtom);
@@ -68,8 +68,8 @@ const PostPage = () => {
     useEffect(() => {
         const getPost = async () => {
             try {
-                const res = await fetch(`/api/posts/${pid}?page=${page}`);
-                const data = await res.json();
+                const res = await api.get(`/api/posts/${pid}?page=${page}`);
+                const data = await res.data;
 
                 if (data.error) {
                     showToast("Error", data.error, "error");
@@ -107,10 +107,8 @@ const PostPage = () => {
         try {
             if (!window.confirm("Are you sure you want to delete this post?")) return;
 
-            const res = await fetch(`/api/posts/${currentPost._id}`, {
-                method: "DELETE",
-            });
-            const data = await res.json();
+            const res = await api.delete(`/api/posts/${currentPost._id}`);
+            const data = await res.data;
             if (data.error) {
                 showToast("Error", data.error, "error");
                 return;

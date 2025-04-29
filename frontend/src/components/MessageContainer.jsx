@@ -10,6 +10,7 @@ import userAtom from "../atoms/userAtom";
 import { useSocket } from "../context/SocketContext.jsx";
 import messageSound from "../assets/sounds/message.mp3";
 import { useNavigate } from "react-router-dom";
+import api from "../services/api.js";
 const MessageContainer = ({ isOnline, onClose }) => {
     const showToast = useShowToast();
     const selectedConversation = useRecoilValue(selectedConversationAtom);
@@ -90,8 +91,8 @@ const MessageContainer = ({ isOnline, onClose }) => {
             setMessages([]);
             try {
                 if (selectedConversation.mock) return;
-                const res = await fetch(`/api/messages/${selectedConversation.userId}`);
-                const data = await res.json();
+                const res = await api.get(`api/messages/${selectedConversation.userId}`);
+                const data = await res.data;
                 if (data.error) {
                     showToast("Error", data.error, "error");
                     return;
@@ -106,7 +107,6 @@ const MessageContainer = ({ isOnline, onClose }) => {
 
         if (selectedConversation.userId) getMessages();
     }, [showToast, selectedConversation.userId, selectedConversation.mock]);
-
     return (
 
         <Flex
@@ -195,3 +195,4 @@ const MessageContainer = ({ isOnline, onClose }) => {
 };
 
 export default MessageContainer;
+

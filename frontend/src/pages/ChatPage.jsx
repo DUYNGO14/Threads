@@ -23,7 +23,7 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { conversationsAtom, selectedConversationAtom } from "../atoms/messagesAtom";
 import userAtom from "../atoms/userAtom";
 import { useSocket } from "../context/SocketContext";
-
+import api from "../services/api.js";
 const ChatPage = () => {
     const [searchingUser, setSearchingUser] = useState(false);
     const [loadingConversations, setLoadingConversations] = useState(true);
@@ -42,7 +42,6 @@ const ChatPage = () => {
     const borderColor = useColorModeValue("gray.200", "gray.600");
     const textColor = useColorModeValue("gray.600", "gray.400");
     const bgColor = useColorModeValue("white", "gray.800")
-    console.log(followedUsers)
     // Khi xóa hội thoại
     const handleDeleteConversation = (conversationId) => {
         setConversations((prev) => prev.filter(c => c._id !== conversationId));
@@ -53,8 +52,10 @@ const ChatPage = () => {
     useEffect(() => {
         const fetchFollowedUsers = async () => {
             try {
-                const res = await fetch(`api/users/${currentUser.username}/following`);
-                const data = await res.json();
+                console.log(`/api/users/${currentUser.username}/following`)
+                const res = await api.get(`/api/users/${currentUser.username}/following`);
+                const data = await res.data; // Updated to use res.data instead of res.json()
+                console.log(data);
                 if (data.error) return showToast("Error", data.error, "error");
                 setFollowedUsers(data);
             } catch (error) {
@@ -63,14 +64,14 @@ const ChatPage = () => {
         };
 
         fetchFollowedUsers();
-    }, []);
+    }, [currentUser.username, showToast]);
 
     // Lấy danh sách cuộc trò chuyện
     useEffect(() => {
         const fetchConversations = async () => {
             try {
-                const res = await fetch("/api/conversations");
-                const data = await res.json();
+                const res = await api.get("/api/conversations");
+                const data = await res.data; // Updated to use res.data instead of res.json()
                 if (data.error) return showToast("Error", data.error, "error");
                 setConversations(data);
             } catch (error) {
@@ -80,15 +81,15 @@ const ChatPage = () => {
             }
         };
         fetchConversations();
-    }, [showToast]);
+    }, [showToast, setConversations, currentUser.username]);
 
     // Tìm kiếm người dùng
     const handleConversationSearch = async (e) => {
         e.preventDefault();
         setSearchingUser(true);
         try {
-            const res = await fetch(`/api/users/search/${searchText}`);
-            const users = await res.json();
+            const res = await api.get(`/api/users/search/${searchText}`);
+            const users = res.data;
             const filteredUsers = users.filter((user) => user._id !== currentUser._id);
             setSearchResults(filteredUsers);
         } catch (error) {
@@ -100,12 +101,10 @@ const ChatPage = () => {
 
     const handleSelectUser = async (user) => {
         try {
-            const res = await fetch("/api/conversations/initiate", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ receiverId: user._id }),
+            const res = await api.post("/api/conversations/initiate", {
+                receiverId: user._id,
             });
-            const data = await res.json();
+            const data = await res.data;
 
             if (data.error) {
                 showToast("Error", data.error, "error");

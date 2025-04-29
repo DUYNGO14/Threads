@@ -1,4 +1,4 @@
-import { Box, useColorMode, Grid, GridItem } from "@chakra-ui/react";
+import { Grid, GridItem, useColorMode } from "@chakra-ui/react";
 import Header from "../components/Header";
 
 const BaseLayout = ({ children, showHeader = true }) => {

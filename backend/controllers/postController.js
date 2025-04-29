@@ -66,7 +66,7 @@ const createPost = async (req, res) => {
       }
 
       for (const file of mediaFiles) {
-        if (file.type === "image" || file.type === "audio") {
+        if (file.type === "image") {
           const moderation = await moderateMedia(file.url, file.type);
           if (!moderation.ok) {
             await deleteMediaFiles(mediaFiles);
@@ -513,7 +513,7 @@ const getAllPosts = async (req, res) => {
 
     const query = req.user?._id
       ? { postedBy: { $ne: req.user._id }, status: "approved" }
-      : {};
+      : { status: "approved" };
 
     const [posts, totalPosts] = await Promise.all([
       Post.find(query)
@@ -631,6 +631,14 @@ const repost = async (req, res) => {
         );
 
         await session.commitTransaction();
+        await sendNotification({
+          sender: req.user,
+          receivers: post.postedBy,
+          type: "repost",
+          content: `${req.user.username} just reposted your post.`,
+          post: postId,
+        });
+        // Gửi thông báo real-time qua socket
         res.status(200).json({ message: "Post reposted successfully" });
       }
     } catch (error) {

@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { followingAtom, followersAtom } from "../atoms/followAtoms";
 import useShowToast from "./useShowToast";
 import userAtom from "../atoms/userAtom";
-
+import api from "../services/api.js";
 const useFollowUnfollow = (user, onSuccess) => {
   const currentUser = useRecoilValue(userAtom);
   const setFollowers = useSetRecoilState(followersAtom);
@@ -36,11 +36,10 @@ const useFollowUnfollow = (user, onSuccess) => {
     );
 
     try {
-      const res = await fetch(`/api/users/follow/${user._id}`, {
-        method: "POST",
-      });
-      const data = await res.json();
-
+      const res = await api.post(`/api/users/follow/${user._id}`, {});
+      console.log("res", res);
+      const data = await res.data;
+      console.log("data", data.error);
       if (data.error) {
         setFollowingLocal(!optimisticValue);
         setFollowing((prev) => prev.filter((u) => u._id !== user._id));

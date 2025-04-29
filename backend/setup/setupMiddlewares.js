@@ -10,7 +10,7 @@ export default function setupMiddlewares(app) {
 
   app.use(
     cors({
-      origin: "*",
+      origin: [process.env.CLIENT_URL, "http://localhost:3000"],
       credentials: true,
     })
   );

@@ -23,6 +23,8 @@ import { PropTypes } from "prop-types";
 import { BsHeart, BsHeartFill, BsChat, BsShare, BsRepeat } from "react-icons/bs";
 import { FaRepeat } from "react-icons/fa6";
 import { useSocket } from "../context/SocketContext";
+import api from "../services/api.js"; // <-- import axios client của bạn
+
 const Actions = ({ post, onPostUpdate }) => {
     const user = useRecoilValue(userAtom);
     const [liked, setLiked] = useState(post?.likes?.includes(user?._id) || false);
@@ -34,6 +36,7 @@ const Actions = ({ post, onPostUpdate }) => {
     const showToast = useShowToast();
     const { isOpen, onOpen, onClose } = useDisclosure();
     const socket = useSocket();
+
     useEffect(() => {
         if (post && user) {
             setLiked(post.likes?.includes(user._id) || false);
@@ -44,45 +47,33 @@ const Actions = ({ post, onPostUpdate }) => {
     if (!post) return null;
 
     const handleLikeAndUnlike = async () => {
-
         if (!user) {
             showToast("Error", "You must be logged in to like posts", "error");
             return;
         }
 
-        if (!post) return;
-
         setIsLiking(true);
         try {
-            const res = await fetch(`/api/posts/like/${post._id}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-            });
-            const data = await res.json();
-            if (data.error) {
-                showToast("Error", data.error, "error");
-                return;
-            }
+            const { data } = await api.put(`/api/posts/like/${post._id}`);
+            if (data.error) throw new Error(data.error);
 
             const updatedPost = {
                 ...post,
-                likes: !liked
-                    ? [...(post.likes || []), user._id]
-                    : post.likes.filter(id => id !== user._id)
+                likes: liked
+                    ? post.likes.filter(id => id !== user._id)
+                    : [...(post.likes || []), user._id],
             };
+
             onPostUpdate(updatedPost);
             setLiked(!liked);
-            // showToast("Success", liked ? "Post unliked" : "Post liked", "success");
         } catch (error) {
-            showToast("Error", error.message, "error");
+            showToast("Error", error.message || "Failed to like post", "error");
         } finally {
             setIsLiking(false);
         }
     };
 
-    const handleReply = async () => {
+    const handleReply = () => {
         if (!user) {
             showToast("Error", "You must be logged in to reply", "error");
             return;
@@ -98,38 +89,33 @@ const Actions = ({ post, onPostUpdate }) => {
 
         setIsReplying(true);
         try {
-            const res = await fetch(`/api/posts/reply/${post._id}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ text: reply }),
-            });
-            const data = await res.json();
-            if (data.error) {
-                showToast("Error", data.error, "error");
-                return;
-            }
+            const { data } = await api.put(`/api/posts/reply/${post._id}`, { text: reply });
+            if (data.error) throw new Error(data.error);
 
             const updatedPost = {
                 ...post,
-                replies: [...post.replies, {
-                    userId: user._id,
-                    text: reply,
-                    userProfilePic: user.profilePic,
-                    username: user.username
-                }]
+                replies: [
+                    ...post.replies,
+                    {
+                        userId: user._id,
+                        text: reply,
+                        userProfilePic: user.profilePic,
+                        username: user.username,
+                    },
+                ],
             };
+
             onPostUpdate(updatedPost);
             setReply("");
             onClose();
             showToast("Success", "Reply added successfully", "success");
         } catch (error) {
-            showToast("Error", error.message, "error");
+            showToast("Error", error.message || "Failed to reply", "error");
         } finally {
             setIsReplying(false);
         }
     };
+
     const copyURL = () => {
         if (!post.postedBy || !post.postedBy.username) {
             showToast("Error", "Không thể tạo link cho bài viết này", "error");
@@ -137,11 +123,9 @@ const Actions = ({ post, onPostUpdate }) => {
         }
 
         const postURL = `${window.location.origin}/${post.postedBy.username}/post/${post._id}`;
-        navigator.clipboard.writeText(postURL).then(() => {
-            showToast("Success", "Link đã được sao chép", "success");
-        }).catch(() => {
-            showToast("Error", "Không thể sao chép link", "error");
-        });
+        navigator.clipboard.writeText(postURL)
+            .then(() => showToast("Success", "Link đã được sao chép", "success"))
+            .catch(() => showToast("Error", "Không thể sao chép link", "error"));
     };
 
     const handleRepost = async () => {
@@ -150,35 +134,23 @@ const Actions = ({ post, onPostUpdate }) => {
             return;
         }
 
-        if (!post) return;
-
         setIsReposting(true);
         try {
-            const res = await fetch(`/api/posts/repost/${post._id}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-            });
-            const data = await res.json();
-
-            if (data.error) {
-                showToast("Error", data.error, "error");
-                return;
-            }
+            const { data } = await api.put(`/api/posts/repost/${post._id}`);
+            if (data.error) throw new Error(data.error);
 
             const updatedPost = {
                 ...post,
-                repostedBy: !reposted
-                    ? [...(post.repostedBy || []), user._id]
-                    : post.repostedBy.filter(id => id !== user._id)
+                repostedBy: reposted
+                    ? post.repostedBy.filter(id => id !== user._id)
+                    : [...(post.repostedBy || []), user._id],
             };
 
             onPostUpdate(updatedPost);
             setReposted(!reposted);
             showToast("Success", reposted ? "Post unreposted" : "Post reposted", "success");
         } catch (error) {
-            showToast("Error", error.message, "error");
+            showToast("Error", error.message || "Failed to repost", "error");
         } finally {
             setIsReposting(false);
         }

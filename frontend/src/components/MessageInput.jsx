@@ -24,7 +24,7 @@ import PropTypes from "prop-types";
 import GiphyPicker from "./GiphyPicker";
 import useShowToast from "../hooks/useShowToast";
 import { conversationsAtom, selectedConversationAtom } from "../atoms/messagesAtom";
-
+import api from "../services/api.js";
 const MessageInput = ({ setMessages }) => {
     const [messageText, setMessageText] = useState("");
     const [mediaFiles, setMediaFiles] = useState([]);
@@ -89,12 +89,13 @@ const MessageInput = ({ setMessages }) => {
             formData.append("recipientId", selectedConversation.userId);
             mediaFiles.forEach((file) => formData.append("media", file));
 
-            const res = await fetch("/api/messages", {
-                method: "POST",
-                body: formData,
+            const res = await api.post("/api/messages", formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
             });
 
-            const data = await res.json();
+            const data = await res.data;
             if (data.error) return showToast("Error", data.error, "error");
 
             setMessages((prev) => [...prev, data]);

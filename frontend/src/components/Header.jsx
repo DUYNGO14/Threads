@@ -16,7 +16,6 @@ import { MdOutlineSettings } from "react-icons/md";
 import { HamburgerIcon } from "@chakra-ui/icons";
 import CreatePostModal from "./CreatePostModal";
 import { ChatIconWithBadge, NotificationIconWithBadge } from "./IconWithBadge";
-import { IoMdNotificationsOutline } from "react-icons/io";
 
 const Header = () => {
     const { colorMode, toggleColorMode } = useColorMode();
@@ -38,11 +37,8 @@ const Header = () => {
     });
 
     const handleNav = (path) => {
-        if (location.pathname === path) {
-            navigate(path, { replace: true }); // force remount
-        } else {
-            navigate(path);
-        }
+        const isSamePath = location.pathname === path;
+        navigate(path, { replace: isSamePath, state: isSamePath ? { refresh: Date.now() } : {} });
     };
 
     const renderMenuItems = (isLoggedIn) => (

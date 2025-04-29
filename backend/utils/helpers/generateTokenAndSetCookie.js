@@ -4,19 +4,18 @@ import {
   JWT_EXPIRES_IN_REFRESH,
 } from "../../constants/token.js";
 const generateTokenAndSetCookie = (userId, res) => {
-  const token = jwt.sign({ userId }, process.env.JWT_SECRET, {
+  const accessToken = jwt.sign({ userId }, process.env.JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
   });
   const refreshToken = jwt.sign({ userId }, process.env.JWT_SECRET_REFRESH, {
     expiresIn: JWT_EXPIRES_IN_REFRESH,
   });
-  res.cookie("jwt", token, {
+  res.cookie("refreshToken", refreshToken, {
     httpOnly: true, // more secure
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict", // CSRF
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
-
-  return token;
+  return accessToken;
 };
 export default generateTokenAndSetCookie;

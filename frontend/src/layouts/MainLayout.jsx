@@ -1,7 +1,5 @@
 import { Grid, GridItem, useColorMode } from "@chakra-ui/react";
 import BaseLayout from "./BaseLayout";
-import LeftSidebar from "../components/LeftSidebar";
-import RightSidebar from "../components/RightSidebar";
 
 const MainLayout = ({ children }) => {
     const { colorMode } = useColorMode();
@@ -29,21 +27,16 @@ const MainLayout = ({ children }) => {
                     borderRight="1px"
                     borderColor={borderColor}
                     pr={4}
-                >
-                    {/* <LeftSidebar /> */}
-                </GridItem>
-
+                />
                 {/* Main Content */}
                 <GridItem
-                    maxW={{ base: "750px", xl: "960px" }} // tăng từ 850px → 960px
+                    maxW={{ base: "750px", xl: "960px" }} // Tăng từ 850px → 960px
                     w="full"
                     mx="auto"
                     pb={{ base: "80px", lg: 4 }}
                 >
                     {children}
                 </GridItem>
-
-
                 {/* Right Sidebar */}
                 <GridItem
                     display={{ base: "none", xl: "block" }}
@@ -53,9 +46,7 @@ const MainLayout = ({ children }) => {
                     borderLeft="1px"
                     borderColor={borderColor}
                     pl={4}
-                >
-                    {/* <RightSidebar /> */}
-                </GridItem>
+                />
             </Grid>
         </BaseLayout>
     );

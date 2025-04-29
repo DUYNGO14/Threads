@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSetRecoilState } from "recoil";
 import userAtom from "../atoms/userAtom";
 import useShowToast from "../hooks/useShowToast";
-
+import api from "../services/api.js";
 const OAuthSuccess = () => {
     const navigate = useNavigate();
     const setUser = useSetRecoilState(userAtom);
@@ -12,8 +12,8 @@ const OAuthSuccess = () => {
     useEffect(() => {
         const handleOAuthSuccess = async () => {
             try {
-                const res = await fetch("/api/auth/me");
-                const data = await res.json();
+                const res = await api.get("/api/auth/me");
+                const data = await res.data;
 
                 if (data.error) {
                     showToast("Error", data.error, "error");

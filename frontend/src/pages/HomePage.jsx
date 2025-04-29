@@ -17,9 +17,9 @@ import SuggestedUsers from "../components/SuggestedUsers";
 import userAtom from "../atoms/userAtom";
 import useShowToast from "../hooks/useShowToast";
 import { FaThreads } from "react-icons/fa6";
-
-const INITIAL_POSTS_LIMIT = 10;
-const SCROLL_POSTS_LIMIT = 10;
+import api from "../services/api.js";
+const INITIAL_POSTS_LIMIT = 5;
+const SCROLL_POSTS_LIMIT = 5;
 
 const HomePage = () => {
     const currentUser = useRecoilValue(userAtom);
@@ -27,7 +27,6 @@ const HomePage = () => {
     const { colorMode } = useColorMode();
     const location = useLocation();
     const navigate = useNavigate();
-
     const [feedType, setFeedType] = useState("propose");
     const [posts, setPosts] = useState([]);
     const [page, setPage] = useState(1);
@@ -48,6 +47,9 @@ const HomePage = () => {
     ];
 
     const fetchPosts = useCallback(async (pageNum = 1, isInit = false) => {
+        const controller = new AbortController();
+        const signal = controller.signal;
+
         if ((loading || loadingMore) && !isInit) return;
         if (!hasMore && !isInit) return;
 
@@ -57,38 +59,32 @@ const HomePage = () => {
             const endpoint = feedType === "propose" ? "/api/posts/propose" : "/api/posts/followed";
             const limit = isInit ? INITIAL_POSTS_LIMIT : SCROLL_POSTS_LIMIT;
 
-            const res = await fetch(`${endpoint}?page=${pageNum}&limit=${limit}`);
-            const data = await res.json();
-
+            const res = await api.get(`${endpoint}?page=${pageNum}&limit=${limit}`, { signal });
+            const data = await res.data;
             if (data.error) {
                 showToast("Lỗi", data.error, "error");
                 return;
             }
 
             const newPosts = data.posts || [];
-
-            setPosts(prev =>
-                isInit
-                    ? newPosts
-                    : [...prev, ...newPosts].filter((post, i, self) =>
-                        i === self.findIndex(p => p._id === post._id)
-                    )
-            );
-
+            setPosts(prev => isInit ? newPosts : [...prev, ...newPosts].filter((p, i, self) => i === self.findIndex(x => x._id === p._id)));
             setHasMore(newPosts.length >= limit);
             if (isInit) setInitialLoadDone(true);
 
         } catch (err) {
-            showToast("Lỗi", err.message, "error");
+            if (err.name !== "AbortError") {
+                showToast("Lỗi", err.message, "error");
+            }
         } finally {
             isInit ? setLoading(false) : setLoadingMore(false);
         }
+
+        return () => controller.abort();
     }, [feedType, loading, loadingMore, hasMore]);
+
 
     // Load khi feedType hoặc refreshKey đổi
     useEffect(() => {
-
-
         setPosts([]);
         setPage(1);
         setHasMore(true);
@@ -98,31 +94,46 @@ const HomePage = () => {
 
     // Infinite scroll
     useEffect(() => {
-        scrollHandlerRef.current = debounce(() => {
+        const handleScroll = debounce(() => {
             const bottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 300;
             if (bottom && !loading && !loadingMore && hasMore && initialLoadDone) {
                 const nextPage = page + 1;
                 setPage(nextPage);
                 fetchPosts(nextPage);
             }
-        }, 100);
+        }, 100, { leading: true, trailing: true });
 
-        window.addEventListener("scroll", scrollHandlerRef.current);
-        return () => window.removeEventListener("scroll", scrollHandlerRef.current);
+        window.addEventListener("scroll", handleScroll);
+
+        return () => {
+            window.removeEventListener("scroll", handleScroll);
+        };
     }, [loading, loadingMore, hasMore, initialLoadDone, page, fetchPosts]);
 
-    // Scroll đến bài viết từ trang khác
     useEffect(() => {
-        if (location.state?.fromPostPage && location.state?.postId) {
-            if (posts.length > 0) {
-                const el = document.getElementById(`post-${location.state.postId}`);
-                if (el) {
-                    el.scrollIntoView({ behavior: "smooth", block: "start" });
-                    navigate(location.pathname, { replace: true, state: {} });
-                }
-            }
+        if (location.state?.refresh) {
+            setRefreshKey(Date.now()); // trigger reload
+            window.scrollTo({ top: 0, behavior: "smooth" }); // cuộn về đầu trang
+            navigate(location.pathname, { replace: true, state: {} }); // clear state
         }
-    }, [location, navigate, feedType, posts]);
+    }, [location]);
+
+    // Scroll đến post nếu được redirect từ trang post
+    useEffect(() => {
+        if (!location.state?.fromPostPage || !location.state?.postId) return;
+
+        const handleScroll = () => {
+            const el = document.getElementById(`post-${location.state.postId}`);
+            if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+            navigate(location.pathname, { replace: true, state: {} });
+        };
+
+        if (initialLoadDone) {
+            handleScroll();
+        }
+    }, [initialLoadDone, location, navigate]);
 
     const handlePostUpdate = useCallback((updatedPost) => {
         if (!updatedPost) return;
@@ -142,8 +153,8 @@ const HomePage = () => {
         <Box position="relative">
             <Grid
                 templateAreas={`"main aside"`}
-                templateColumns={{ base: "1fr", xl: "minmax(auto, 1200px) 260px" }}
-                gap={6}
+                templateColumns={{ base: "1fr", xl: "minmax(auto, 1200px) 250px" }}
+                gap={8}
                 alignItems="flex-start"
                 maxW="1600px"
                 mx="auto"
@@ -160,7 +171,6 @@ const HomePage = () => {
                         borderColor={colorMode === "dark" ? "whiteAlpha.100" : "gray.200"}
                         pt={3}
                         pb={2}
-                        px={4}
                     >
                         <Flex direction="column" align="center">
                             <Tabs
@@ -193,7 +203,7 @@ const HomePage = () => {
                             >
                                 <VStack spacing={4}>
                                     <Icon as={BsPostcard} boxSize={10} color="gray.500" />
-                                    <Text fontSize="lg" fontWeight="bold" color="gray.500">Không có bài viết</Text>
+                                    <Text fontSize="lg" fontWeight="bold" color="gray.500">No </Text>
                                     <Text fontSize="md" color="gray.500" textAlign="center">
                                         {feedType === "followed"
                                             ? "Hãy theo dõi bạn bè để xem bài viết tại đây!"

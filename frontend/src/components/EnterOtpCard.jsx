@@ -5,7 +5,7 @@ import {
 import { useSetRecoilState } from "recoil";
 import { authScreenAtom } from "../atoms/authAtom";
 import useShowToast from "../hooks/useShowToast";
-
+import api from "../services/api.js";
 const EnterOtpCard = () => {
     const [otp, setOtp] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -14,14 +14,11 @@ const EnterOtpCard = () => {
 
     // Lấy email từ localStorage
     const email = localStorage.getItem("email-for-verification");
+    const { resendOTP, verifyEmail } = api;
     const handleResendOTP = async () => {
         try {
 
-            const res = await fetch("/api/auth/resend-otp", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: email }),
-            });
+            const res = await resendOTP({ email: email });
 
             const data = await res.json();
             if (data.error) throw new Error(data.error);
@@ -37,11 +34,7 @@ const EnterOtpCard = () => {
         }
         try {
             setIsLoading(true);
-            const res = await fetch("/api/auth/verify-account", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, code: otp }), // ✅ Gửi cả email và OTP
-            });
+            const res = await verifyEmail({ email, code: otp }); // ✅ Gửi cả email và OTP
 
             const data = await res.json();
             if (data.error) throw new Error(data.error);
