@@ -1,7 +1,6 @@
 import {
     Box, Grid, GridItem, Stack, Spinner, useColorMode, useColorModeValue,
-    VStack, Icon, Text, Flex,
-    Button
+    VStack, Icon, Text, Flex
 } from "@chakra-ui/react";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRecoilValue } from "recoil";
@@ -12,11 +11,9 @@ import { BsPostcard } from "react-icons/bs";
 import Tabs from "../components/Tabs";
 import Post from "../components/Post";
 import PostSkeleton from "../components/PostSkeleton";
-import SuggestedUsers from "../components/SuggestedUsers";
 
 import userAtom from "../atoms/userAtom";
 import useShowToast from "../hooks/useShowToast";
-import { FaThreads } from "react-icons/fa6";
 import api from "../services/api.js";
 const INITIAL_POSTS_LIMIT = 5;
 const SCROLL_POSTS_LIMIT = 5;
@@ -39,7 +36,6 @@ const HomePage = () => {
     const emptyBg = useColorModeValue('white', 'gray.dark');
     const emptyBorder = useColorModeValue('gray.200', 'gray.700');
 
-    const scrollHandlerRef = useRef();
 
     const tabs = [
         { value: "propose", label: "For you" },
@@ -152,8 +148,8 @@ const HomePage = () => {
     return (
         <Box position="relative">
             <Grid
-                templateAreas={`"main aside"`}
-                templateColumns={{ base: "1fr", xl: "minmax(auto, 1200px) 250px" }}
+                templateAreas={`"main"`}
+                templateColumns="1fr"
                 gap={8}
                 alignItems="flex-start"
                 maxW="1600px"
@@ -167,10 +163,14 @@ const HomePage = () => {
                         right="0"
                         zIndex="100"
                         bg={colorMode === "dark" ? "#101010" : "gray.50"}
-                        borderBottom="1px"
-                        borderColor={colorMode === "dark" ? "whiteAlpha.100" : "gray.200"}
+                        // borderBottom="1px"
+                        // borderColor={colorMode === "dark" ? "whiteAlpha.100" : "gray.200"}
                         pt={3}
                         pb={2}
+                        w="full"  // Ensure full width
+                        maxW={{ base: "750px", xl: "850px" }} // Limit max width
+                        mx="auto" // Center horizontally
+
                     >
                         <Flex direction="column" align="center">
                             <Tabs
@@ -181,8 +181,7 @@ const HomePage = () => {
                             />
                         </Flex>
                     </Box>
-
-                    <Box pt="70px">
+                    <Box pt="70px" >
                         {loading && posts.length === 0 && (
                             <Stack spacing={4} mt={4}><PostSkeleton /><PostSkeleton /><PostSkeleton /></Stack>
                         )}
@@ -193,7 +192,7 @@ const HomePage = () => {
                                 borderColor={emptyBorder}
                                 borderWidth="1px"
                                 borderRadius="xl"
-                                p={6}
+
                                 mt={4}
                                 minH="50vh"
                                 display="flex"
@@ -213,7 +212,7 @@ const HomePage = () => {
                             </Box>
                         )}
 
-                        <Stack spacing={6}>
+                        <Stack spacing={6} >
                             {posts.map(post => (
                                 <Post
                                     key={post._id}
@@ -238,45 +237,9 @@ const HomePage = () => {
                         )}
                     </Box>
                 </GridItem>
-
-                <GridItem area="aside" display={{ base: "none", xl: "block" }} pt={"70px"}>
-                    {currentUser ? <SuggestedUsers /> : (
-                        <Box
-                            p={6}
-                            bg={colorMode === "dark" ? "#101010" : "gray.50"}
-                            borderRadius="xl"
-                            border="1px solid"
-                            borderColor={colorMode === "dark" ? "whiteAlpha.100" : "gray.200"}
-                            textAlign="center"
-                        >
-                            <Text fontSize="xl" fontWeight="bold" mb={2}>
-                                Log in or sign up to Threads
-                            </Text>
-                            <Text fontSize="sm" color="gray.400" mb={6}>
-                                See what people are talking about and join the conversation.
-                            </Text>
-                            <Button
-                                leftIcon={<Icon as={FaThreads} />}
-                                bg="whiteAlpha.200"
-                                _hover={{ bg: "whiteAlpha.300" }}
-                                size="lg"
-                                w="full"
-                                fontWeight="bold"
-                                color="white"
-                                borderRadius="xl"
-                                mb={4}
-                                onClick={() => navigate("/auth")}
-                            >
-                                Login in now
-                            </Button>
-                            <Text fontSize="sm" color="gray.500" mt={2}>
-                                Log in with username or email
-                            </Text>
-                        </Box>
-                    )}
-                </GridItem>
             </Grid>
         </Box>
+
     );
 };
 

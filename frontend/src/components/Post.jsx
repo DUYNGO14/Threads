@@ -1,10 +1,10 @@
-import { Avatar, Box, Flex, Text, IconButton, Divider, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, useDisclosure } from "@chakra-ui/react";
+import { Avatar, Box, Flex, Text, IconButton, Divider, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, useDisclosure, useColorModeValue } from "@chakra-ui/react";
 import { Link, useNavigate } from "react-router-dom";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
 import Actions from "./Actions";
-import { useCallback, useState } from "react";
+import React, { useCallback, useState } from "react";
 import useShowToast from "../hooks/useShowToast";
 import { formatDistanceToNow } from "date-fns";
 import { DeleteIcon } from "@chakra-ui/icons";
@@ -21,6 +21,7 @@ const Post = ({ post, postedBy, onPostUpdate, referrer }) => {
     const navigate = useNavigate();
     const { isOpen, onOpen, onClose } = useDisclosure();
     const [isDeleting, setIsDeleting] = useState(false);
+    const emptyBg = useColorModeValue('white', 'gray.dark');
     const handleDeletePost = useCallback(async () => {
         try {
             setIsDeleting(true);
@@ -58,9 +59,47 @@ const Post = ({ post, postedBy, onPostUpdate, referrer }) => {
 
     return (
         <>
-            <Box w="full" id={`post-${post._id}`} >
-                <Flex gap={4} p={4}>
-                    <Flex flexDirection={"column"} alignItems={"center"}>
+            <Box
+                w="full"
+                id={`post-${post._id}`}
+                bg={emptyBg}
+                borderRadius="md"
+                boxShadow="sm"
+                mb={6}
+                p={4}
+            >
+                {/* Reposted by section */}
+                {post.repostedBy?.length > 0 && (
+                    <Flex
+                        fontSize="xs"
+                        color="gray.500"
+                        mb={3}
+                        wrap="wrap"
+                        align="center"
+                    >
+                        <Text mr={1} fontWeight="medium" color="gray.600">
+                            Reposted by:
+                        </Text>
+                        {post.repostedBy.map((user, index) => (
+                            <React.Fragment key={user._id}>
+                                <Text
+                                    as={Link}
+                                    to={`/${user.username}`}
+                                    color="blue.500"
+                                    _hover={{ textDecoration: "underline" }}
+                                    mr={1}
+                                >
+                                    {user.username}
+                                </Text>
+                                {index < post.repostedBy.length - 1 && <Text mr={1}>,</Text>}
+                            </React.Fragment>
+                        ))}
+                    </Flex>
+                )}
+
+                {/* Post content */}
+                <Flex gap={4}>
+                    <Flex flexDirection="column" alignItems="center">
                         <Avatar
                             size="md"
                             name={postedBy?.username}
@@ -69,38 +108,51 @@ const Post = ({ post, postedBy, onPostUpdate, referrer }) => {
                             cursor="pointer"
                         />
                     </Flex>
-                    <Flex flex={1} flexDirection={"column"} gap={2}>
-                        <Flex justifyContent={"space-between"} w={"full"}>
-                            <Flex w={"full"} alignItems={"center"} gap={2}>
+                    <Flex flex={1} flexDirection="column" gap={2}>
+                        {/* Header */}
+                        <Flex justify="space-between" w="full" align="center">
+                            <Flex align="center" gap={2}>
                                 <Text
-                                    fontSize={"sm"}
-                                    fontWeight={"bold"}
+                                    fontSize="sm"
+                                    fontWeight="bold"
                                     onClick={handleNavigateToProfile}
                                     cursor="pointer"
+                                    _hover={{ textDecoration: "underline" }}
                                 >
                                     {postedBy?.username || "Unknown"}
                                 </Text>
-                                <Text fontSize={"xs"} color={"gray.500"}>
-                                    {post.createdAt ? formatDistanceToNow(new Date(post.createdAt)) : "Just now"}
+                                <Text fontSize="xs" color="gray.500">
+                                    {post.createdAt
+                                        ? formatDistanceToNow(new Date(post.createdAt))
+                                        : "Just now"}
                                 </Text>
                             </Flex>
                             {currentUser?._id === postedBy?._id && (
                                 <IconButton
                                     size="sm"
                                     icon={<DeleteIcon />}
-                                    colorScheme="red" _hover={{ color: "red.500" }}
+                                    colorScheme="red"
                                     variant="ghost"
+                                    aria-label="Delete Post"
                                     onClick={onOpen}
                                 />
                             )}
                         </Flex>
-                        <Link to={`/${postedBy.username}/post/${post._id}`} onClick={() => {
-                            localStorage.setItem("scrollToPostId", post._id);
-                            localStorage.setItem("referrer", JSON.stringify(referrer));
-                        }}>
-                            <Text whiteSpace="pre-line" fontSize={"sm"}>{post.text}</Text>
+
+                        {/* Text */}
+                        <Link
+                            to={`/${postedBy.username}/post/${post._id}`}
+                            onClick={() => {
+                                localStorage.setItem("scrollToPostId", post._id);
+                                localStorage.setItem("referrer", JSON.stringify(referrer));
+                            }}
+                        >
+                            <Text fontSize="sm" whiteSpace="pre-line" mt={1}>
+                                {post.text}
+                            </Text>
                         </Link>
-                        {/* Hiển thị ảnh/video theo dạng lưới */}
+
+                        {/* Media */}
                         {post.media?.length > 0 && (
                             <Box
                                 mt={2}
@@ -112,16 +164,21 @@ const Post = ({ post, postedBy, onPostUpdate, referrer }) => {
                                 <Carousels medias={post.media} />
                             </Box>
                         )}
+
+                        {/* Actions (like, comment, etc.) */}
                         <Actions post={post} onPostUpdate={onPostUpdate} />
                     </Flex>
                 </Flex>
-                <Divider />
+                <Divider mt={4} />
             </Box>
 
+            {/* Delete Modal */}
             <Modal isOpen={isOpen} onClose={onClose} isCentered>
                 <ModalOverlay />
                 <ModalContent>
-                    <ModalHeader>Delete Post</ModalHeader>
+                    <ModalHeader fontSize="lg" fontWeight="bold">
+                        Delete Post
+                    </ModalHeader>
                     <ModalBody>
                         Are you sure you want to delete this post? This action cannot be undone.
                     </ModalBody>
@@ -129,13 +186,18 @@ const Post = ({ post, postedBy, onPostUpdate, referrer }) => {
                         <Button variant="ghost" mr={3} onClick={onClose}>
                             Cancel
                         </Button>
-                        <Button colorScheme="red" _hover={{ color: "red.500" }} onClick={handleDeletePost} isLoading={isDeleting}>
+                        <Button
+                            colorScheme="red"
+                            onClick={handleDeletePost}
+                            isLoading={isDeleting}
+                        >
                             Delete
                         </Button>
                     </ModalFooter>
                 </ModalContent>
             </Modal>
         </>
+
     );
 };
 

@@ -2,7 +2,7 @@ import express from "express";
 import {
   createPost,
   deletePost,
-  getFeedPosts,
+  getFollowingPosts,
   getPost,
   getUserPosts,
   likeUnlikePost,
@@ -10,6 +10,7 @@ import {
   getAllPosts,
   repost,
   getReposts,
+  getSuggestedPosts,
 } from "../controllers/postController.js";
 import protectRoute from "../middlewares/protectRoute.js";
 import multer from "multer";
@@ -19,8 +20,9 @@ const router = express.Router();
 
 const upload = multer({ dest: "uploads/" });
 
-router.get("/followed", protectRoute, getFeedPosts);
+router.get("/followed", protectRoute, getFollowingPosts);
 router.get("/propose", protectRoute, getAllPosts);
+router.get("/suggests", protectRoute, getSuggestedPosts);
 router.get("/reposts/:username", getReposts);
 router.get("/:id", getPost);
 router.get("/user/:username", getUserPosts);

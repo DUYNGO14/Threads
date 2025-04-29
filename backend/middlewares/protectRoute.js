@@ -2,7 +2,11 @@ import User from "../models/userModel.js";
 import jwt from "jsonwebtoken";
 
 const protectRoute = async (req, res, next) => {
-  const allowedUrls = ["/api/users/suggested", "/api/posts/propose"];
+  const allowedUrls = [
+    "/api/users/suggested",
+    "/api/posts/propose",
+    "/api/posts/suggests",
+  ];
   const isAllowedRoute = allowedUrls.some((url) =>
     req.originalUrl.startsWith(url)
   );

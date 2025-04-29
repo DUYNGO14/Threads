@@ -469,7 +469,7 @@ const getReposts = async (req, res) => {
 };
 
 // Lấy bài viết từ người dùng đang theo dõi
-const getFeedPosts = async (req, res) => {
+const getFollowingPosts = async (req, res) => {
   try {
     const userId = req.user?._id;
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -478,10 +478,14 @@ const getFeedPosts = async (req, res) => {
     if (!user) return res.status(404).json({ error: "User not found" });
 
     const { page, limit, skip } = getPaginationParams(req);
+    const followingIds = user.following;
 
     const query = {
-      postedBy: { $in: user.following, $ne: userId },
       status: "approved",
+      $or: [
+        { postedBy: { $in: followingIds } },
+        { repostedBy: { $in: followingIds } },
+      ],
     };
 
     const [posts, totalPosts] = await Promise.all([
@@ -489,17 +493,36 @@ const getFeedPosts = async (req, res) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .populate("postedBy", "_id username name profilePic"),
-
+        .populate("postedBy", "_id username name profilePic")
+        .populate("repostedBy", "_id username name profilePic"),
       Post.countDocuments(query),
     ]);
+
+    // Lọc bỏ các user trong repostedBy không nằm trong danh sách follow
+    const filteredPosts = posts.map((post) => {
+      const filteredRepostedBy = post.repostedBy.filter((user) =>
+        followingIds.includes(user._id.toString())
+      );
+      return {
+        ...post.toObject(),
+        repostedBy: filteredRepostedBy,
+      };
+    });
+
+    // Loại bỏ trùng lặp bài viết bằng _id (nếu có)
+    const uniquePostsMap = new Map();
+    filteredPosts.forEach((post) => {
+      uniquePostsMap.set(post._id.toString(), post);
+    });
+
+    const uniquePosts = Array.from(uniquePostsMap.values());
 
     res.status(200).json({
       page,
       limit,
-      totalPosts,
+      totalPosts: uniquePosts.length,
       totalPages: Math.ceil(totalPosts / limit),
-      posts,
+      posts: uniquePosts,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -534,6 +557,73 @@ const getAllPosts = async (req, res) => {
     });
   } catch (err) {
     console.error("Lỗi lấy bài viết:", err.message);
+    res.status(500).json({ error: "Lỗi server", message: err.message });
+  }
+};
+const getSuggestedPosts = async (req, res) => {
+  try {
+    const { page, limit, lastSeenId } = getPaginationParams(req); // Pagination params
+    const userId = req.user?._id;
+
+    // Lọc bài viết từ những người mà user đã tương tác (like, repost) hoặc đang follow
+    const followingIds = req.user?.following || []; // Các người dùng mà user đang theo dõi
+    const interactedIds = [
+      ...(req.user?.likes || []), // Bài viết mà người dùng đã like
+      ...(req.user?.reposts || []), // Bài viết mà người dùng đã repost
+    ];
+
+    // Điều kiện truy vấn: lấy bài viết từ những người mà user theo dõi hoặc đã tương tác
+    const query = {
+      $or: [
+        { postedBy: { $in: followingIds } }, // Bài viết từ người theo dõi
+        { _id: { $in: interactedIds } }, // Bài viết người dùng đã like hoặc repost
+        { status: "approved" }, // Lọc các bài viết đã được phê duyệt
+      ],
+    };
+
+    // Tính điểm cho các bài viết (likes, reposts, followers, thời gian)
+    const posts = await Post.find(query)
+      .populate("postedBy", "_id username name profilePic followers") // Lấy thêm followers của người đăng
+      .sort({ createdAt: -1 }) // Sắp xếp theo thời gian đăng
+      .limit(limit) // Giới hạn số lượng bài viết trả về
+      .skip(lastSeenId ? 1 : 0); // Nếu có lastSeenId, bỏ qua bài viết đã thấy
+
+    // Tính điểm cho các bài viết
+    posts.forEach((post) => {
+      let score = 0;
+
+      // Điểm cho likes
+      score += post.likes.length * 0.1; // 0.1 điểm cho mỗi lượt thích
+
+      // Điểm cho reposts
+      score += post.repostedBy.length * 0.2; // 0.2 điểm cho mỗi lượt repost
+
+      // Điểm cho followers của người đăng
+      score += post.postedBy.followers.length * 0.05; // 0.05 điểm cho mỗi follower
+
+      // Điểm cho thời gian đăng (bài viết mới hơn sẽ có điểm cao hơn)
+      const timeFactor =
+        (Date.now() - post.createdAt.getTime()) / (1000 * 60 * 60 * 24); // Số ngày kể từ khi bài viết được đăng
+      score -= timeFactor * 0.1; // Cộng dồn điểm (bài viết mới được ưu tiên hơn)
+
+      post.score = score; // Gán điểm cho bài viết
+
+      // Cập nhật bài viết với điểm mới (nếu cần thiết)
+      post.save();
+    });
+
+    // Sắp xếp bài viết theo điểm từ cao xuống thấp
+    const sortedPosts = posts.sort((a, b) => b.score - a.score);
+
+    // Trả về kết quả
+    res.status(200).json({
+      page,
+      limit,
+      totalPosts: sortedPosts.length,
+      posts: sortedPosts,
+    });
+  } catch (err) {
+    console.error("Lỗi gợi ý bài viết:", err.message);
     res.status(500).json({ error: "Lỗi server", message: err.message });
   }
 };
@@ -592,7 +682,7 @@ const repost = async (req, res) => {
     if (!post) {
       return res.status(404).json({ error: "Post not found" });
     }
-
+    const redisKey = `reposted:${req.user.username}`;
     // Bắt đầu transaction
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -638,6 +728,7 @@ const repost = async (req, res) => {
           content: `${req.user.username} just reposted your post.`,
           post: postId,
         });
+        await appendToCache(redisKey, post); // Xóa cache của reposts
         // Gửi thông báo real-time qua socket
         res.status(200).json({ message: "Post reposted successfully" });
       }
@@ -659,10 +750,11 @@ export {
   deletePost,
   likeUnlikePost,
   replyToPost,
-  getFeedPosts,
+  getFollowingPosts,
   getUserPosts,
   getReposts,
   getAllPosts,
   updatePost,
   repost,
+  getSuggestedPosts,
 };

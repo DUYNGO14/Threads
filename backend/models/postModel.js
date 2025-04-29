@@ -62,7 +62,9 @@ const postSchema = mongoose.Schema(
     timestamps: true,
   }
 );
-
+postSchema.index({ status: 1 });
+postSchema.index({ likes: 1 });
+postSchema.index({ repostedBy: 1 });
 const Post = mongoose.model("Post", postSchema);
 
 export default Post;
