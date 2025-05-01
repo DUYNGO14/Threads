@@ -54,7 +54,7 @@ const postSchema = mongoose.Schema(
     ],
     tags: {
       type: String,
-      default: "",
+      default: null,
     },
   },
   {

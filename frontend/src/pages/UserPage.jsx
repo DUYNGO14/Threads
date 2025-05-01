@@ -36,6 +36,7 @@ const UserPage = () => {
     const { colorMode } = useColorMode();
     const navigate = useNavigate();
     const location = useLocation();
+    const [refreshKey, setRefreshKey] = useState(Date.now());
     const myTabs = [
         { value: "threads", label: "Threads" },
         { value: "reposts", label: "Reposts" },
@@ -90,7 +91,7 @@ const UserPage = () => {
 
     useEffect(() => {
         fetchPosts();
-    }, [fetchPosts]);
+    }, [fetchPosts, refreshKey]);
 
     const handleTabChange = (tab) => {
         setFeedType(tab);
@@ -101,6 +102,13 @@ const UserPage = () => {
 
     const loadMore = () => {
         setPage((prev) => prev + 1);
+    };
+    const handleTabClick = (newTab) => {
+        if (newTab === feedType) {
+            setRefreshKey(Date.now());
+        } else {
+            setFeedType(newTab);
+        }
     };
     useEffect(() => {
         if (location.state?.fromPostPage && location.state?.postId) {
@@ -170,7 +178,7 @@ const UserPage = () => {
             <Box position="sticky" top="0" zIndex={1000} bg="transparent" boxShadow="md" width="100%" p={2}>
                 <Tabs
                     tabs={myTabs}
-                    onTabChange={handleTabChange}
+                    onTabChange={handleTabClick}
                     initialTab={feedType}
                     requireAuth={true}
                 />

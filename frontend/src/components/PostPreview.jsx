@@ -4,56 +4,53 @@ import {
     Input,
     Text, Textarea, useColorModeValue
 } from "@chakra-ui/react";
-import { BsFillCameraVideoFill, BsFillMicFill } from "react-icons/bs";
+import { useEffect, useState } from "react";
+import renderMedia from "./renderMedia";
 
-const renderMedia = (file, index) => {
-    switch (file.type) {
-        case "image":
-            return (
-                <Image
-                    src={file.preview}
-                    alt={`Image ${index + 1}`}
-                    w="full"
-                    maxH="300px"
-                    objectFit="contain"
-                    borderRadius="md"
-                />
-            );
-        case "video":
-            return (
-                <Box>
-                    <Flex align="center" mb={2}>
-                        <BsFillCameraVideoFill size={20} style={{ marginRight: 8 }} />
-                        <Text fontSize="sm" fontWeight="medium">Video {index + 1}</Text>
-                    </Flex>
-                    <video
-                        src={file.preview}
-                        controls
-                        style={{ width: "100%", maxHeight: "350px", borderRadius: "8px" }}
-                    />
-                </Box>
-            );
-        case "audio":
-            return (
-                <Box>
-                    <Flex align="center" mb={2}>
-                        <BsFillMicFill size={20} style={{ marginRight: 8 }} />
-                        <Text fontSize="sm" fontWeight="medium">Audio {index + 1}</Text>
-                    </Flex>
-                    <audio
-                        src={file.preview}
-                        controls
-                        style={{ width: "100%", height: "40px" }}
-                    />
-                </Box>
-            );
-        default:
-            return null;
-    }
-};
 
-const PostPreview = ({ user, mediaFiles, onRemoveFile, onTextChange, handleTagChange, postText, tags }) => {
-    const previewBgColor = useColorModeValue("gray.100", "#101010");
+const PostPreview = ({
+    user, postText, tags, mediaFiles,
+    onRemoveFile, onTextChange, handleTagChange,
+    suggestedTags = [],
+}) => {
+    const previewBgColor = useColorModeValue('gray.100', 'gray.dark');
+    const hoverBgColor = useColorModeValue("gray.100", "gray.700");
+    const [filteredTags, setFilteredTags] = useState([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+
+    // Mỗi khi suggestedTags thay đổi, set lại danh sách filter
+    useEffect(() => {
+        setFilteredTags(suggestedTags);
+    }, [suggestedTags]);
+
+    const handleTagInputChange = (e) => {
+        const inputValue = e.target.value.slice(0, 100); // Giới hạn độ dài tối đa của tags
+        handleTagChange({ target: { value: inputValue } });
+
+        // Lọc từ danh sách gợi ý khi người dùng nhập
+        const filtered = suggestedTags.filter((tag) =>
+            tag.toLowerCase().includes(inputValue.toLowerCase())
+        );
+        setFilteredTags(filtered);
+    };
+
+    const handleTagFocus = () => {
+        // Hiển thị danh sách gợi ý khi focus vào ô nhập tag
+        setShowSuggestions(true);
+    };
+
+    const handleTagSelect = (tag) => {
+        // Chọn tag từ gợi ý và cập nhật vào ô nhập tag
+        const updatedTags = tag;
+        handleTagChange({ target: { value: updatedTags } });
+        setShowSuggestions(false); // Ẩn danh sách gợi ý sau khi chọn
+    };
+
+
+    const handleTagBlur = () => {
+        // Ẩn danh sách gợi ý sau khi không focus nữa
+        setShowSuggestions(false);
+    };
 
     const sliderSettings = {
         dots: true,
@@ -76,8 +73,41 @@ const PostPreview = ({ user, mediaFiles, onRemoveFile, onTextChange, handleTagCh
                         {new Date().toLocaleDateString()}
                     </Text>
                 </Box>
-                <Box flexGrow={1} ml={4}   >
-                    <Input value={tags} onChange={handleTagChange} variant={"flushed"} focusBorderColor="none" type="text" placeholder="Add a topic" />
+                <Box flexGrow={1} ml={4} >
+                    <Input
+                        value={tags}
+                        onChange={handleTagInputChange}
+                        variant={"flushed"}
+                        focusBorderColor="none"
+                        type="text"
+                        placeholder="Add a topic"
+                        onBlur={handleTagBlur}
+                        onFocus={handleTagFocus} // Hiển thị gợi ý khi focus
+                    />
+                    {showSuggestions && filteredTags.length > 0 && (
+                        <Box
+                            shadow="md"
+                            bg={previewBgColor}
+                            mt={1}
+                            position="absolute"
+                            zIndex={10}
+                            borderRadius="md"
+                            w="100%"
+                            maxWidth="200px"
+                        >
+                            {filteredTags.slice(0, 5).map((tag, index) => (
+                                <Box
+                                    key={index}
+                                    p={2}
+                                    _hover={{ bg: hoverBgColor }}
+                                    cursor="pointer"
+                                    onMouseDown={() => handleTagSelect(tag)}
+                                >
+                                    {tag}
+                                </Box>
+                            ))}
+                        </Box>
+                    )}
                 </Box>
             </Flex >
 
@@ -128,3 +158,5 @@ const PostPreview = ({ user, mediaFiles, onRemoveFile, onTextChange, handleTagCh
 };
 
 export default PostPreview;
+
+

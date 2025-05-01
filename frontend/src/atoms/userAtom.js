@@ -19,7 +19,6 @@ const encryptData = (data) => {
 // Hàm giải mã dữ liệu
 const decryptData = (encrypted) => {
   try {
-    console.log("Decrypting data:", encrypted);
     const bytes = CryptoJS.AES.decrypt(encrypted, secretKey);
     const decrypted = bytes.toString(CryptoJS.enc.Utf8);
 

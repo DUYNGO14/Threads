@@ -47,7 +47,6 @@ const protectRoute = async (req, res, next) => {
     }
     next();
   } catch (err) {
-    console.error("Token verification error:", err.message);
     return res
       .status(401)
       .json({ error: "Unauthorized. Invalid or expired access token." });

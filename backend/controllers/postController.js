@@ -380,7 +380,6 @@ const getReposts = async (req, res) => {
   try {
     const { username } = req.params;
     const redisKey = `reposted:${username}`;
-    console.log(`\n[Redis Log] Key: ${redisKey}`);
     const { page, limit, skip } = getPaginationParams(req);
 
     const cached = await getRedis(redisKey); // Kiểm tra cache (nếu đã có)
@@ -701,6 +700,46 @@ const repost = async (req, res) => {
   }
 };
 
+const getTags = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Lấy danh sách tag mà user đã từng dùng (loại trùng, bỏ rỗng)
+    const userTags = await Post.aggregate([
+      {
+        $match: {
+          postedBy: new mongoose.Types.ObjectId(userId),
+          tags: { $ne: "" },
+        },
+      },
+      { $unwind: "$tags" },
+      { $group: { _id: "$tags", count: { $sum: 1 } } },
+    ]);
+
+    // Lấy top 10 tags phổ biến toàn hệ thống (loại trùng, bỏ rỗng)
+    const popularTags = await Post.aggregate([
+      { $unwind: "$tags" },
+      { $match: { tags: { $ne: "" } } }, // Bổ sung lọc rỗng ở đây
+      { $group: { _id: "$tags", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 },
+    ]);
+
+    // Loại bỏ các tag trùng lặp giữa userTags và popularTags
+    const uniquePopularTags = popularTags.filter(
+      (tag) => !userTags.some((userTag) => userTag._id === tag._id)
+    );
+
+    // Sắp xếp tags của user lên đầu rồi đến gợi ý sắp xếp theo độ phổ biến
+    const tags = [...userTags, ...uniquePopularTags];
+    const tagNames = tags.map((tag) => tag._id);
+    res.status(200).json(tagNames);
+  } catch (error) {
+    console.error("Error fetching tags:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
 export {
   createPost,
   getPost,
@@ -714,4 +753,5 @@ export {
   updatePost,
   repost,
   getSuggestedPosts,
+  getTags,
 };
