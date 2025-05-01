@@ -53,9 +53,8 @@ const postSchema = mongoose.Schema(
       },
     ],
     tags: {
-      // Các tag tự động được gán từ nội dung bài viết
-      type: [String],
-      default: [],
+      type: String,
+      default: "",
     },
   },
   {

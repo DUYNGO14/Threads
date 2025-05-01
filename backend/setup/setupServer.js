@@ -8,6 +8,7 @@ import setupSession from "./setupSession.js";
 import { setupErrorHandler } from "./setupErrorHandler.js";
 import { getRecipientSocketId } from "../utils/socketUsers.js";
 import { socketHandler } from "../sockets/socket.js";
+import createDefaultAdmin from "../utils/createDefaultAdmin.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -23,6 +24,7 @@ const io = new Server(server, {
 app.set("io", io);
 
 // Setup từng phần
+createDefaultAdmin();
 setupSession(app);
 setupMiddlewares(app);
 setupRoutes(app);

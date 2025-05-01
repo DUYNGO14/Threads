@@ -62,7 +62,7 @@ const Header = () => {
             <IconButton onClick={() => handleNav("/")} icon={<AiFillHome size={24} />} {...getIconStyle("/")} aria-label="Home" />
             {isLoggedIn ? (
                 <>
-                    <IconButton onClick={() => handleNav(`/${user.username}`)} icon={<RxAvatar size={24} />} {...getIconStyle(`/${user.username}`)} aria-label="Profile" />
+                    <IconButton onClick={() => handleNav(`/user/${user.username}`)} icon={<RxAvatar size={24} />} {...getIconStyle(`/user/${user.username}`)} aria-label="Profile" />
                     <IconButton onClick={onOpen} icon={<BsPlusSquare size={30} />} aria-label="Create Post" />
                     <IconButton onClick={() => handleNav("/chat")} icon={<ChatIconWithBadge />} {...getIconStyle("/chat")} aria-label="Messages" />
                     <IconButton onClick={() => handleNav("/notifications")} icon={<NotificationIconWithBadge />} {...getIconStyle("/notifications")} aria-label="Notifications" />

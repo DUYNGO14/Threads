@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import useFollowUnfollow from "../hooks/useFollowUnfollow"; // Custom hook follow/unfollow
 import numeral from "numeral";
 const FollowItem = ({ user, activeTab, setFollowing }) => {
-    console.log(user);
     const onSuccess = (isNowFollowing) => {
         // Xử lý khi follow/unfollow thành công
         // Nếu đang ở tab "following" và unfollow thì remove user khỏi list
@@ -20,11 +19,11 @@ const FollowItem = ({ user, activeTab, setFollowing }) => {
     return (
         <Flex align="center" justify="space-between" p={3} bg={bg} borderBottom="1px solid" borderColor="gray.200">
             <Flex gap={3} align="center">
-                <Link to={`/${user.username}`}>
+                <Link to={`/user/${user.username}`}>
                     <Avatar src={user.profilePic} name={user.name} size="md" />
                 </Link>
                 <Box>
-                    <Link to={`/${user.username}`}>
+                    <Link to={`/user/${user.username}`}>
                         <Text fontWeight="bold">{user.username}</Text>
                     </Link>
                     <Text fontSize="sm" color="gray.500">

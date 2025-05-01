@@ -8,7 +8,6 @@ import Reply from "../models/replyModel.js";
 import Notification from "../models/notificationModel.js";
 import { LIMIT_PAGINATION_REPLY } from "../constants/pagination.js";
 import getPaginationParams from "../utils/helpers/getPaginationParams.js";
-import { populateNotification } from "../utils/populateNotification.js";
 import {
   setRedis,
   getRedis,
@@ -18,51 +17,55 @@ import {
 } from "../utils/redisCache.js";
 import { moderateMedia } from "../utils/moderate/moderateMediaWithSightengine.js";
 import { moderateTextWithSightengine } from "../utils/moderate/moderateTextWithSightengine.js";
-import { io } from "../setup/setupServer.js";
-import { getRecipientSocketId } from "../utils/socketUsers.js";
 import { sendNotification } from "../services/notificationService.js";
+import { formatResponse } from "../utils/formatResponse.js";
 const createPost = async (req, res) => {
   try {
-    const { postedBy, text } = req.body;
+    const { postedBy, text, tags } = req.body;
     const user = await User.findById(postedBy);
-    console.log(user.followers);
-    if (!user) return res.status(404).json({ error: "User not found" });
 
-    const redisKey = `posts:${user.username}`;
-
-    // ✅ Kiểm tra độ dài
-    if (text && text.length > MAX_CHAR) {
-      return res.status(400).json({
-        error: `Text must be less than ${MAX_CHAR} characters`,
-      });
+    if (!user) {
+      return res.status(404).json(formatResponse("error", "User not found"));
     }
 
-    // ✅ Kiểm duyệt văn bản
-    const moderationResult = await moderateTextWithSightengine(text || "");
+    if (text && text.length > MAX_CHAR) {
+      return res
+        .status(400)
+        .json(
+          formatResponse(
+            "error",
+            `Text must be less than ${MAX_CHAR} characters`
+          )
+        );
+    }
 
+    const moderationResult = await moderateTextWithSightengine(text || "");
     if (!moderationResult.ok) {
-      return res.status(400).json({
-        error: moderationResult.message,
-        detail: moderationResult.message,
-      });
+      return res
+        .status(400)
+        .json(formatResponse("error", moderationResult.message));
     }
 
     const cleanedText = moderationResult.cleanedText || text || "";
-
-    // ✅ Kiểm duyệt media nếu có
     let mediaFiles = [];
 
     if (req.files?.length > 0) {
       if (req.files.length > MAX_FILES) {
-        return res.status(400).json({
-          error: `You can only upload up to ${MAX_FILES} files`,
-        });
+        return res
+          .status(400)
+          .json(
+            formatResponse(
+              "error",
+              `You can only upload up to ${MAX_FILES} files`
+            )
+          );
       }
 
       mediaFiles = await uploadFiles(req.files, user.username, "post");
-
       if (mediaFiles.length === 0) {
-        return res.status(400).json({ error: "All media uploads failed" });
+        return res
+          .status(400)
+          .json(formatResponse("error", "All media uploads failed"));
       }
 
       for (const file of mediaFiles) {
@@ -70,92 +73,47 @@ const createPost = async (req, res) => {
           const moderation = await moderateMedia(file.url, file.type);
           if (!moderation.ok) {
             await deleteMediaFiles(mediaFiles);
-            return res.status(400).json({
-              error: `Media moderation failed: ${file.type} contains unsafe content`,
-            });
+            return res
+              .status(400)
+              .json(
+                formatResponse(
+                  "error",
+                  `Media moderation failed: ${file.type} contains unsafe content`
+                )
+              );
           }
         }
       }
     }
 
-    // ✅ Tạo bài viết
     const newPost = new Post({
       postedBy,
       text: cleanedText,
       media: mediaFiles,
       status: "approved",
+      tags: tags, // Chuyển đổi chuỗi JSON thành mảng
     });
-    // const hasVideo = mediaFiles.some((file) => file.type === "video");
-    // if (hasVideo) newPost.status = "pending_review";
 
     await newPost.save();
-    // kiểm duyệt video
-    // if (hasVideo) {
-    //   for (const file of mediaFiles) {
-    //     if (file.type === "video") {
-    //       const result = await requestVideoModeration(file.url);
-    //       console.log("Video moderation:", result);
-    //       if (result.ok && result.requestId) {
-    //         // Delay kiểm tra kết quả sau 1 phút (hoặc sử dụng Queue/Cronjob)
-    //         setTimeout(async () => {
-    //           const moderation = await checkVideoModerationResult(
-    //             result.requestId
-    //           );
-    //           if (!moderation.ok || !moderation.isSafe) {
-    //             console.warn(
-    //               `❌ Video unsafe for post ${newPost._id}:`,
-    //               moderation.issues
-    //             );
-    //             await Post.findByIdAndUpdate(newPost._id, {
-    //               status: "rejected",
-    //               moderationIssues: moderation.issues,
-    //             });
-    //           } else {
-    //             await Post.findByIdAndUpdate(newPost._id, {
-    //               status: "approved",
-    //             });
-    //           }
-    //         }, 60000); // 60s hoặc dùng queue
-    //       }
-    //     }
-    //   }
-    // }
+
     const populatedPost = await Post.findById(newPost._id).populate(
       "postedBy",
       "_id username name profilePic"
     );
+    await appendToCache(`posts:${user.username}`, populatedPost);
 
-    await appendToCache(redisKey, populatedPost);
+    console.log("Created Post:", populatedPost);
 
-    const followers = user.followers || [];
-    const notifications = followers.map((follower) => ({
-      sender: postedBy,
-      receiver: follower._id,
-      type: "post",
-      post: newPost._id,
-      content: `${user.username} just posted a new article.`,
-    }));
-
-    const insertedNotifications = await Notification.insertMany(notifications);
-
-    const populatedNotifications = await Promise.all(
-      insertedNotifications.map((notification) =>
-        populateNotification(notification._id)
-      )
-    );
-
-    // ✅ Gửi real-time qua socket
-    populatedNotifications.forEach((notification) => {
-      const recipientSocketId = getRecipientSocketId(notification.receiver._id);
-      if (recipientSocketId) {
-        io.to(recipientSocketId).emit("notification:new", notification);
-      }
-    });
-
-    res.status(201).json(populatedPost);
+    res
+      .status(201)
+      .json(
+        formatResponse("success", "Post created successfully", populatedPost)
+      );
   } catch (err) {
     console.error("❌ Post creation error:", err.message);
-    res.status(500).json({ error: "Something went wrong. Try again." });
+    res
+      .status(500)
+      .json(formatResponse("error", "Something went wrong. Try again."));
   }
 };
 
@@ -272,7 +230,6 @@ const deletePost = async (req, res) => {
         "_id username name profilePic"
       );
       const keyRedis = `posts:${req.user.username}`;
-      console.log("deletePost", keyRedis);
       if (!post) {
         return res.status(404).json({ error: "Post not found" });
       }

@@ -167,6 +167,7 @@ const PostPage = () => {
 
     return (
         <>
+            {/* Header */}
             <Box
                 position="fixed"
                 top="0"
@@ -179,12 +180,16 @@ const PostPage = () => {
                 backdropFilter="blur(10px)"
                 py={3}
             >
-                <Flex justify="space-between" align="center" px={4} maxW="100%" mx="auto">
+                <Flex justify="space-between" align="center" px={4} maxWidth="700px" mx="auto">
                     <IconButton
                         icon={<IoArrowBackOutline />}
                         variant="ghost"
                         size="sm"
                         aria-label="Back"
+                        color={colorMode === "dark" ? "whiteAlpha.900" : "gray.800"}
+                        _hover={{ bg: colorMode === "dark" ? "whiteAlpha.200" : "gray.100" }}
+                        fontWeight={"bold"}
+                        fontSize={"20px"}
                         onClick={handleBack}
                     />
 
@@ -201,16 +206,16 @@ const PostPage = () => {
 
                 </Flex>
             </Box>
-
+            {/* Nội dung bài viết */}
             <Box height="60px" />
             <Flex mt={5}>
-                <Flex w={"full"} alignItems={"center"} gap={3}>
+                <Flex w={"full"} alignItems={"center"} gap={3} onClick={() => navigate(`/user/${user.username}`)} cursor={"pointer"}>
                     <Avatar src={user.profilePic} size={"md"} name={user.username} />
                     <Flex>
                         <Text fontSize={"sm"} fontWeight={"bold"}>
                             {user.username}
                         </Text>
-                        <Image src='/verified.png' w='4' h={4} ml={4} />
+                        {/* <Image src='/verified.png' w='4' h={4} ml={4} /> */}
                     </Flex>
                 </Flex>
                 <Flex gap={4} alignItems={"center"}>

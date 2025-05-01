@@ -24,7 +24,9 @@ import { authScreenAtom } from '../atoms/authAtom';
 import useShowToast from '../hooks/useShowToast';
 import userAtom from '../atoms/userAtom';
 import api from '../services/api';
+import { useNavigate } from 'react-router-dom';
 const LoginCard = () => {
+    const navigate = useNavigate();
     const [state, setState] = useState({
         showPassword: false,
         emailOrUsername: "",
@@ -52,7 +54,8 @@ const LoginCard = () => {
 
     const handleLogin = async () => {
         if (!state.emailOrUsername || !state.password) {
-            return showToast("Error", "Please enter email and password", "error");
+            showToast("Error", "Please enter email and password", "error");
+            return;
         }
 
         try {
@@ -61,14 +64,23 @@ const LoginCard = () => {
                 emailOrUsername: state.emailOrUsername.trim(),
                 password: state.password.trim(),
             });
-
             const data = await res.data;
-            console.log("Login response:", data); // Log the response for debugging
-            if (data.error) throw new Error(data.error);
+            if (data.user.role === "admin") {
+                console.log("Navigating to /admin");
+                navigate("/admin");
+            } else {
+                console.log("Navigating to home");
+                navigate("/");
+            }
             localStorage.setItem("access-token", data.accessToken);
             setUser(data.user);
+
         } catch (error) {
-            showToast("Error", error.message || "Something went wrong", "error");
+            const errorMessage =
+                error.response?.data?.error || // Lấy thông báo từ phản hồi API
+                error.message || // Lấy thông báo mặc định từ Axios
+                "An unexpected error occurred"; // Thông báo mặc định nếu không có thông tin
+            showToast("Error", errorMessage || "Something went wrong", "error");
         } finally {
             setState((prev) => ({ ...prev, isLoading: false }));
         }

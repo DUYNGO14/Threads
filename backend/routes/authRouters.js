@@ -62,7 +62,6 @@ router.get("/google/callback", (req, res, next) => {
         );
       }
       const accessToken = generateTokenAndSetCookie(user._id, res);
-      console.log("🔑 Access Token:", accessToken); // In ra access token để kiểm tra
       // localStorage.setItem("access-token", accessToken); // Lưu access token vào localStorage
       res.cookie("userData", JSON.stringify(user), {
         httpOnly: false,

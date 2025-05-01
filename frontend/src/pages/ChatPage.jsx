@@ -52,10 +52,8 @@ const ChatPage = () => {
     useEffect(() => {
         const fetchFollowedUsers = async () => {
             try {
-                console.log(`/api/users/${currentUser.username}/following`)
                 const res = await api.get(`/api/users/${currentUser.username}/following`);
-                const data = await res.data; // Updated to use res.data instead of res.json()
-                console.log(data);
+                const data = await res.data;
                 if (data.error) return showToast("Error", data.error, "error");
                 setFollowedUsers(data);
             } catch (error) {
@@ -71,7 +69,7 @@ const ChatPage = () => {
         const fetchConversations = async () => {
             try {
                 const res = await api.get("/api/conversations");
-                const data = await res.data; // Updated to use res.data instead of res.json()
+                const data = await res.data;
                 if (data.error) return showToast("Error", data.error, "error");
                 setConversations(data);
             } catch (error) {

@@ -7,6 +7,7 @@ import {
     Box,
     Image,
 } from "@chakra-ui/react";
+import "./styles/modalStyles.css";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { EffectFade, Navigation, Pagination } from "swiper/modules";
 import "swiper/css";

@@ -93,10 +93,10 @@ const NotificationPage = () => {
         if (noti.type === "like" || noti.type === "reply" || noti.type === "post") {
             navigate(`/${currentUser.username}/post/${noti.post?._id || noti.post}`);
         } else if (noti.type === "follow") {
-            navigate(`/${noti.sender.username}`);
+            navigate(`/user/${noti.sender.username}`);
         } else {
             // fallback
-            navigate(`/${noti.sender.username}`);
+            navigate(`/user/${noti.sender.username}`);
         }
     }
     const renderNotifications = (notis) => (

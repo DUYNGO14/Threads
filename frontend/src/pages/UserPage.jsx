@@ -125,7 +125,6 @@ const UserPage = () => {
             </Box>
         );
     }
-
     if (!user) return <NotFound type="user" />;
 
     return (

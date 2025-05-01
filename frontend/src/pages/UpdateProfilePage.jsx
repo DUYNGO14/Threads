@@ -10,7 +10,7 @@ import {
     Avatar,
     Center,
 } from "@chakra-ui/react";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useRecoilState } from "recoil";
 import userAtom from "../atoms/userAtom";
 import usePreviewImg from "../hooks/usePreviewImg";
@@ -18,6 +18,8 @@ import useShowToast from "../hooks/useShowToast";
 import { useNavigate } from "react-router-dom";
 import SocialLinksInput from "../components/SocialLinksInput";
 import api from "../services/api.js";
+import isEqual from "lodash/isEqual"; // nhớ cài: npm install lodash
+
 export default function UpdateProfilePage() {
     const [user, setUser] = useRecoilState(userAtom);
     const [inputs, setInputs] = useState({
@@ -25,42 +27,67 @@ export default function UpdateProfilePage() {
         username: user.username,
         email: user.email,
         bio: user.bio,
-        socialLinks: user.socialLinks || {}, // ✅ sửa thành đúng key
+        socialLinks: user.socialLinks || {},
         password: "",
     });
 
     const navigate = useNavigate();
     const fileRef = useRef(null);
     const [updating, setUpdating] = useState(false);
-
     const showToast = useShowToast();
-
     const { handleImageChange, imgUrl } = usePreviewImg();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (updating) return;
-        setUpdating(true);
+
         const updatedUser = {
             ...inputs,
-            profilePic: imgUrl,
-            socialLinks: inputs.socialLinks, // ✅ dùng đúng key
+            profilePic: imgUrl || user.profilePic,
+            socialLinks: inputs.socialLinks,
         };
+
+        const originalUser = {
+            name: user.name,
+            username: user.username,
+            email: user.email,
+            bio: user.bio,
+            profilePic: user.profilePic,
+            socialLinks: user.socialLinks || {},
+            password: "",
+        };
+
+        const hasChanged = Object.entries(updatedUser).some(
+            ([key, value]) => !isEqual(originalUser[key], value)
+        );
+
+        if (!hasChanged) {
+            return;
+        }
+
+        setUpdating(true);
         try {
             const res = await api.put(`/api/users/update/${user._id}`, updatedUser);
-            const data = await res.data; // updated user object
-            if (data.error) {
-                showToast("Error", data.error, "error");
-                return;
-            }
+            const data = await res.data;
             showToast("Success", "Profile updated successfully", "success");
             setUser(data);
         } catch (error) {
-            showToast("Error", error, "error");
+            showToast("Error", error.response?.data?.error || error.message || "Something went wrong", "error");
         } finally {
             setUpdating(false);
         }
     };
+
+    useEffect(() => {
+        setInputs({
+            name: user.name,
+            username: user.username,
+            email: user.email,
+            bio: user.bio,
+            socialLinks: user.socialLinks || {},
+            password: "",
+        });
+    }, [user]);
 
     return (
         <form onSubmit={handleSubmit}>
@@ -77,7 +104,7 @@ export default function UpdateProfilePage() {
                     <Heading lineHeight={1.1} fontSize={{ base: "2xl", sm: "3xl" }}>
                         User Profile Edit
                     </Heading>
-                    <FormControl id="userName">
+                    <FormControl>
                         <Stack direction={["column", "row"]} spacing={6}>
                             <Center>
                                 <Avatar size="xl" boxShadow={"md"} src={imgUrl || user.profilePic} />
@@ -115,10 +142,9 @@ export default function UpdateProfilePage() {
                         <Input
                             placeholder="your-email@example.com"
                             value={inputs.email}
-                            onChange={(e) => setInputs({ ...inputs, email: e.target.value })}
                             _placeholder={{ color: "gray.500" }}
                             type="email"
-                            disabled={true}
+                            disabled
                         />
                     </FormControl>
                     <FormControl>
@@ -131,7 +157,7 @@ export default function UpdateProfilePage() {
                             type="text"
                         />
                     </FormControl>
-                    {/* Thêm các trường liên kết mạng xã hội */}
+
                     <SocialLinksInput
                         value={Object.entries(inputs.socialLinks || {}).map(([platform, url]) => ({
                             platform,
@@ -140,16 +166,13 @@ export default function UpdateProfilePage() {
                         onChange={(map) => setInputs({ ...inputs, socialLinks: map })}
                     />
 
-
                     <Stack spacing={6} direction={["column", "row"]}>
                         <Button
                             bg={"red.400"}
                             color={"white"}
                             w="full"
-                            _hover={{
-                                bg: "red.500",
-                            }}
-                            onClick={() => navigate(`/${user.username}`)}
+                            _hover={{ bg: "red.500" }}
+                            onClick={() => navigate(`/user/${user.username}`)}
                         >
                             Cancel
                         </Button>
@@ -157,9 +180,7 @@ export default function UpdateProfilePage() {
                             bg={"green.400"}
                             color={"white"}
                             w="full"
-                            _hover={{
-                                bg: "green.500",
-                            }}
+                            _hover={{ bg: "green.500" }}
                             type="submit"
                             isLoading={updating}
                         >

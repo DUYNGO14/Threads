@@ -34,7 +34,7 @@ import { MdLock, MdPassword, MdSettings, MdWarning, MdDelete } from "react-icons
 import useDebounceSubmit from "../hooks/useDebounceSubmit";
 import { useState, useEffect } from "react";
 import api from "../services/api.js";
-export const SettingsPage = () => {
+export default function SettingsPage() {
     const showToast = useShowToast();
     const logout = useLogout();
     const navigate = useNavigate();

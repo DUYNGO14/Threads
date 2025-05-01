@@ -1,8 +1,9 @@
-import { Avatar, Box, Flex, Text, IconButton, Divider, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, useDisclosure, useColorModeValue } from "@chakra-ui/react";
+import { Avatar, Box, Flex, Text, IconButton, Divider, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, useDisclosure, useColorModeValue, Icon } from "@chakra-ui/react";
 import { Link, useNavigate } from "react-router-dom";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
+import { MdNavigateNext } from "react-icons/md";
 import Actions from "./Actions";
 import React, { useCallback, useState } from "react";
 import useShowToast from "../hooks/useShowToast";
@@ -51,7 +52,7 @@ const Post = ({ post, postedBy, onPostUpdate, referrer }) => {
     const handleNavigateToProfile = useCallback((e) => {
         e.preventDefault();
         if (postedBy?.username) {
-            navigate(`/${postedBy.username}`);
+            navigate(`/user/${postedBy.username}`);
         }
     }, [navigate, postedBy?.username]);
 
@@ -62,18 +63,17 @@ const Post = ({ post, postedBy, onPostUpdate, referrer }) => {
             <Box
                 w="full"
                 id={`post-${post._id}`}
-                bg={emptyBg}
+                //bg={emptyBg}
                 borderRadius="md"
                 boxShadow="sm"
-                mb={6}
+                mb={2}
                 p={4}
             >
                 {/* Reposted by section */}
-                {post.repostedBy?.length > 0 && (
+                {post.repostedBy?.length > 0 && post.repostedBy[0]?.username && (
                     <Flex
                         fontSize="xs"
                         color="gray.500"
-                        mb={3}
                         wrap="wrap"
                         align="center"
                     >
@@ -84,7 +84,7 @@ const Post = ({ post, postedBy, onPostUpdate, referrer }) => {
                             <React.Fragment key={user._id}>
                                 <Text
                                     as={Link}
-                                    to={`/${user.username}`}
+                                    to={`/user/${user.username}`}
                                     color="blue.500"
                                     _hover={{ textDecoration: "underline" }}
                                     mr={1}
@@ -121,6 +121,15 @@ const Post = ({ post, postedBy, onPostUpdate, referrer }) => {
                                 >
                                     {postedBy?.username || "Unknown"}
                                 </Text>
+                                {post.tags && (
+                                    <>
+                                        <IconButton size="xs" icon={<MdNavigateNext />} aria-label="Navigate to profile" />
+                                        <Text fontSize="sm" fontWeight={"bold"} color="gray.500">
+                                            {post.tags}
+                                        </Text>
+                                    </>
+                                )}
+
                                 <Text fontSize="xs" color="gray.500">
                                     {post.createdAt
                                         ? formatDistanceToNow(new Date(post.createdAt))

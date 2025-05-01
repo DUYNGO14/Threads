@@ -12,7 +12,7 @@ const Carousels = ({ medias }) => {
     const videoRefs = useRef([]);
     const swiperRef = useRef(null);
 
-    const maxHeight = useBreakpointValue({ base: "60vh", md: "70vh", lg: "80vh" });
+    const maxHeight = useBreakpointValue({ base: "50vh", md: "60vh", lg: "70vh" });
 
     useEffect(() => {
         if (!videoRefs.current.length) return;

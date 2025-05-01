@@ -1,17 +1,13 @@
-import { Box, useColorMode, Text, Flex } from "@chakra-ui/react";
+import { Box, Text, Flex, useColorMode } from "@chakra-ui/react";
 import BaseLayout from "./BaseLayout";
+import { Outlet } from "react-router-dom";
 
-const ChatLayout = ({ children }) => {
+const ChatLayout = () => {
     const { colorMode } = useColorMode();
 
     return (
         <BaseLayout>
-            <Box
-                w="full"
-                minH="100vh"
-                bg={colorMode === "dark" ? "black" : "white"}
-            >
-                {/* Tiêu đề trang Chat */}
+            <Box w="full" minH="100vh" bg={colorMode === "dark" ? "black" : "white"}>
                 <Flex
                     px={6}
                     py={4}
@@ -20,14 +16,11 @@ const ChatLayout = ({ children }) => {
                     justify="center"
                     align="center"
                 >
-                    <Text fontSize="xl" fontWeight="bold">
-                        Chat
-                    </Text>
+                    <Text fontSize="xl" fontWeight="bold">Chat</Text>
                 </Flex>
 
-                {/* Nội dung chính */}
                 <Box p={4}>
-                    {children}
+                    <Outlet />
                 </Box>
             </Box>
         </BaseLayout>

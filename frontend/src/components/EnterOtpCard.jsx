@@ -14,18 +14,19 @@ const EnterOtpCard = () => {
 
     // Lấy email từ localStorage
     const email = localStorage.getItem("email-for-verification");
-    const { resendOTP, verifyEmail } = api;
     const handleResendOTP = async () => {
         try {
 
-            const res = await resendOTP({ email: email });
-
-            const data = await res.json();
-            if (data.error) throw new Error(data.error);
-
+            const res = await api.post("/api/auth/resend-otp", { email });
+            console.log(res);
+            const data = res.data;
             showToast("Success", "A new OTP has been sent to your email.", "success");
         } catch (error) {
-            showToast("Error", error.message || "Failed to resend OTP", "error");
+            const errorMessage =
+                error.response?.data?.error || // Lấy thông báo từ phản hồi API
+                error.message || // Lấy thông báo mặc định từ Axios
+                "An unexpected error occurred"; // Thông báo mặc định nếu không có thông tin
+            showToast("Error", errorMessage || "Something went wrong", "error");
         }
     };
     const handleVerifyOtp = async () => {
@@ -34,18 +35,20 @@ const EnterOtpCard = () => {
         }
         try {
             setIsLoading(true);
-            const res = await verifyEmail({ email, code: otp }); // ✅ Gửi cả email và OTP
-
-            const data = await res.json();
+            const res = await api.post("/api/auth/verify-account", { email, code: otp }); // ✅ Gửi cả email và OTP
+            console.log(res);
+            const data = res.data;
             if (data.error) throw new Error(data.error);
-            else {
-                showToast("Success", "Email verified successfully!", "success");
-                // Xóa email sau khi xác thực
-                localStorage.removeItem("email-for-verification");
-                setAuthScreen("login"); // Chuyển về trang đăng nhập
-            }
+            showToast("Success", "Email verified successfully!", "success");
+            // Xóa email sau khi xác thực
+            localStorage.removeItem("email-for-verification");
+            setAuthScreen("login"); // Chuyển về trang đăng nhập
         } catch (error) {
-            showToast("Error", error.message || "Invalid OTP", "error");
+            const errorMessage =
+                error.response?.data?.error || // Lấy thông báo từ phản hồi API
+                error.message || // Lấy thông báo mặc định từ Axios
+                "An unexpected error occurred"; // Thông báo mặc định nếu không có thông tin
+            showToast("Error", errorMessage || "Something went wrong", "error");
         } finally {
             setIsLoading(false);
         }

@@ -19,8 +19,6 @@ const BaseLayout = ({ children, showHeader = true }) => {
                     h={{ base: "auto", lg: "100vh" }}
                     bottom={{ base: 0, lg: "unset" }}
                     top={{ lg: 0 }}
-                    display={{ base: "block", lg: "block" }}
-                    transition="all 0.3s ease"
                 >
                     <Header />
                 </GridItem>
@@ -30,10 +28,8 @@ const BaseLayout = ({ children, showHeader = true }) => {
                 colStart={{ base: 1, lg: 2 }}
                 w="full"
                 maxW={{ base: "100%", lg: "calc(100vw - 100px)" }}
-                position="relative"
-                overflowX="hidden"
                 px={{ base: 2, md: 4 }}
-                transition="all 0.3s ease"
+                overflowX="hidden"
             >
                 {children}
             </GridItem>

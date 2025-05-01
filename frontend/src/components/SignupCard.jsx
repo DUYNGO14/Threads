@@ -30,13 +30,32 @@ const SignupCard = () => {
         password: "",
         dob: "",
         isLoading: false,
+        passwordStrength: null,
     });
-
+    console.log(state);
     const setAuthScreen = useSetRecoilState(authScreenAtom);
     const showToast = useShowToast();
-    // Debounce input để giảm số lần cập nhật state khi gõ phím
+
+    const checkPasswordStrength = (password) => {
+        const hasUpperCase = /[A-Z]/.test(password);
+        const hasLowerCase = /[a-z]/.test(password);
+        const hasNumbers = /\d/.test(password);
+        const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+        const isLongEnough = password.length > 6;
+
+        if (hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar && isLongEnough) {
+            return 4; // Strong
+        }
+        return 0; // Weak
+    };
+
     const debouncedSetInputs = useDebouncedCallback((name, value) => {
         setState((prev) => ({ ...prev, [name]: value }));
+
+        if (name === "password") {
+            const strength = checkPasswordStrength(value);
+            setState((prev) => ({ ...prev, passwordStrength: strength }));
+        }
     }, 300);
 
     const handleChange = (e) => {
@@ -50,9 +69,12 @@ const SignupCard = () => {
 
     const handleSignup = async () => {
         if (!state.name || !state.username || !state.email || !state.password) {
+            console.log(state);
             return showToast("Error", "Please fill all the fields", "error");
         }
-
+        if (state.passwordStrength < 4) {
+            return showToast("Error", "Password is too weak. Please use a stronger password.", "error");
+        }
         try {
             setState((prev) => ({ ...prev, isLoading: true }));
             const res = await fetch("/api/auth/signup", {
@@ -79,6 +101,10 @@ const SignupCard = () => {
         }
     };
 
+    const getPasswordStrengthColor = (score) => {
+        return score === 4 ? "green.500" : "red.500";
+    };
+
     return (
         <Flex align={'center'} justify={'center'}>
             <Stack spacing={8} mx={'auto'} maxW={'lg'} py={12} px={6}>
@@ -89,6 +115,7 @@ const SignupCard = () => {
                     rounded={'lg'}
                     bg={useColorModeValue('white', 'gray.dark')}
                     boxShadow={'lg'}
+                    width={{ base: 'full', md: 'md' }}
                     p={8}
                 >
                     <Stack spacing={4}>
@@ -140,6 +167,16 @@ const SignupCard = () => {
                                     </Button>
                                 </InputRightElement>
                             </InputGroup>
+                            {state.passwordStrength !== null && (
+                                <Box mt={2}>
+                                    <Text
+                                        fontSize="sm"
+                                        color={getPasswordStrengthColor(state.passwordStrength)}
+                                    >
+                                        Strength: {state.passwordStrength === 4 ? "Strong" : "Weak"}
+                                    </Text>
+                                </Box>
+                            )}
                         </FormControl>
                         <FormControl>
                             <FormLabel>Date of Birth</FormLabel>
@@ -178,3 +215,4 @@ const SignupCard = () => {
 };
 
 export default SignupCard;
+

@@ -77,16 +77,14 @@ const UserHeader = ({ user, onTabChange }) => {
                                 </Flex>
                             </Box>
                             <Box>
-                                {user.profilePic && (
-                                    <Avatar
-                                        name={user.name}
-                                        src={user.profilePic}
-                                        size={{
-                                            base: "md",
-                                            md: "xl",
-                                        }}
-                                    />
-                                )}
+                                <Avatar
+                                    name={user.name}
+                                    src={user.profilePic}
+                                    size={{
+                                        base: "md",
+                                        md: "xl",
+                                    }}
+                                />
                             </Box>
                         </Flex>
 

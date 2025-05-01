@@ -1,7 +1,8 @@
 import { Box, Container, useColorMode } from "@chakra-ui/react";
 import BaseLayout from "./BaseLayout";
+import { Outlet } from "react-router-dom";
 
-const AuthLayout = ({ children }) => {
+const AuthLayout = () => {
     const { colorMode } = useColorMode();
 
     return (
@@ -20,11 +21,11 @@ const AuthLayout = ({ children }) => {
                     p={8}
                     boxShadow="lg"
                 >
-                    {children}
+                    <Outlet />
                 </Container>
             </Box>
         </BaseLayout>
     );
 };
 
-export default AuthLayout; 
+export default AuthLayout;

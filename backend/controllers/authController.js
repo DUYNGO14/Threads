@@ -110,6 +110,9 @@ const loginUser = async (req, res) => {
         email: user.email,
         profilePic: user.profilePic,
         bio: user.bio,
+        role: user.role,
+        isVerified: user.isVerified,
+        isFrozen: user.isFrozen,
       },
     });
   } catch (error) {
@@ -150,13 +153,14 @@ const resendOTP = async (req, res) => {
 
 const verifyEmail = async (req, res) => {
   const { email, code } = req.body;
+  console.log(email, code);
   try {
     const user = await User.findOne({
       email,
       verificationOTP: code,
       verificationOTPExpiresAt: { $gt: Date.now() },
     });
-
+    console.log(user);
     if (!user) {
       return res.status(400).json({
         success: false,

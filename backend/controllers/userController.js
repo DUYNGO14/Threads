@@ -143,18 +143,25 @@ const updateUser = async (req, res) => {
   try {
     const { name, username, bio, profilePic, socialLinks } = req.body;
     const userId = req.user._id;
-    // Kiểm tra người dùng
+    if (!name || !username)
+      return res.status(400).json({ error: "Name, username are required" });
     const user = await User.findById(userId);
     if (!user) return res.status(400).json({ error: "User not found" });
 
-    // Không cho sửa thông tin của người khác
     if (req.params.id !== userId.toString()) {
       return res
         .status(403)
         .json({ error: "Bạn không được phép chỉnh sửa tài khoản này" });
     }
 
-    // Cập nhật avatar nếu có
+    if (username && username !== user.username) {
+      const usernameExists = await User.findOne({ username });
+      if (usernameExists) {
+        return res.status(400).json({ error: "Username already exists" });
+      }
+      user.username = username;
+    }
+
     if (profilePic) {
       user.profilePic = await uploadProfilePic(
         profilePic,
@@ -163,29 +170,21 @@ const updateUser = async (req, res) => {
       );
     }
 
-    // Cập nhật thông tin người dùng
     if (name) user.name = name;
-    if (username) user.username = username;
     if (bio) user.bio = bio;
 
-    // Cập nhật các liên kết mạng xã hội nếu có
     if (socialLinks && typeof socialLinks === "object") {
-      // Duyệt qua các liên kết và chuyển chúng thành thẻ <a> có thể nhấp vào
       const formattedLinks = {};
       for (const [platform, url] of Object.entries(socialLinks)) {
         if (url) {
           formattedLinks[platform] = detectAndFormatLinks(url);
         }
       }
-
-      // Cập nhật socialLinks
       user.socialLinks = new Map(Object.entries(formattedLinks));
     }
 
-    // Lưu lại user
     await user.save();
 
-    // Đồng bộ reply nếu có sửa username hoặc profilePic
     if (username || profilePic) {
       await Reply.updateMany(
         { userId },
@@ -198,7 +197,6 @@ const updateUser = async (req, res) => {
       );
     }
 
-    // Ẩn mật khẩu khi trả về
     user.password = null;
 
     res.status(200).json(user);
@@ -210,18 +208,20 @@ const updateUser = async (req, res) => {
 
 const getSuggestedUsers = async (req, res) => {
   try {
-    const userId = req.user?._id.toString(); // Chuyển đổi ObjectId thành chuỗi
+    const userId = req.user?._id.toString();
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
     const start = (page - 1) * limit;
     const end = start + limit;
-    const cacheKey = `suggestions:${userId || "guest"}`; // Nếu chưa đăng nhập, sử dụng 'guest' làm key cache
+    const cacheKey = `suggestions:${userId || "guest"}`;
 
-    // 1. Lấy danh sách từ cache Redis nếu có
     let cachedIds = await redis.get(cacheKey);
     if (cachedIds) {
       const paginatedIds = cachedIds.slice(start, end);
-      const users = await User.find({ _id: { $in: paginatedIds } })
+      const users = await User.find({
+        _id: { $in: paginatedIds },
+        role: "user",
+      })
         .select("name username profilePic bio")
         .lean();
       return res.json(users);
@@ -230,7 +230,6 @@ const getSuggestedUsers = async (req, res) => {
     let allSuggested = [];
 
     if (req.user) {
-      // 2. Nếu đã đăng nhập, thực hiện gợi ý dựa trên các tiêu chí
       const currentUser = await User.findById(userId).lean();
       if (!currentUser)
         return res.status(404).json({ message: "User not found" });
@@ -239,16 +238,10 @@ const getSuggestedUsers = async (req, res) => {
         (id) => new mongoose.Types.ObjectId(id)
       );
 
-      // 2.1 Gợi ý theo mutual following
       const mutuals = await User.aggregate([
-        { $match: { _id: { $in: followingIds } } },
+        { $match: { _id: { $in: followingIds }, role: "user" } },
         { $unwind: "$following" },
-        {
-          $group: {
-            _id: "$following",
-            count: { $sum: 1 },
-          },
-        },
+        { $group: { _id: "$following", count: { $sum: 1 } } },
         { $sort: { count: -1 } },
         { $limit: 100 },
       ]);
@@ -261,7 +254,6 @@ const getSuggestedUsers = async (req, res) => {
             !currentUser.following.some((fid) => fid.toString() === id)
         );
 
-      // 2.2 Gợi ý theo người like bài viết của bạn
       const yourPosts = await Post.find({ postedBy: userId })
         .select("likes")
         .lean();
@@ -284,10 +276,8 @@ const getSuggestedUsers = async (req, res) => {
         .sort((a, b) => b[1] - a[1])
         .map(([id]) => id);
 
-      // 2.3 Gộp lại
       allSuggested = [...new Set([...mutualIds, ...likeIds])];
 
-      // 2.4 Nếu chưa đủ → thêm người nổi bật (nhiều followers)
       if (allSuggested.length < 100) {
         const excludeIds = [
           ...currentUser.following.map((id) => id.toString()),
@@ -301,13 +291,12 @@ const getSuggestedUsers = async (req, res) => {
               _id: {
                 $nin: excludeIds.map((id) => new mongoose.Types.ObjectId(id)),
               },
+              role: "user",
             },
           },
           {
             $addFields: {
-              followersCount: {
-                $size: { $ifNull: ["$followers", []] },
-              },
+              followersCount: { $size: { $ifNull: ["$followers", []] } },
             },
           },
           { $sort: { followersCount: -1 } },
@@ -318,15 +307,13 @@ const getSuggestedUsers = async (req, res) => {
         allSuggested.push(...topUserIds);
       }
     } else {
-      // 3. Nếu chưa đăng nhập, lấy tất cả người dùng và sắp xếp theo followersCount
       const topUsers = await User.aggregate([
         {
           $addFields: {
-            followersCount: {
-              $size: { $ifNull: ["$followers", []] },
-            },
+            followersCount: { $size: { $ifNull: ["$followers", []] } },
           },
         },
+        { $match: { role: "user" } },
         { $sort: { followersCount: -1 } },
         { $limit: 100 },
       ]);
@@ -334,12 +321,10 @@ const getSuggestedUsers = async (req, res) => {
       allSuggested = topUsers.map((u) => u._id.toString());
     }
 
-    // 4. Lưu cache Redis
-    await redis.set(cacheKey, JSON.stringify(allSuggested), { ex: 900 }); // 15 phút
+    await redis.set(cacheKey, JSON.stringify(allSuggested), { ex: 900 });
 
-    // 5. Trả về trang đầu tiên
     const paginatedIds = allSuggested.slice(start, end);
-    const users = await User.find({ _id: { $in: paginatedIds } })
+    const users = await User.find({ _id: { $in: paginatedIds }, role: "user" })
       .select("name username profilePic bio")
       .lean();
 
