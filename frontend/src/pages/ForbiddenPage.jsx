@@ -7,7 +7,6 @@ const MotionBox = motion(Box);
 
 const ForbiddenPage = () => {
     const navigate = useNavigate();
-    console.log("Rendering ForbiddenPage");
     return (
         <Box
             minH="100vh"

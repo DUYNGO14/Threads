@@ -15,14 +15,14 @@ import {
     Select,
 } from "@chakra-ui/react";
 import { GiConversation } from "react-icons/gi";
-import Conversation from "../components/Conversation";
-import MessageContainer from "../components/MessageContainer";
+import Conversation from "@components/Conversation";
+import MessageContainer from "@components/MessageContainer";
 import { useEffect, useState } from "react";
-import useShowToast from "../hooks/useShowToast";
+import useShowToast from "@hooks/useShowToast";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { conversationsAtom, selectedConversationAtom } from "../atoms/messagesAtom";
 import userAtom from "../atoms/userAtom";
-import { useSocket } from "../context/SocketContext";
+import { useSocket } from "@context/SocketContext";
 import api from "../services/api.js";
 const ChatPage = () => {
     const [searchingUser, setSearchingUser] = useState(false);

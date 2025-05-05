@@ -40,7 +40,6 @@ export const moderateTextWithSightengine = async (text, options = {}) => {
     );
 
     const result = response.data;
-    console.log("result", result);
 
     const relevantFlags = [
       "profanity",

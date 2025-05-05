@@ -10,40 +10,39 @@ import "react-datepicker/dist/react-datepicker.css";
 import userAtom from "./atoms/userAtom";
 import { setupInterceptors } from "./services/api";
 
-import MainLayout from "./layouts/MainLayout";
-import BaseLayout from "./layouts/BaseLayout";
-import ChatLayout from "./layouts/ChatLayout";
+import MainLayout from "@layouts/MainLayout";
+import BaseLayout from "@layouts/BaseLayout";
+import ChatLayout from "@layouts/ChatLayout";
 
-import HomePage from "./pages/HomePage";
-import AuthPage from "./pages/AuthPage";
-import UserPage from "./pages/UserPage";
-import PostPage from "./pages/PostPage";
-import UpdateProfilePage from "./pages/UpdateProfilePage";
-import NotificationPage from "./pages/NotificationPage";
-import ChatPage from "./pages/ChatPage";
-import SettingsPage from "./pages/SettingsPage";
-import SearchPage from "./pages/SearchPage";
-import PageNotFound from "./pages/PageNotFound";
-import ServerErrorPage from "./pages/ServerErrorPage";
+import HomePage from "@pages/HomePage";
+import AuthPage from "@pages/AuthPage";
+import UserPage from "@pages/UserPage";
+import PostPage from "@pages/PostPage";
+import UpdateProfilePage from "@pages/UpdateProfilePage";
+import NotificationPage from "@pages/NotificationPage";
+import ChatPage from "@pages/ChatPage";
+import SettingsPage from "@pages/SettingsPage";
+import SearchPage from "@pages/SearchPage";
+import PageNotFound from "@pages/PageNotFound";
+import ServerErrorPage from "@pages/ServerErrorPage";
 
-import OAuthSuccess from "./components/OAuthSuccess";
-import OAuthFailure from "./components/OAuthFailure";
-import ResetPasswordCard from "./components/ResetPasswordCard";
-import ChangePassword from "./components/ChangePassword";
-import CreatePost from "./components/CreatePost";
-import ProtectedPage from "./components/ProtectedPage";
-import AdminLayout from "./layouts/AdminLayout";
-import AdminDashboard from "./pages/Admin/AdminDashboard";
-import AdminUsers from "./pages/Admin/AdminUsers";
-import AdminProtectedPage from "./components/Admin/AdminProtectedPage";
-import AdminPosts from "./pages/Admin/AdminPosts";
-import AdminReport from "./pages/Admin/AdminReport";
-import ForbiddenPage from "./pages/ForbiddenPage";
+import OAuthSuccess from "@components/OAuthSuccess";
+import OAuthFailure from "@components/OAuthFailure";
+import ResetPasswordCard from "@components/ResetPasswordCard";
+import ChangePassword from "@components/ChangePassword";
+import ProtectedPage from "@components/ProtectedPage";
+import AdminLayout from "@layouts/AdminLayout";
+import AdminDashboard from "@pages/Admin/AdminDashboard";
+import AdminProtectedPage from "@components-admin/AdminProtectedPage";
+import AdminUserManagement from "@pages/Admin/AdminUserManagement";
+import AdminReportManagement from "@pages/Admin/AdminReportManagement";
+import ForbiddenPage from "@pages/ForbiddenPage";
+import AdminPostManagement from "./pages/Admin/AdminPostManagement";
+
 function App() {
   const user = useRecoilValue(userAtom);
   const { pathname } = useLocation();
   const navigate = useNavigate();
-
   useEffect(() => {
     setupInterceptors(navigate);
   }, [navigate]);
@@ -99,15 +98,16 @@ function App() {
       </Routes>
     );
   }
-
   return (
+
     <Routes>
       {/* Route admin */}
       <Route path="/admin" element={<AdminLayout />}>
         <Route path="" element={<AdminProtectedPage><AdminDashboard /></AdminProtectedPage>} />
-        <Route path="users" element={<AdminProtectedPage><AdminUsers /></AdminProtectedPage>} />
-        <Route path="posts" element={<AdminProtectedPage><AdminPosts /></AdminProtectedPage>} />
-        <Route path="reports" element={<AdminProtectedPage><AdminReport /></AdminProtectedPage>} />
+        <Route path="users" element={<AdminProtectedPage><AdminUserManagement /></AdminProtectedPage>} />
+        <Route path="reports" element={<AdminProtectedPage><AdminReportManagement /></AdminProtectedPage>} />
+        <Route path="posts" element={<AdminProtectedPage><AdminPostManagement /></AdminProtectedPage>} />
+        <Route path="*" element={<Navigate to="/admin" />} />
       </Route>
 
       {/* Các route khác */}

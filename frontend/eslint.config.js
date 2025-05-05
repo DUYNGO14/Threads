@@ -35,6 +35,8 @@ export default [
       ],
       "react/prop-types": "off",
       "no-unused-vars": "off",
+      "eslint-disable-next-line no-unused-vars": "off",
+      "react-hooks/rules-of-hooks": "off",
     },
   },
 ];

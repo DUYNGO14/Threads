@@ -1,8 +1,8 @@
 import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, FormControl, Input, ModalCloseButton } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
-import useReply from "../../hooks/useReply";
-import useShowToast from "../../hooks/useShowToast";
+import useReply from "@hooks/useReply";
+import useShowToast from "@hooks/useShowToast";
 
 const EditReplyModal = ({ isOpen, onClose, postId, replyId, initialText, onSuccess, isSaving }) => {
     const showToast = useShowToast();

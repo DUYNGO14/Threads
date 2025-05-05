@@ -1,9 +1,10 @@
 import { Grid, GridItem, Box, Button, Icon, Text, useColorMode } from "@chakra-ui/react";
 import BaseLayout from "./BaseLayout";
 import { useRecoilValue } from "recoil";
-import userAtom from "../atoms/userAtom";
+import userAtom from "@atoms/userAtom";
 import { FaThreads } from "react-icons/fa6";
 import { Outlet, useNavigate } from "react-router-dom";
+import CreatePost from "../components/CreatePost";
 
 const MainLayout = () => {
     const { colorMode } = useColorMode();
@@ -82,6 +83,7 @@ const MainLayout = () => {
                             </Text>
                         </Box>
                     )}
+                    {currentUser && <CreatePost />}
                 </GridItem>
             </Grid>
         </BaseLayout>

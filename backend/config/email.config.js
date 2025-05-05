@@ -18,7 +18,6 @@ async function emailService(to, templateId, dynamicTemplateData) {
 
   try {
     await sgMail.send(msg);
-    console.log("✅ Email sent successfully to:", to);
   } catch (error) {
     console.error(
       "❌ Error sending email:",

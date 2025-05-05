@@ -5,7 +5,6 @@ const secretKey = "your-very-strong-secret-key"; // Khóa bí mật để mã h�
 
 // Hàm mã hóa dữ liệu
 const encryptData = (data) => {
-  console.log("Encrypting data:", data);
   try {
     const json = JSON.stringify(data);
     const encrypted = CryptoJS.AES.encrypt(json, secretKey).toString();
@@ -58,7 +57,6 @@ const userAtom = atom({
           const encrypted = encryptData(newValue);
           localStorage.setItem("user-threads", encrypted);
         } else {
-          console.log("Removing user data from localStorage");
           localStorage.removeItem("user-threads");
         }
       });
@@ -67,3 +65,8 @@ const userAtom = atom({
 });
 
 export default userAtom;
+
+export const listUserAtom = atom({
+  key: "listUserAtom",
+  default: [],
+});

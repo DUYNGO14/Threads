@@ -23,8 +23,8 @@ import {
 import { useEffect, useState } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { notificationAtom, unreadNotificationCountAtom } from "../atoms/notificationAtom";
-import { useSocket } from "../context/SocketContext";
-import useShowToast from "../hooks/useShowToast";
+import { useSocket } from "@context/SocketContext";
+import useShowToast from "@hooks/useShowToast";
 import { useNavigate } from "react-router-dom";
 import { FiMoreVertical } from "react-icons/fi";
 import userAtom from "../atoms/userAtom";
@@ -94,6 +94,8 @@ const NotificationPage = () => {
             navigate(`/${currentUser.username}/post/${noti.post?._id || noti.post}`);
         } else if (noti.type === "follow") {
             navigate(`/user/${noti.sender.username}`);
+        } else if (noti.type === "report" || noti.type === "block" || noti.type === "unblock") {
+            return
         } else {
             // fallback
             navigate(`/user/${noti.sender.username}`);

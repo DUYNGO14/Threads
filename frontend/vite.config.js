@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
         "@hooks": "/src/hooks",
         "@store": "/src/store",
         "@routes": "/src/routes",
-        "@constants": "/src/constants",
+        "@constants": "/src/constant",
         "@config": "/src/config",
         "@components": "/src/components",
         "@components-admin": "/src/components/Admin",

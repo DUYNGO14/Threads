@@ -24,10 +24,10 @@ export const initiateConversation = async (req, res) => {
 
     conversation = await conversation.populate("participants", "-password");
 
-    res.status(200).json(conversation);
+    return res.status(200).json(conversation);
   } catch (err) {
     console.error("Error initiating conversation:", err);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -79,7 +79,7 @@ export const deleteConversation = async (req, res) => {
     }
   } catch (err) {
     console.error("Error deleting conversation:", err);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -112,9 +112,9 @@ export const getConversations = async (req, res) => {
         unreadCount,
       };
     });
-    res.status(200).json(enrichedConversations);
+    return res.status(200).json(enrichedConversations);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -144,8 +144,8 @@ export const createGroupChat = async (req, res) => {
       select: "username profilePic",
     });
 
-    res.status(201).json(populatedGroup);
+    return res.status(201).json(populatedGroup);
   } catch (err) {
-    res.status(500).send(err.message);
+    return res.status(500).send(err.message);
   }
 };

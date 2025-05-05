@@ -9,7 +9,6 @@ const AdminProtectedPage = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const user = useRecoilValue(userAtom);
     const { initAuth } = useAuthService();
-    console.log("User in AdminProtectedPage:", user);
     useEffect(() => {
         const checkAuth = async () => {
             await initAuth(); // Kiểm tra và refresh token nếu cần

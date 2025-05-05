@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSetRecoilState } from "recoil";
 import userAtom from "../atoms/userAtom";
-import useShowToast from "../hooks/useShowToast";
+import useShowToast from "@hooks/useShowToast";
 import api from "../services/api.js";
 const OAuthSuccess = () => {
     const navigate = useNavigate();

@@ -19,6 +19,7 @@ import { moderateMedia } from "../utils/moderate/moderateMediaWithSightengine.js
 import { moderateTextWithSightengine } from "../utils/moderate/moderateTextWithSightengine.js";
 import { sendNotification } from "../services/notificationService.js";
 import { formatResponse } from "../utils/formatResponse.js";
+import { isMutualOrOneWayFollow } from "./userController.js";
 const createPost = async (req, res) => {
   try {
     const { postedBy, text, tags } = req.body;
@@ -101,17 +102,13 @@ const createPost = async (req, res) => {
       "_id username name profilePic"
     );
     await appendToCache(`posts:${user.username}`, populatedPost);
-
-    console.log("Created Post:", populatedPost);
-
-    res
+    return res
       .status(201)
       .json(
         formatResponse("success", "Post created successfully", populatedPost)
       );
   } catch (err) {
-    console.error("❌ Post creation error:", err.message);
-    res
+    return res
       .status(500)
       .json(formatResponse("error", "Something went wrong. Try again."));
   }
@@ -162,10 +159,9 @@ const updatePost = async (req, res) => {
     // Lưu bài viết đã cập nhật
     await post.save();
     await deleteRedis(redisKey);
-    res.status(200).json(post);
+    return res.status(200).json(post);
   } catch (err) {
-    console.error("Error in updatePost:", err.message);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
@@ -206,7 +202,7 @@ const getPost = async (req, res) => {
       .lean();
 
     // Trả post + replies phân trang riêng
-    res.status(200).json({
+    return res.status(200).json({
       post: { ...post, replies: undefined }, // loại bỏ replies trong post gốc
       replies,
       totalReplies: totalRepliesCount,
@@ -214,8 +210,7 @@ const getPost = async (req, res) => {
       totalPages: Math.ceil(totalRepliesCount / limit),
     });
   } catch (error) {
-    console.error("Error in getPost:", error.message);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
@@ -234,7 +229,10 @@ const deletePost = async (req, res) => {
         return res.status(404).json({ error: "Post not found" });
       }
 
-      if (post.postedBy._id.toString() !== req.user._id.toString()) {
+      if (
+        post.postedBy._id.toString() !== req.user._id.toString() &&
+        req.user.role !== "admin"
+      ) {
         return res.status(401).json({ error: "Unauthorized to delete post" });
       }
 
@@ -251,9 +249,20 @@ const deletePost = async (req, res) => {
 
       // Xóa bài viết
       await Post.findByIdAndDelete(post._id, { session });
+
       await removePostFromCache(keyRedis, post._id);
       await session.commitTransaction();
-      res.status(200).json({
+      if (req.user.role === "admin") {
+        console.log(req.user.role);
+        console.log(post.postedBy);
+        await sendNotification({
+          sender: req.user,
+          receivers: [post.postedBy._id],
+          type: "report",
+          content: `Your post has been deleted for violating community standards.`,
+        });
+      }
+      return res.status(200).json({
         message: "Post deleted successfully",
         post: {
           _id: post._id,
@@ -267,8 +276,7 @@ const deletePost = async (req, res) => {
       session.endSession();
     }
   } catch (err) {
-    console.error("Error in deletePost:", err);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
@@ -299,8 +307,10 @@ const likeUnlikePost = async (req, res) => {
     post.likes.push(userId);
     await post.save();
 
+    const isMutualFollow = await isMutualOrOneWayFollow(userId, post.postedBy);
+
     // Không tự gửi thông báo cho mình
-    if (post.postedBy.toString() !== userId.toString()) {
+    if (post.postedBy.toString() !== userId.toString() && isMutualFollow) {
       await sendNotification({
         sender: req.user,
         receivers: post.postedBy,
@@ -310,10 +320,9 @@ const likeUnlikePost = async (req, res) => {
       });
     }
 
-    res.status(200).json({ message: "Post liked successfully" });
+    return res.status(200).json({ message: "Post liked successfully" });
   } catch (err) {
-    console.error("❌ likeUnlikePost error:", err.message);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -322,23 +331,21 @@ const replyToPost = async (req, res) => {
     const { text } = req.body;
     const { id: postId } = req.params;
     const { _id: userId, profilePic: userProfilePic, username } = req.user;
+
     if (!text) {
-      return res.status(400).json({ error: "Text field is required" });
+      return res.status(400).json({ message: "Text field is required" });
     }
 
-    // Cập nhật lại post để thêm reference tới reply (nếu cần thiết)
     const post = await Post.findById(postId);
     if (!post) {
-      return res.status(404).json({ error: "Post not found" });
+      return res.status(404).json({ message: "Post not found" });
     }
 
-    // Tiến hành làm sạch text nếu có
     const cleanReply = await moderateTextSmart(text);
     if (!cleanReply.ok) {
-      return res.status(400).json({ error: cleanReply.message });
+      return res.status(400).json({ message: cleanReply.message });
     }
 
-    // Tạo một document mới cho Reply
     const newReply = new Reply({
       userId,
       text: cleanReply.cleanedText,
@@ -348,14 +355,14 @@ const replyToPost = async (req, res) => {
       postId,
     });
 
-    // Lưu reply vào collection Reply
     await newReply.save();
 
-    // Cập nhật trường replies trong Post (chỉ lưu reference đến reply)
     post.replies.push(newReply._id);
     await post.save();
+
     const truncatedText = cleanReply.cleanedText.slice(0, 20) + "...";
-    if (post.postedBy.toString() !== userId.toString()) {
+    const isMutualFollow = await isMutualOrOneWayFollow(userId, post.postedBy);
+    if (post.postedBy.toString() !== userId.toString() && isMutualFollow) {
       await sendNotification({
         sender: req.user,
         receivers: post.postedBy,
@@ -366,12 +373,11 @@ const replyToPost = async (req, res) => {
       });
     }
 
-    res
+    return res
       .status(200)
       .json({ success: true, message: "Reply added successfully" });
   } catch (err) {
-    console.error("Error in replyToPost:", err);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
@@ -398,7 +404,6 @@ const getReposts = async (req, res) => {
 
     // Tìm người dùng và lấy danh sách các bài viết đã repost
     const user = await User.findOne({ username }).select("_id reposts");
-    console.log(user);
     if (!user) return res.status(404).json({ error: "User not found" });
 
     // Lấy tất cả các bài đăng mà người dùng đã repost
@@ -419,8 +424,7 @@ const getReposts = async (req, res) => {
       posts: paginated,
     });
   } catch (error) {
-    console.error("getRepostedPosts error", error);
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -473,7 +477,7 @@ const getFollowingPosts = async (req, res) => {
 
     const uniquePosts = Array.from(uniquePostsMap.values());
 
-    res.status(200).json({
+    return res.status(200).json({
       page,
       limit,
       totalPosts: uniquePosts.length,
@@ -481,7 +485,7 @@ const getFollowingPosts = async (req, res) => {
       posts: uniquePosts,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
@@ -504,7 +508,7 @@ const getAllPosts = async (req, res) => {
       Post.countDocuments(query),
     ]);
 
-    res.status(200).json({
+    return res.status(200).json({
       page,
       limit,
       totalPosts,
@@ -512,8 +516,7 @@ const getAllPosts = async (req, res) => {
       posts,
     });
   } catch (err) {
-    console.error("Lỗi lấy bài viết:", err.message);
-    res.status(500).json({ error: "Lỗi server", message: err.message });
+    return res.status(500).json({ error: "Lỗi server", message: err.message });
   }
 };
 const getSuggestedPosts = async (req, res) => {
@@ -572,7 +575,7 @@ const getSuggestedPosts = async (req, res) => {
     const sortedPosts = posts.sort((a, b) => b.score - a.score);
 
     // Trả về kết quả
-    res.status(200).json({
+    return res.status(200).json({
       page,
       limit,
       totalPosts: sortedPosts.length,
@@ -580,7 +583,7 @@ const getSuggestedPosts = async (req, res) => {
     });
   } catch (err) {
     console.error("Lỗi gợi ý bài viết:", err.message);
-    res.status(500).json({ error: "Lỗi server", message: err.message });
+    return res.status(500).json({ error: "Lỗi server", message: err.message });
   }
 };
 
@@ -615,7 +618,7 @@ const getUserPosts = async (req, res) => {
 
     const paginated = posts.slice(skip, skip + limit);
 
-    res.status(200).json({
+    return res.status(200).json({
       page,
       limit,
       totalPosts: posts.length,
@@ -624,7 +627,7 @@ const getUserPosts = async (req, res) => {
     });
   } catch (error) {
     console.error("getUserPosts error", error);
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -633,13 +636,12 @@ const repost = async (req, res) => {
     const { id: postId } = req.params;
     const userId = req.user._id;
 
-    // Kiểm tra xem bài viết có tồn tại không
     const post = await Post.findById(postId);
     if (!post) {
       return res.status(404).json({ error: "Post not found" });
     }
+
     const redisKey = `reposted:${req.user.username}`;
-    // Bắt đầu transaction
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -647,13 +649,12 @@ const repost = async (req, res) => {
       const hasReposted = post.repostedBy.includes(userId);
 
       if (hasReposted) {
-        // Nếu đã repost thì xóa (unrepost)
+        // Unrepost
         await Post.findByIdAndUpdate(
           postId,
           { $pull: { repostedBy: userId } },
           { session }
         );
-
         await User.findByIdAndUpdate(
           userId,
           { $pull: { reposts: postId } },
@@ -661,32 +662,23 @@ const repost = async (req, res) => {
         );
 
         await session.commitTransaction();
-        res.status(200).json({ message: "Post unreposted successfully" });
+        return res
+          .status(200)
+          .json({ message: "Post unreposted successfully" });
       } else {
-        // Nếu chưa repost thì thêm mới
+        // Repost
         await Post.findByIdAndUpdate(
           postId,
           { $push: { repostedBy: userId } },
           { session }
         );
-
         await User.findByIdAndUpdate(
           userId,
           { $push: { reposts: postId } },
           { session }
         );
 
-        await session.commitTransaction();
-        await sendNotification({
-          sender: req.user,
-          receivers: post.postedBy,
-          type: "repost",
-          content: `${req.user.username} just reposted your post.`,
-          post: postId,
-        });
-        await appendToCache(redisKey, post); // Xóa cache của reposts
-        // Gửi thông báo real-time qua socket
-        res.status(200).json({ message: "Post reposted successfully" });
+        await session.commitTransaction(); // ✅ Chỉ commit rồi mới làm tiếp các việc sau
       }
     } catch (error) {
       await session.abortTransaction();
@@ -694,9 +686,24 @@ const repost = async (req, res) => {
     } finally {
       session.endSession();
     }
+
+    // ⚠️ Các thao tác sau khi transaction đã kết thúc
+    const isFollowed = await isMutualOrOneWayFollow(userId, post.postedBy);
+    if (isFollowed) {
+      await sendNotification({
+        sender: req.user,
+        receivers: post.postedBy,
+        type: "repost",
+        content: `${req.user.username} just reposted your post.`,
+        post: postId,
+      });
+    }
+
+    await appendToCache(redisKey, post);
+    return res.status(200).json({ message: "Post reposted successfully" });
   } catch (err) {
     console.error("Error in repost:", err);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
@@ -733,10 +740,10 @@ const getTags = async (req, res) => {
     // Sắp xếp tags của user lên đầu rồi đến gợi ý sắp xếp theo độ phổ biến
     const tags = [...userTags, ...uniquePopularTags];
     const tagNames = tags.map((tag) => tag._id);
-    res.status(200).json(tagNames);
+    return res.status(200).json(tagNames);
   } catch (error) {
     console.error("Error fetching tags:", error);
-    res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: "Server error" });
   }
 };
 

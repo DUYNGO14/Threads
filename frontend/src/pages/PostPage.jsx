@@ -1,17 +1,17 @@
 import { Avatar, Box, Button, Divider, Flex, IconButton, Image, Spinner, Text, useColorMode, useColorModeValue } from "@chakra-ui/react";
-import Actions from "../components/Actions";
+import Actions from "@components/Actions";
 import { useEffect, useState, useCallback } from "react";
 import { IoArrowBackOutline } from "react-icons/io5";
-import Comment from "../components/Comment";
-import useGetUserProfile from "../hooks/useGetUserProfile";
-import useShowToast from "../hooks/useShowToast";
+import Comment from "@components/Comment";
+import useGetUserProfile from "@hooks/useGetUserProfile";
+import useShowToast from "@hooks/useShowToast";
 import { useNavigate, useParams } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { useRecoilState, useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
 import { DeleteIcon } from "@chakra-ui/icons";
 import postsAtom from "../atoms/postsAtom";
-import Carousels from "../components/Carousels";
+import Carousels from "@components/Carousels";
 import api from "../services/api.js";
 const PostPage = () => {
     const { user, loading } = useGetUserProfile();

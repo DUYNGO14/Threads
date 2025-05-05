@@ -10,8 +10,7 @@ export const useAuthService = () => {
         await refreshAuthToken(); // Nếu token hết hạn, refresh token
       }
     } catch (error) {
-      console.error("Error checking token", error);
-      // Xử lý khi không thể xác thực token
+      console.error("Error checking auth", error.response.data.error);
     }
   };
 

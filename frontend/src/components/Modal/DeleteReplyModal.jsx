@@ -3,9 +3,9 @@ import {
     ModalCloseButton, ModalBody, ModalFooter, Button
 } from "@chakra-ui/react";
 import { useState } from "react";
-import useShowToast from "../../hooks/useShowToast";
+import useShowToast from "@hooks/useShowToast";
 import PropTypes from "prop-types";
-import useReply from "../../hooks/useReply";
+import useReply from "@hooks/useReply";
 
 const DeleteReplyModal = ({ isOpen, onClose, replyId, onSuccess, postId }) => {
     const [isDeleting, setIsDeleting] = useState(false);

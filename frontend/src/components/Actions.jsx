@@ -18,11 +18,11 @@ import {
 import { useState, useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
-import useShowToast from "../hooks/useShowToast";
+import useShowToast from "@hooks/useShowToast";
 import { PropTypes } from "prop-types";
 import { BsHeart, BsHeartFill, BsChat, BsShare, BsRepeat } from "react-icons/bs";
 import { FaRepeat } from "react-icons/fa6";
-import { useSocket } from "../context/SocketContext";
+import { useSocket } from "@context/SocketContext";
 import api from "../services/api.js"; // <-- import axios client của bạn
 
 const Actions = ({ post, onPostUpdate }) => {
@@ -67,7 +67,8 @@ const Actions = ({ post, onPostUpdate }) => {
             onPostUpdate(updatedPost);
             setLiked(!liked);
         } catch (error) {
-            showToast("Error", error.message || "Failed to like post", "error");
+            const message = error.response?.data?.message || error.message;
+            showToast("Error", message || "Failed to like post", "error");
         } finally {
             setIsLiking(false);
         }
@@ -89,9 +90,7 @@ const Actions = ({ post, onPostUpdate }) => {
 
         setIsReplying(true);
         try {
-            const { data } = await api.put(`/api/posts/reply/${post._id}`, { text: reply });
-            if (data.error) throw new Error(data.error);
-
+            const res = await api.put(`/api/posts/reply/${post._id}`, { text: reply });
             const updatedPost = {
                 ...post,
                 replies: [
@@ -110,7 +109,8 @@ const Actions = ({ post, onPostUpdate }) => {
             onClose();
             showToast("Success", "Reply added successfully", "success");
         } catch (error) {
-            showToast("Error", error.message || "Failed to reply", "error");
+            const message = error.response?.data?.message || error.message;
+            showToast("Error", message || "Failed to reply", "error");
         } finally {
             setIsReplying(false);
         }
@@ -150,7 +150,8 @@ const Actions = ({ post, onPostUpdate }) => {
             setReposted(!reposted);
             showToast("Success", reposted ? "Post unreposted" : "Post reposted", "success");
         } catch (error) {
-            showToast("Error", error.message || "Failed to repost", "error");
+            const message = error.response?.data?.message || error.message;
+            showToast("Error", message || "Failed to repost", "error");
         } finally {
             setIsReposting(false);
         }

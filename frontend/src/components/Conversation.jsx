@@ -24,10 +24,10 @@ import { BsFillImageFill, BsThreeDotsVertical } from "react-icons/bs";
 import { TiTick } from "react-icons/ti";
 import { selectedConversationAtom } from "../atoms/messagesAtom";
 import userAtom from "../atoms/userAtom";
-import { useSocket } from "../context/SocketContext";
+import { useSocket } from "@context/SocketContext";
 import { useNavigate } from "react-router-dom";
 import DeleteConfirmationModal from "./Modal/DeleteConfirmationModal"; // Import modal đã tách
-import useShowToast from "../hooks/useShowToast";
+import useShowToast from "@hooks/useShowToast";
 import api from "../services/api.js";
 
 const Conversation = ({ conversation, isOnline, isMobile = false, onDelete }) => {

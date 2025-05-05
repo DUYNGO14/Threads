@@ -14,8 +14,6 @@ const followUnFollowUser = async (req, res) => {
   try {
     const { id } = req.params; // id của người bị follow / unfollow
     const userId = req.user._id; // id của người đang thực hiện hành động follow / unfollow
-    console.log("Current user:", req.user);
-    console.log("ID to follow/unfollow:", id);
 
     // Kiểm tra xem id và userId có hợp lệ không
     if (!id || !userId) {
@@ -35,8 +33,6 @@ const followUnFollowUser = async (req, res) => {
     if (!userToModify || !currentUser) {
       return res.status(404).json({ error: "User not found" });
     }
-    console.log("User to modify:", userToModify);
-    console.log("Current user:", currentUser);
     // Chuyển sang ObjectId để so sánh chính xác
     const targetIdStr = id.toString(); // id phải là chuỗi
     const isFollowing = currentUser.following.some(
@@ -74,17 +70,28 @@ const followUnFollowUser = async (req, res) => {
     // await debounceFollow.saveAction(userId, id, now);
     await redis.del(`suggestions:${userId}`);
 
-    res.status(200).json({
+    return res.status(200).json({
       message: isFollowing
         ? "User unfollowed successfully"
         : "User followed successfully",
     });
   } catch (err) {
     console.error("❌ Error in followUnFollowUser:", err.message);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
+const isMutualOrOneWayFollow = async (userAId, userBId) => {
+  const userAObjectId =
+    typeof userAId === "string" ? userAId : userAId.toString();
+  const userB = await User.findById(userBId).select("followers following");
 
+  if (!userB) return false;
+
+  return (
+    userB.followers.some((id) => id.toString() === userAObjectId) ||
+    userB.following.some((id) => id.toString() === userAObjectId)
+  );
+};
 const getUserProfile = async (req, res) => {
   try {
     const { query } = req.params;
@@ -101,12 +108,19 @@ const getUserProfile = async (req, res) => {
       "-password -updatedAt"
     );
 
-    if (!user) return res.status(404).json({ error: "User not found" });
-
-    res.status(200).json(user);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    if (user.isBlocked) {
+      return res.status(404).json({ error: "This user is blocked" });
+    }
+    if (user.isFrozen) {
+      return res.status(404).json({ error: "This user is frozen" });
+    }
+    return res.status(200).json(user);
   } catch (error) {
     console.error("Error in getUserProfile:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 const searchUsers = async (req, res) => {
@@ -132,10 +146,10 @@ const searchUsers = async (req, res) => {
       return res.status(404).json({ error: "No users found" });
     }
 
-    res.status(200).json(users);
+    return res.status(200).json(users);
   } catch (error) {
     console.error("Error in searchUsersController:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 // Cập nhật thông tin người dùng
@@ -199,10 +213,10 @@ const updateUser = async (req, res) => {
 
     user.password = null;
 
-    res.status(200).json(user);
+    return res.status(200).json(user);
   } catch (error) {
     console.error("Error in updateUser:", error);
-    res.status(500).json({ error: "Lỗi server, vui lòng thử lại sau" });
+    return res.status(500).json({ error: "Lỗi server, vui lòng thử lại sau" });
   }
 };
 
@@ -347,10 +361,10 @@ const freezeAccount = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    res.status(200).json({ success: true });
+    return res.status(200).json({ success: true });
   } catch (error) {
     console.error("Error in freezeAccount:", error.message);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
@@ -384,10 +398,10 @@ const deleteAccount = async (req, res) => {
     // Delete user account
     await User.findByIdAndDelete(req.user._id);
 
-    res.status(200).json({ success: true });
+    return res.status(200).json({ success: true });
   } catch (error) {
     console.error("Error in deleteAccount:", error.message);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
@@ -398,10 +412,10 @@ const getCurrentUserProfile = async (req, res) => {
       "-password -updatedAt"
     );
     if (!user) return res.status(404).json({ error: "User not found" });
-    res.status(200).json(user);
+    return res.status(200).json(user);
   } catch (error) {
     console.error("Error in getCurrentUserProfile:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
@@ -416,10 +430,10 @@ const getListFollowers = async (req, res) => {
       "_id username name profilePic followers following"
     );
 
-    res.status(200).json(followers);
+    return res.status(200).json(followers);
   } catch (error) {
     console.error("Error in getListFollowers:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
@@ -434,17 +448,16 @@ const getListFollowing = async (req, res) => {
       "_id username name profilePic followers following"
     );
 
-    res.status(200).json(following);
+    return res.status(200).json(following);
   } catch (error) {
     console.error("Error in getListFollowing:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
 const searchSuggestedUsers = async (req, res) => {
   try {
     const query = req.query.q;
-    console.log(query);
     if (!query || query.trim() === "") {
       return res.status(400).json({ error: "Search query is required" });
     }
@@ -456,8 +469,6 @@ const searchSuggestedUsers = async (req, res) => {
         { name: { $regex: query, $options: "i" } },
       ],
     };
-
-    // Nếu đã đăng nhập => lọc bỏ người đã follow và chính mình
     if (req.user) {
       const currentUser = await User.findById(req.user._id).select("following");
       const excludedUserIds = [
@@ -475,10 +486,10 @@ const searchSuggestedUsers = async (req, res) => {
       return res.status(404).json({ error: "No users found" });
     }
 
-    res.status(200).json(users);
+    return res.status(200).json(users);
   } catch (error) {
     console.error("Error in searchUsersController:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 export {
@@ -493,4 +504,5 @@ export {
   getListFollowing,
   searchUsers,
   searchSuggestedUsers,
+  isMutualOrOneWayFollow,
 };

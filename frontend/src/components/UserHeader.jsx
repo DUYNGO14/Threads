@@ -7,9 +7,9 @@ import { CgMoreO } from "react-icons/cg";
 import { useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
 import { Link as RouterLink } from "react-router-dom";
-import useFollowUnfollow from "../hooks/useFollowUnfollow";
+import useFollowUnfollow from "@hooks/useFollowUnfollow";
 import { PropTypes } from 'prop-types';
-import useShowToast from "../hooks/useShowToast";
+import useShowToast from "@hooks/useShowToast";
 import { useState } from "react";
 import FollowersFollowingModal from "./Modal/FollowersFollowingModal";
 
@@ -27,7 +27,7 @@ const SocialLinks = ({ socialLinks }) => {
         <>
             {platforms.map((platform) =>
                 platform.url ? (
-                    <Box key={platform.name} className='icon-container' cursor={"pointer"} mx={2}>
+                    <Box key={platform.name} className='icon-container' cursor={"pointer"} mr={1}>
                         <Link href={platform.url} isExternal>
                             {platform.icon}
                         </Link>
@@ -43,8 +43,6 @@ const UserHeader = ({ user, onTabChange }) => {
     const showToast = useShowToast();
     const currentUser = useRecoilValue(userAtom); // logged in user
     const { handleFollowUnfollow, following, updating } = useFollowUnfollow(user);
-    const [listFollowing, setListFollowing] = useState(null);
-    const [listFollowers, setListFollowers] = useState(null);
     const { isOpen, onOpen, onClose } = useDisclosure();
     // Copy URL function with toast notification
     const copyURL = () => {
@@ -115,6 +113,14 @@ const UserHeader = ({ user, onTabChange }) => {
                                         </MenuButton>
                                         <Portal>
                                             <MenuList bg={"gray.dark"}>
+                                                {currentUser?._id !== user._id && (
+                                                    <>
+                                                        <MenuItem bg={"gray.dark"} onClick={() => { }}>
+                                                            Report
+                                                        </MenuItem>
+
+                                                    </>
+                                                )}
                                                 <MenuItem bg={"gray.dark"} onClick={copyURL}>
                                                     Copy link
                                                 </MenuItem>

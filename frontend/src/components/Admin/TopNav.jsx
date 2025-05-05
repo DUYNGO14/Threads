@@ -27,7 +27,7 @@ export default function TopNav({ buttonProps }) {
             h="16"
             py="2.5"
             pr="2.5"
-            bg={useColorModeValue("gray.50", "gray.800")}
+            bg={useColorModeValue('gray.100', 'gray.900')}
             color={useColorModeValue("gray.900", "gray.50")}
         >
             <HStack spacing={2}>

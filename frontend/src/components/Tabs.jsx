@@ -6,7 +6,7 @@ import { ChevronDownIcon, CheckIcon } from "@chakra-ui/icons";
 import PropTypes from "prop-types";
 import { useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
-import useShowToast from "../hooks/useShowToast";
+import useShowToast from "@hooks/useShowToast";
 
 export default function Tabs({
     tabs,

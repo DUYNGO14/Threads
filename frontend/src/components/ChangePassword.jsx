@@ -18,10 +18,10 @@ import {
 import { useState } from 'react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import { useNavigate } from 'react-router-dom';
-import useShowToast from '../hooks/useShowToast';
+import useShowToast from '@hooks/useShowToast';
 import { useRecoilValue } from 'recoil';
 import userAtom from '../atoms/userAtom';
-import useDebounceSubmit from '../hooks/useDebounceSubmit';
+import useDebounceSubmit from '@hooks/useDebounceSubmit';
 import api from "../services/api.js";
 
 const ChangePassword = () => {
@@ -61,16 +61,11 @@ const ChangePassword = () => {
                 currentPassword: passwords.currentPassword,
                 newPassword: passwords.newPassword,
             });
-
-            if (res.data.error) {
-                showToast("Error", res.data.error, "error");
-                return;
-            }
-
             showToast("Success", "Password changed successfully", "success");
             navigate('/settings');
         } catch (error) {
-            showToast("Error", error.message, "error");
+            const message = error.response?.data?.error || error.message;
+            showToast("Error", message || "Something went wrong", "error");
         }
     };
 

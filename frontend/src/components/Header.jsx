@@ -8,7 +8,7 @@ import { AiFillHome } from "react-icons/ai";
 import { RxAvatar } from "react-icons/rx";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FiLogIn, FiLogOut } from "react-icons/fi";
-import useLogout from "../hooks/useLogout";
+import useLogout from "@hooks/useLogout";
 import {
     BsFillChatQuoteFill, BsSun, BsMoonStars, BsSearch, BsPlusSquare
 } from "react-icons/bs";

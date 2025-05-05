@@ -1,5 +1,5 @@
 import { Avatar, Box, Button, HStack, Text } from "@chakra-ui/react";
-import useFollowUnfollow from "../hooks/useFollowUnfollow";
+import useFollowUnfollow from "@hooks/useFollowUnfollow";
 import { useColorMode } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 const UserItemSuggest = ({ user }) => {
@@ -8,7 +8,7 @@ const UserItemSuggest = ({ user }) => {
     const navigate = useNavigate();
     return (
         <HStack justify="space-between" align="flex-start">
-            <HStack spacing={3} onClick={() => { navigate(`/${user.username}`) }} cursor="pointer">
+            <HStack spacing={3} onClick={() => { navigate(`/user/${user.username}`) }} cursor="pointer">
                 <Avatar size="md" src={user.profilePic} />
                 <Box >
                     <Text fontWeight="bold" color={colorMode === "dark" ? "white" : "gray.800"}>

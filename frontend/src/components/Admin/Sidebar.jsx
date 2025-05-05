@@ -3,17 +3,16 @@ import { Box, List, useColorModeValue } from "@chakra-ui/react";
 
 
 import { IoHomeOutline, IoSettingsOutline } from "react-icons/io5";
+import { GoReport } from "react-icons/go";
 import { FaRegUser } from "react-icons/fa";
-import { FaRegNewspaper, FaRegFolder, FaRegClipboard } from "react-icons/fa6";
+import { MdPostAdd } from "react-icons/md";
 import SidebarItem from "./SidebarItem";
 
 const listItems = [
     { text: "Home", icon: IoHomeOutline, href: "/admin" },
-    { text: "Settings", icon: IoSettingsOutline, href: "/admin/settings" },
     { text: "Users", icon: FaRegUser, href: "/admin/users" },
-    { text: "Tasks", icon: FaRegNewspaper, href: "/admin/posts" },
-    { text: "Folder", icon: FaRegFolder, href: "/admin/folder" },
-    { text: "Reports", icon: FaRegClipboard, href: "/admin/reports" },
+    { text: "Posts", icon: MdPostAdd, href: "/admin/posts" },
+    { text: "Reports", icon: GoReport, href: "/admin/reports" },
 ];
 
 
@@ -25,6 +24,8 @@ export default function Sidebar({ isOpen }) {
             w={isOpen ? 72 : 12}
             borderRight="2px"
             borderColor={useColorModeValue("gray.200", "gray.900")}
+            bg={useColorModeValue('gray.100', 'gray.900')}
+            color={useColorModeValue("gray.900", "gray.50")}
             transition="width 0.25s ease"
         >
             <List spacing={0} p="0.5">
@@ -40,3 +41,4 @@ export default function Sidebar({ isOpen }) {
         </Box>
     );
 }
+

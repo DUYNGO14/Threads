@@ -11,6 +11,6 @@ const router = express.Router();
 router.get("/", protectRoute, getUserComments);
 router.get("/:id", getComment);
 router.put("/:id", protectRoute, updateComment);
-router.delete("/post/:postId/reply/:repliesId", protectRoute, deleteComment);
+router.delete("/:repliesId", protectRoute, deleteComment);
 
 export default router;

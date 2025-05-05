@@ -1,6 +1,6 @@
 export const MAX_CHAR = 500;
-export const MAX_FILES = 5;
-export const MAX_FILE_SIZE_MB = 100;
+export const MAX_FILES = 10;
+export const MAX_FILE_SIZE_MB = 50;
 
 export const imageFormats = ["jpg", "jpeg", "png", "gif", "webp"];
 export const videoFormats = ["mp4", "webm", "mov"];

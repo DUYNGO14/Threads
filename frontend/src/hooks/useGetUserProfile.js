@@ -23,6 +23,11 @@ const useGetUserProfile = () => {
         }
         setUser(data);
       } catch (error) {
+        const errorData = await error.response.data;
+        if (errorData.error) {
+          showToast("Error", errorData.error, "error");
+          return;
+        }
         showToast("Error", error.message, "error");
       } finally {
         setLoading(false);

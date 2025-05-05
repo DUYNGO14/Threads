@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Box, Button, Heading, Text } from "@chakra-ui/react";
-import useShowToast from "../hooks/useShowToast";
+import useShowToast from "@hooks/useShowToast";
 
 const OAuthFailure = () => {
     const navigate = useNavigate();

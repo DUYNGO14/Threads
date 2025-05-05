@@ -1,22 +1,23 @@
 import Reply from "../models/replyModel.js";
 import Post from "../models/postModel.js";
 import { moderateTextSmart } from "../utils/moderateText.js";
+import { sendNotification } from "../services/notificationService.js";
 const getComment = async (req, res) => {
   try {
-    const { id } = req.params; // ID của comment được truyền qua params
-    const comment = await Reply.findById(id).populate(
-      "repliedBy",
+    const { id } = req.params; // Lấy ID của reply từ params
+    const reply = await Reply.findById(id).populate(
+      "userId",
       "_id username name profilePic"
     );
 
-    if (!comment) {
-      return res.status(404).json({ error: "Comment not found" });
+    if (!reply) {
+      return res.status(404).json({ error: "Reply not found" });
     }
 
-    res.status(200).json(comment);
+    return res.status(200).json(reply);
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
     console.log("Error in getComment: ", error.message);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 const updateComment = async (req, res) => {
@@ -42,47 +43,55 @@ const updateComment = async (req, res) => {
     comment.originalText = text;
     await comment.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Comment updated successfully",
       comment,
     });
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
     console.log("Error in updateComment: ", error.message);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
 const deleteComment = async (req, res) => {
   try {
-    const { postId, repliesId } = req.params; // Lấy postId và replyId từ URL
-    console.log(postId, repliesId);
+    const { repliesId } = req.params; // Lấy postId và replyId từ URL
     // Tìm bài viết chứa reply
-    const post = await Post.findById(postId);
-    if (!post) {
-      return res.status(404).json({ error: "Post not found" });
-    }
-
-    // Tìm reply trong bài viết
-    const replyIndex = post.replies.findIndex(
-      (reply) => reply._id.toString() === repliesId
-    );
-    if (replyIndex === -1) {
+    const reply = await Reply.findById(repliesId);
+    if (!reply) {
       return res.status(404).json({ error: "Reply not found" });
     }
 
-    // Xóa reply
-    post.replies.splice(replyIndex, 1); // Xóa reply khỏi mảng replies của bài viết
-    await post.save(); // Lưu lại bài viết với danh sách replies đã được cập nhật
+    // Kiểm tra quyền: chủ sở hữu hoặc admin
+    if (
+      reply.userId.toString() !== req.user._id.toString() &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({ error: "Unauthorized to delete reply" });
+    }
 
-    res.status(200).json({
-      success: true,
-      message: "Reply deleted successfully",
-      repliesId,
+    // Xóa ID của reply khỏi mảng replies trong Post liên quan
+    await Post.findByIdAndUpdate(reply.postId, {
+      $pull: { replies: reply._id },
     });
-  } catch (error) {
-    console.log("Error in deleteReply: ", error.message);
-    res.status(500).json({ error: "Internal Server Error" });
+
+    // Xóa reply
+    await reply.deleteOne();
+    if (req.user.role === "admin") {
+      await sendNotification({
+        sender: req.user,
+        receivers: [reply.userId],
+        type: "report",
+        content: `Your comment has been deleted for violating community standards.`,
+        post: reply.postId,
+      });
+    }
+
+    return res.status(200).json({ message: "Reply deleted successfully" });
+  } catch (err) {
+    console.error("Error in deleteReply:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
@@ -99,10 +108,10 @@ const getUserComments = async (req, res) => {
       return res.status(404).json({ error: "No comments found for this user" });
     }
 
-    res.status(200).json(comments);
+    return res.status(200).json(comments);
   } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
     console.log("Error in getUserComments: ", error.message);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 

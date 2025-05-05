@@ -1,7 +1,7 @@
 import React from "react";
 import { Button, Text, Avatar, Box, Flex, useColorModeValue } from "@chakra-ui/react";
 import { Link } from "react-router-dom";
-import useFollowUnfollow from "../hooks/useFollowUnfollow"; // Custom hook follow/unfollow
+import useFollowUnfollow from "@hooks/useFollowUnfollow"; // Custom hook follow/unfollow
 import numeral from "numeral";
 const FollowItem = ({ user, activeTab, setFollowing }) => {
     const onSuccess = (isNowFollowing) => {

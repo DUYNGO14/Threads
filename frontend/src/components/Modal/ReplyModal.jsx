@@ -6,7 +6,7 @@ import {
 } from "@chakra-ui/react";
 import { useState } from "react";
 import PropTypes from "prop-types";
-import useShowToast from "../../hooks/useShowToast";
+import useShowToast from "@hooks/useShowToast";
 import { useRecoilValue } from "recoil";
 import userAtom from "../../atoms/userAtom";
 

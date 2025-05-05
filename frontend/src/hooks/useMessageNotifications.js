@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSocket } from "../context/SocketContext";
+import { useSocket } from "@context/SocketContext";
 import useShowToast from "./useShowToast";
 import { useRecoilState } from "recoil";
 import { selectedConversationAtom } from "../atoms/messagesAtom";

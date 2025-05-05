@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSetRecoilState } from "recoil";
 import userAtom from "../atoms/userAtom";
 import { Spinner, Text, VStack, Box, useColorModeValue } from "@chakra-ui/react";
-import useShowToast from "../hooks/useShowToast";
+import useShowToast from "@hooks/useShowToast";
 import api from "../services/api.js";
 const OAuthSuccess = () => {
     const navigate = useNavigate();

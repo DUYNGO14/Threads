@@ -9,7 +9,7 @@ const ServerErrorPage = () => {
     const navigate = useNavigate();
 
     const handleBackHome = () => {
-        navigate("/");
+        navigate(-1);
     };
 
     return (

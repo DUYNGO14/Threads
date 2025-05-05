@@ -11,7 +11,6 @@ async function sendMessage(req, res) {
     const { recipientId, message } = req.body;
     const senderId = req.user._id;
     const files = req.files;
-    console.log(recipientId);
     if (!recipientId || (!message && files.length === 0)) {
       return res
         .status(400)
@@ -75,11 +74,11 @@ async function sendMessage(req, res) {
 
     // Gửi socket tới recipient nếu đang online
     const recipientSocketId = getRecipientSocketId(recipientId);
-    if (recipientSocketId) {
-      io.to(recipientSocketId).emit("newMessage", newMessage);
-    } else {
-      console.log(`User ${recipientId} is offline`);
-    }
+    // if (recipientSocketId) {
+    //   io.to(recipientSocketId).emit("newMessage", newMessage);
+    // } else {
+    //   console.log(`User ${recipientId} is offline`);
+    // }
 
     // Cập nhật số tin chưa đọc
     const unreadCounts = await getUnreadCountsForUser(recipientId);
@@ -87,10 +86,10 @@ async function sendMessage(req, res) {
       io.to(recipientSocketId).emit("updateUnreadCounts", unreadCounts);
     }
 
-    res.status(201).json(newMessage);
+    return res.status(201).json(newMessage);
   } catch (error) {
     console.error("Send message error:", error);
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 }
 
@@ -111,9 +110,9 @@ async function getMessages(req, res) {
       conversationId: conversation._id,
     }).sort({ createdAt: 1 });
 
-    res.status(200).json(messages);
+    return res.status(200).json(messages);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 }
 

@@ -80,6 +80,10 @@ const userSchema = mongoose.Schema(
       of: String, // Lưu trữ liên kết dạng chuỗi (URL)
       default: {},
     },
+    isBlocked: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

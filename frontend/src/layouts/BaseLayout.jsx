@@ -1,5 +1,5 @@
 import { Grid, GridItem, useColorMode } from "@chakra-ui/react";
-import Header from "../components/Header";
+import Header from "@components/Header";
 
 const BaseLayout = ({ children, showHeader = true }) => {
     const { colorMode } = useColorMode();

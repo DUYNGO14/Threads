@@ -1,7 +1,7 @@
 // components/GiphyPicker.jsx
 import { Box, Input, Image, Spinner, SimpleGrid } from "@chakra-ui/react";
 import { useState } from "react";
-import useGiphySearch from "../hooks/useGiphySearch";
+import useGiphySearch from "@hooks/useGiphySearch";
 
 const GiphyPicker = ({ onGifSelect }) => {
     const [query, setQuery] = useState("ALL");

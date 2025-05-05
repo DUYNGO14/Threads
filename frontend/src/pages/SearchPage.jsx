@@ -14,9 +14,9 @@ import { SearchIcon, SettingsIcon } from "@chakra-ui/icons";
 import { suggestionsAtom } from "../atoms/suggesteAtoms";
 import { useRecoilState } from "recoil";
 import { useEffect, useState } from "react";
-import useShowToast from "../hooks/useShowToast";
-import UserItemSuggest from "../components/UserItemSuggest";
-import useDebounce from "../hooks/useDebounce";
+import useShowToast from "@hooks/useShowToast";
+import UserItemSuggest from "@components/UserItemSuggest";
+import useDebounce from "@hooks/useDebounce";
 import api from "../services/api.js";
 const SearchPage = () => {
     const { colorMode } = useColorMode();
@@ -36,22 +36,16 @@ const SearchPage = () => {
                 setSearchResult([]);
                 return;
             }
-
-            try {
-                const res = await api.get(`/api/users/search?q=${debouncedSearchQuery}`);
-                const data = await res.data;
-                if (data.message) {
-                    showToast("Error", data.message, "error");
-                } else if (Array.isArray(data)) {
-                    setSearchResult(data);
-                } else {
-                    setSearchResult([]);
-                }
-            } catch (error) {
-                showToast("Error", error.message, "error");
+            const res = await api.get(`/api/users/search?q=${debouncedSearchQuery}`);
+            const data = await res.data;
+            if (data.message) {
+                showToast("Error", data.message, "error");
+            } else if (Array.isArray(data)) {
+                setSearchResult(data);
+            } else {
+                setSearchResult([]);
             }
         };
-
         fetchSearchResults();
     }, [debouncedSearchQuery, showToast]);
 

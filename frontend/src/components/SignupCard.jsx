@@ -19,7 +19,7 @@ import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import { useSetRecoilState } from 'recoil';
 import { useDebouncedCallback } from 'use-debounce';
 import { authScreenAtom } from '../atoms/authAtom';
-import useShowToast from '../hooks/useShowToast';
+import useShowToast from '@hooks/useShowToast';
 
 const SignupCard = () => {
     const [state, setState] = useState({

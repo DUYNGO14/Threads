@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
     Box, Button, FormControl, FormLabel, Input, InputGroup, InputRightElement, Stack, Text, useColorModeValue
 } from "@chakra-ui/react";
-import useShowToast from "../hooks/useShowToast";
+import useShowToast from "@hooks/useShowToast";
 import { ViewIcon, ViewOffIcon } from "@chakra-ui/icons";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../services/api.js";

@@ -22,7 +22,7 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import EmojiPicker from "emoji-picker-react";
 import PropTypes from "prop-types";
 import GiphyPicker from "./GiphyPicker";
-import useShowToast from "../hooks/useShowToast";
+import useShowToast from "@hooks/useShowToast";
 import { conversationsAtom, selectedConversationAtom } from "../atoms/messagesAtom";
 import api from "../services/api.js";
 const MessageInput = ({ setMessages }) => {

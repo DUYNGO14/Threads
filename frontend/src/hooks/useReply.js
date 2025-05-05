@@ -1,5 +1,5 @@
 import { useState } from "react";
-import useShowToast from "../hooks/useShowToast";
+import useShowToast from "@hooks/useShowToast";
 import api from "../services/api.js";
 /**
  * Custom hook để xử lý logic thêm / sửa / xoá reply trong một bài post.
@@ -53,12 +53,9 @@ const useReply = (postId, onSuccess) => {
   const deleteReply = async (replyId, postId) => {
     setLoading(true);
     try {
-      const res = await api.delete(
-        `/api/replies/post/${postId}/reply/${replyId}`,
-        {
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      const res = await api.delete(`/api/replies/${replyId}`, {
+        headers: { "Content-Type": "application/json" },
+      });
       const data = await res.data;
       if (data.error) throw new Error(data.error);
 

@@ -27,11 +27,11 @@ import {
     FormLabel,
     FormErrorMessage,
 } from "@chakra-ui/react";
-import useShowToast from "../hooks/useShowToast";
-import useLogout from "../hooks/useLogout";
+import useShowToast from "@hooks/useShowToast";
+import useLogout from "@hooks/useLogout";
 import { useNavigate } from "react-router-dom";
 import { MdLock, MdPassword, MdSettings, MdWarning, MdDelete } from "react-icons/md";
-import useDebounceSubmit from "../hooks/useDebounceSubmit";
+import useDebounceSubmit from "@hooks/useDebounceSubmit";
 import { useState, useEffect } from "react";
 import api from "../services/api.js";
 export default function SettingsPage() {

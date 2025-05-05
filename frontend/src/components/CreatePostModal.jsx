@@ -7,11 +7,11 @@ import {
 import { BsFillImageFill } from "react-icons/bs";
 import PostPreview from "./PostPreview";
 import { MAX_CHAR, MAX_FILES, ALLOWED_TYPES, MAX_FILE_SIZE_MB } from "../constant/uploads";
-import useShowToast from "../hooks/useShowToast";
+import useShowToast from "@hooks/useShowToast";
 import { useRecoilState, useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
 import postsAtom from "../atoms/postsAtom";
-import useDebounceSubmit from "../hooks/useDebounceSubmit";
+import useDebounceSubmit from "@hooks/useDebounceSubmit";
 import api from "../services/api";
 
 const CreatePostModal = ({ isOpen, onClose }) => {

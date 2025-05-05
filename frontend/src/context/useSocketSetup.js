@@ -5,12 +5,13 @@ import {
   unreadConversationsCountAtom,
   conversationsAtom,
 } from "../atoms/messagesAtom";
+import { countOnlineAtom } from "../atoms/onlineAtom";
 import {
   unreadNotificationCountAtom,
   notificationAtom,
 } from "../atoms/notificationAtom";
 import { useNavigate } from "react-router-dom";
-import useShowToast from "../hooks/useShowToast";
+import useShowToast from "@hooks/useShowToast";
 import userAtom from "../atoms/userAtom";
 const BACKEND_URL = import.meta.env.PROD
   ? "https://threads-0m08.onrender.com"
@@ -23,6 +24,7 @@ const useSocketSetup = (user, socketRef, setOnlineUsers) => {
   const setUnreadNotificationCount = useSetRecoilState(
     unreadNotificationCountAtom
   );
+  const setCountOnline = useSetRecoilState(countOnlineAtom);
   const currentUser = useRecoilValue(userAtom);
   const showToast = useShowToast();
   const navigate = useNavigate();
@@ -36,7 +38,10 @@ const useSocketSetup = (user, socketRef, setOnlineUsers) => {
 
     socketRef.current = socket;
 
-    socket.on("getOnlineUsers", setOnlineUsers);
+    socket.on("getOnlineUsers", (onlineUsers) => {
+      setOnlineUsers(onlineUsers);
+      setCountOnline(onlineUsers.length);
+    });
 
     socket.on("updateUnreadCounts", (unreadMap) => {
       const count = Object.values(unreadMap).filter((c) => c > 0).length;

@@ -5,6 +5,8 @@ import messageRoutes from "../routes/messageRouters.js";
 import repliesRoutes from "../routes/repliesRouters.js";
 import conversationRoutes from "../routes/conversationRoutes.js";
 import notificationRoutes from "../routes/notificationRouters.js";
+import adminRoutes from "../routes/adminRouter.js";
+import reportRoutes from "../routes/reportRouters.js";
 import path from "path";
 import express from "express";
 
@@ -18,7 +20,8 @@ export default function setupRoutes(app) {
   app.use("/api/replies", repliesRoutes);
   app.use("/api/conversations", conversationRoutes);
   app.use("/api/notifications", notificationRoutes);
-
+  app.use("/api/admin", adminRoutes);
+  app.use("/api/reports", reportRoutes);
   if (process.env.NODE_ENV === "production") {
     app.use(express.static(path.join(__dirname, "/frontend/dist")));
     app.get("*", (req, res) => {

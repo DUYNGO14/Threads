@@ -21,7 +21,7 @@ passport.use(
 
         if (!email) {
           return done(null, false, {
-            message: "Không lấy được email từ Google.",
+            message: "Google account does not have an email.",
           });
         }
 
@@ -33,9 +33,22 @@ passport.use(
           }
 
           if (existingUser.facebookId) {
-            console.log("⚠ Lỗi: Email đã được đăng ký bằng Facebook.");
+            console.log("⚠ Error: Email has been registered with Facebook.");
             return done(null, false, {
-              message: "Email đã được đăng ký.",
+              message: "Email has been registered with Facebook.",
+            });
+          }
+
+          if (existingUser.password) {
+            console.log("⚠ Lỗi: Tài khoản này được tạo bằng mật khẻu.");
+            return done(null, false, {
+              message: "Account created with password.",
+            });
+          }
+          if (existingUser.isBlocked === true) {
+            console.log("⚠ Lỗi: Tài khoản này được tạo bằng mật khẻu.");
+            return done(null, false, {
+              message: "Account is blocked.",
             });
           }
 
@@ -50,6 +63,7 @@ passport.use(
           email,
           profilePic: profile.photos?.[0]?.value || "",
           username: email.split("@")[0],
+          isVerified: true,
         });
 
         await newUser.save();
@@ -80,7 +94,7 @@ passport.use(
           if (existingUser.googleId) {
             // Nếu tài khoản đã đăng ký bằng Facebook trước đó
             return done(
-              new Error("Email này đã được sử dụng để đăng nhập bằng Google."),
+              new Error("Email has been registered with Google."),
               null
             );
           }

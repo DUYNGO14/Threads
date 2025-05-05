@@ -7,7 +7,7 @@ const NotFound = ({ type = "user" }) => {
         user: {
             icon: FaUserAltSlash,
             title: "User Not Found",
-            message: "The user you are looking for does not exist or may have been removed."
+            message: "The user you are looking for does not exist or may have been blocked or may have been removed."
         },
         post: {
             icon: MdPostAdd,

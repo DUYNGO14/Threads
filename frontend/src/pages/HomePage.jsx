@@ -8,12 +8,12 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { debounce } from "lodash";
 import { BsPostcard } from "react-icons/bs";
 
-import Tabs from "../components/Tabs";
-import Post from "../components/Post";
-import PostSkeleton from "../components/PostSkeleton";
+import Tabs from "@components/Tabs";
+import Post from "@components/Post";
+import PostSkeleton from "@components/PostSkeleton";
 
 import userAtom from "../atoms/userAtom";
-import useShowToast from "../hooks/useShowToast";
+import useShowToast from "@hooks/useShowToast";
 import api from "../services/api.js";
 const INITIAL_POSTS_LIMIT = 5;
 const SCROLL_POSTS_LIMIT = 5;

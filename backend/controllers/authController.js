@@ -48,7 +48,7 @@ const signupUser = async (req, res) => {
     );
 
     // Trả về thông tin user (loại bỏ mật khẩu)
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Email verified successfully",
       data: {
@@ -62,7 +62,7 @@ const signupUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in signupUser:", error.message);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
@@ -88,6 +88,9 @@ const loginUser = async (req, res) => {
     if (user.isVerified === false) {
       return res.status(400).json({ error: "Account not verified." });
     }
+    if (user.isBlocked === true) {
+      return res.status(400).json({ error: "Account is blocked." });
+    }
     // Kiểm tra mật khẩu có đúng không
     const isPasswordMatch = await bcrypt.compare(password, user.password);
     if (!isPasswordMatch) {
@@ -101,7 +104,7 @@ const loginUser = async (req, res) => {
     await User.findByIdAndUpdate(user._id, { isFrozen: false });
 
     // Trả về dữ liệu user (trừ password)
-    res.status(200).json({
+    return res.status(200).json({
       accessToken,
       user: {
         _id: user._id,
@@ -117,17 +120,17 @@ const loginUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in loginUser:", error.message);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
 const logoutUser = async (req, res) => {
   try {
     res.clearCookie("refreshToken");
-    res.status(200).json({ message: "Logged out successfully" });
+    return res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
     console.error("Error in logoutUser:", error.message);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 const resendOTP = async (req, res) => {
@@ -145,15 +148,14 @@ const resendOTP = async (req, res) => {
     //send email verification
     await sendVerificationEmail(email, user.name || user.username, newOTP);
 
-    res.json({ success: true, message: "OTP has been resent" });
+    return res.json({ success: true, message: "OTP has been resent" });
   } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
 const verifyEmail = async (req, res) => {
   const { email, code } = req.body;
-  console.log(email, code);
   try {
     const user = await User.findOne({
       email,
@@ -177,7 +179,7 @@ const verifyEmail = async (req, res) => {
     // Gửi email chào mừng (nếu cần)
     // await sendWelcomeEmail(user.email, user.name);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Email verified successfully",
       user: {
@@ -190,7 +192,7 @@ const verifyEmail = async (req, res) => {
     });
   } catch (error) {
     console.log("Error in verifyEmail:", error);
-    res.status(500).json({ success: false, error: "Server error" });
+    return res.status(500).json({ success: false, error: "Server error" });
   }
 };
 
@@ -225,13 +227,13 @@ const forgotPassword = async (req, res) => {
       `${process.env.CLIENT_URL}/reset-password/${resetToken}`
     );
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Password reset link sent to your email",
     });
   } catch (error) {
     console.log("Error in forgotPassword ", error);
-    res.status(400).json({ success: false, message: error.message });
+    return res.status(400).json({ success: false, message: error.message });
   }
 };
 //reset password
@@ -270,12 +272,14 @@ const resetPassword = async (req, res) => {
     user.resetPasswordToken = undefined;
     user.resetPasswordExpiresAt = undefined;
     await user.save();
-    res
+    return res
       .status(200)
       .json({ success: true, message: "Password reset successful" });
   } catch (error) {
     console.error("Error in resetPassword:", error);
-    res.status(500).json({ success: false, error: "Internal Server Error" });
+    return res
+      .status(500)
+      .json({ success: false, error: "Internal Server Error" });
   }
 };
 const changePassword = async (req, res) => {
@@ -287,12 +291,14 @@ const changePassword = async (req, res) => {
       return res.status(400).json({ error: "Invalid current password" });
     user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
-    res
+    return res
       .status(200)
       .json({ success: true, message: "Password changed successfully" });
   } catch (error) {
     console.error("Error in changePassword:", error);
-    res.status(500).json({ success: false, error: "Internal Server Error" });
+    return res
+      .status(500)
+      .json({ success: false, error: "Internal Server Error" });
   }
 };
 const getMe = async (req, res) => {
@@ -301,10 +307,10 @@ const getMe = async (req, res) => {
       "-password -updatedAt"
     );
     if (!user) return res.status(404).json({ error: "User not found" });
-    res.status(200).json(user);
+    return res.status(200).json(user);
   } catch (error) {
     console.error("Error in getMe:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
@@ -346,9 +352,9 @@ const checkToken = async (req, res) => {
 
   try {
     jwt.verify(accessToken, process.env.JWT_SECRET); // Kiểm tra token
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (error) {
-    res.status(401).json({ success: false });
+    return res.status(401).json({ success: false });
   }
 };
 

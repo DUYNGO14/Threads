@@ -11,7 +11,6 @@ const CreatePost = () => {
     const { isOpen, onOpen, onClose } = useDisclosure();
     const draggableRef = useRef(null);  // Ref for Draggable container
     const user = useRecoilValue(userAtom);
-    console.log("User in CreatePost:", user);
     return (
         <>
             <Draggable nodeRef={draggableRef}>

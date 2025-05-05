@@ -21,7 +21,7 @@ import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import { useSetRecoilState } from 'recoil';
 import { useDebouncedCallback } from 'use-debounce';
 import { authScreenAtom } from '../atoms/authAtom';
-import useShowToast from '../hooks/useShowToast';
+import useShowToast from '@hooks/useShowToast';
 import userAtom from '../atoms/userAtom';
 import api from '../services/api';
 import { useNavigate } from 'react-router-dom';
@@ -65,6 +65,9 @@ const LoginCard = () => {
                 password: state.password.trim(),
             });
             const data = await res.data;
+            localStorage.setItem("access-token", data.accessToken);
+            setUser(data.user);
+            await Promise.resolve();
             if (data.user.role === "admin") {
                 console.log("Navigating to /admin");
                 navigate("/admin");
@@ -72,9 +75,6 @@ const LoginCard = () => {
                 console.log("Navigating to home");
                 navigate("/");
             }
-            localStorage.setItem("access-token", data.accessToken);
-            setUser(data.user);
-
         } catch (error) {
             const errorMessage =
                 error.response?.data?.error || // Lấy thông báo từ phản hồi API

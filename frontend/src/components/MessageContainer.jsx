@@ -3,11 +3,11 @@ import { CloseIcon } from "@chakra-ui/icons";
 import Message from "./Message";
 import MessageInput from "./MessageInput";
 import { useEffect, useRef, useState } from "react";
-import useShowToast from "../hooks/useShowToast";
+import useShowToast from "@hooks/useShowToast";
 import { conversationsAtom, selectedConversationAtom } from "../atoms/messagesAtom";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import userAtom from "../atoms/userAtom";
-import { useSocket } from "../context/SocketContext.jsx";
+import { useSocket } from "@context/SocketContext.jsx";
 import messageSound from "../assets/sounds/message.mp3";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api.js";
@@ -122,8 +122,8 @@ const MessageContainer = ({ isOnline, onClose }) => {
         >
             {/* Message header */}
             <Flex cursor={"pointer"} w={"full"} h={12} alignItems={"center"} gap={2} >
-                <Flex onClick={() => { navigate(`/${selectedConversation.username}`) }}>
-                    <WrapItem>
+                <Flex onClick={() => { navigate(`/user/${selectedConversation.username}`) }}>
+                    <WrapItem mr={2}>
                         <Avatar
                             size={{
                                 base: "xs",
@@ -134,11 +134,9 @@ const MessageContainer = ({ isOnline, onClose }) => {
                         >
                             {isOnline ? <AvatarBadge boxSize='1em' bg='green.500' /> : <AvatarBadge boxSize='1em' bg='red.500' />}
                         </Avatar>
-                    </WrapItem>
+                    </WrapItem >
                     <Text display={"flex"} alignItems={"center"} >
                         {selectedConversation.username}
-                        <br />
-
                     </Text>
 
                 </Flex>

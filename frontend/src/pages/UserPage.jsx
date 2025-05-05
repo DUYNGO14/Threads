@@ -1,24 +1,22 @@
 import { useEffect, useState, useCallback } from "react";
-import UserHeader from "../components/UserHeader";
+import UserHeader from "@components/UserHeader";
 import { useParams } from "react-router-dom";
-import useShowToast from "../hooks/useShowToast";
+import useShowToast from "@hooks/useShowToast";
 import {
     Flex,
     Box,
     Text,
     Stack,
-    useColorModeValue,
-    GridItem,
     useColorMode,
     IconButton,
 } from "@chakra-ui/react";
-import Post from "../components/Post";
-import useGetUserProfile from "../hooks/useGetUserProfile";
+import Post from "@components/Post";
+import useGetUserProfile from "@hooks/useGetUserProfile";
 import { useRecoilState } from "recoil";
-import postsAtom from "../atoms/postsAtom";
-import PostSkeleton from "../components/PostSkeleton";
-import NotFound from "../components/NotFound";
-import Tabs from "../components/Tabs";
+import postsAtom from "@atoms/postsAtom";
+import PostSkeleton from "@components/PostSkeleton";
+import NotFound from "@components/NotFound";
+import Tabs from "@components/Tabs";
 import { useLocation, useNavigate } from "react-router-dom";
 import { IoArrowBackOutline } from "react-icons/io5";
 import api from "../services/api.js";

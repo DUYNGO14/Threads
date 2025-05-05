@@ -4,7 +4,7 @@ import {
 } from "@chakra-ui/react";
 import { useSetRecoilState } from "recoil";
 import { authScreenAtom } from "../atoms/authAtom";
-import useShowToast from "../hooks/useShowToast";
+import useShowToast from "@hooks/useShowToast";
 import api from "../services/api.js";
 const ForgotPasswordCard = () => {
     const [email, setEmail] = useState("");
@@ -19,7 +19,7 @@ const ForgotPasswordCard = () => {
 
         try {
             setIsLoading(true);
-            const res = await api.post("/auth/forgot-password", { email: email.trim() });
+            const res = await api.post("/api/auth/forgot-password", { email: email.trim() });
 
             const data = res.data;
             if (data.error) throw new Error(data.error);

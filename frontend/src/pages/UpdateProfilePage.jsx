@@ -13,10 +13,10 @@ import {
 import { useRef, useState, useEffect } from "react";
 import { useRecoilState } from "recoil";
 import userAtom from "../atoms/userAtom";
-import usePreviewImg from "../hooks/usePreviewImg";
-import useShowToast from "../hooks/useShowToast";
+import usePreviewImg from "@hooks/usePreviewImg";
+import useShowToast from "@hooks/useShowToast";
 import { useNavigate } from "react-router-dom";
-import SocialLinksInput from "../components/SocialLinksInput";
+import SocialLinksInput from "@components/SocialLinksInput";
 import api from "../services/api.js";
 import isEqual from "lodash/isEqual"; // nhớ cài: npm install lodash
 

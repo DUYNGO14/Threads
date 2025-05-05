@@ -10,10 +10,10 @@ export const getNotifications = async (req, res) => {
       .populate("message", "text")
       .sort({ createdAt: -1 }); // Sắp xếp theo thời gian
 
-    res.status(200).json(notifications);
+    return res.status(200).json(notifications);
   } catch (err) {
     console.error(err.message);
-    res.status(500).json({ error: "Error fetching notifications" });
+    return res.status(500).json({ error: "Error fetching notifications" });
   }
 };
 export const markNotificationsAsRead = async (req, res) => {
@@ -23,10 +23,12 @@ export const markNotificationsAsRead = async (req, res) => {
       { $set: { isRead: true } } // Đánh dấu là đã đọc
     );
 
-    res.status(200).json({ message: "Notifications marked as read" });
+    return res.status(200).json({ message: "Notifications marked as read" });
   } catch (err) {
     console.error(err.message);
-    res.status(500).json({ error: "Error marking notifications as read" });
+    return res
+      .status(500)
+      .json({ error: "Error marking notifications as read" });
   }
 };
 
@@ -41,9 +43,11 @@ export const deleteNotification = async (req, res) => {
 
     await notification.deleteOne();
 
-    res.status(200).json({ message: "Notification deleted successfully" });
+    return res
+      .status(200)
+      .json({ message: "Notification deleted successfully" });
   } catch (err) {
     console.error(err.message);
-    res.status(500).json({ error: "Error deleting notification" });
+    return res.status(500).json({ error: "Error deleting notification" });
   }
 };

@@ -4,7 +4,7 @@ import {
 } from "@chakra-ui/react";
 import { useSetRecoilState } from "recoil";
 import { authScreenAtom } from "../atoms/authAtom";
-import useShowToast from "../hooks/useShowToast";
+import useShowToast from "@hooks/useShowToast";
 import api from "../services/api.js";
 const EnterOtpCard = () => {
     const [otp, setOtp] = useState("");
