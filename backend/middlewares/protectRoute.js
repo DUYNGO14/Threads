@@ -6,6 +6,9 @@ const protectRoute = async (req, res, next) => {
     "/api/users/suggested",
     "/api/posts/propose",
     "/api/posts/suggests",
+    "/api/posts/recommended",
+    "/api/users/search",
+    "/api/users/search/:query",
   ];
   const isAllowedRoute = allowedUrls.some((url) =>
     req.originalUrl.startsWith(url)

@@ -8,34 +8,30 @@ import removeFromDeletedBy from "../utils/helpers/removeFromDeletedBy.js";
 // Gửi tin nhắn mới
 async function sendMessage(req, res) {
   try {
-    const { recipientId, message } = req.body;
+    const { conversationId, message } = req.body;
     const senderId = req.user._id;
     const files = req.files;
-    if (!recipientId || (!message && files.length === 0)) {
-      return res
-        .status(400)
-        .json({ error: "Recipient and message are required." });
+
+    if (!conversationId) {
+      return res.status(400).json({ error: "Missing conversationId" });
     }
 
-    // Tìm hoặc tạo conversation
-    let conversation = await Conversation.findOne({
-      participants: { $all: [senderId, recipientId] },
-    });
+    if (!message && (!files || files.length === 0)) {
+      return res.status(400).json({ error: "Message or media is required" });
+    }
+
+    const conversation = await Conversation.findById(conversationId);
 
     if (!conversation) {
-      conversation = new Conversation({
-        participants: [senderId, recipientId],
-        deletedBy: [],
-        lastMessage: {
-          text: message,
-          sender: senderId,
-        },
-      });
-      await conversation.save();
+      return res.status(404).json({ error: "Conversation not found" });
     }
 
-    // Nếu cuộc trò chuyện bị ẩn bởi sender hoặc recipient thì hiển thị lại
-    const updated = removeFromDeletedBy(conversation, [senderId, recipientId]);
+    // Kiểm tra nếu người dùng không nằm trong đoạn chat
+    if (!conversation.participants.includes(senderId)) {
+      return res.status(403).json({ error: "You are not a participant" });
+    }
+    // Nếu người dùng đã xóa cuộc trò chuyện, gỡ khỏi deletedBy
+    const updated = removeFromDeletedBy(conversation, [senderId]);
     if (updated) await conversation.save();
 
     // Upload media nếu có
@@ -54,39 +50,40 @@ async function sendMessage(req, res) {
     });
 
     // Cập nhật lastMessage cho conversation
-    await Promise.all([
-      newMessage.save(),
-      conversation.updateOne({
-        $set: {
-          lastMessage: {
-            text: message,
-            sender: senderId,
-            seen: false,
-            img: media.find((m) => m.type === "image")?.url || "",
-            video: media.find((m) => m.type === "video")?.url || "",
-            audio: media.find((m) => m.type === "audio")?.url || "",
-            createdAt: new Date(),
-          },
-          updatedAt: new Date(),
+    const resultMessage = await newMessage.save();
+    await conversation.updateOne({
+      $set: {
+        lastMessage: {
+          _id: resultMessage._id,
+          text: message,
+          sender: senderId,
+          seen: false,
+          media,
+          createdAt: new Date(),
         },
-      }),
-    ]);
+        updatedAt: new Date(),
+      },
+    });
+    const result = await Message.findById(resultMessage._id).populate(
+      "sender",
+      "_id username name profilePic"
+    );
+    // Gửi socket đến các thành viên trong cuộc trò chuyện (trừ người gửi)
+    const recipientIds = conversation.participants.filter(
+      (id) => id.toString() !== senderId.toString()
+    );
 
-    // Gửi socket tới recipient nếu đang online
-    const recipientSocketId = getRecipientSocketId(recipientId);
-    // if (recipientSocketId) {
-    //   io.to(recipientSocketId).emit("newMessage", newMessage);
-    // } else {
-    //   console.log(`User ${recipientId} is offline`);
-    // }
+    for (const rId of recipientIds) {
+      const socketId = getRecipientSocketId(rId);
+      if (socketId) {
+        io.to(socketId).emit("newMessage", result);
 
-    // Cập nhật số tin chưa đọc
-    const unreadCounts = await getUnreadCountsForUser(recipientId);
-    if (recipientSocketId) {
-      io.to(recipientSocketId).emit("updateUnreadCounts", unreadCounts);
+        const unreadCounts = await getUnreadCountsForUser(rId);
+        io.to(socketId).emit("updateUnreadCounts", unreadCounts);
+      }
     }
 
-    return res.status(201).json(newMessage);
+    return res.status(201).json(result);
   } catch (error) {
     console.error("Send message error:", error);
     return res.status(500).json({ error: error.message });
@@ -95,12 +92,29 @@ async function sendMessage(req, res) {
 
 // Lấy tất cả tin nhắn giữa user và người còn lại
 async function getMessages(req, res) {
-  const { otherUserId } = req.params;
+  const { conversationId, otherUserId } = req.query; // hỗ trợ cả group và 1-1
   const userId = req.user?._id;
+
   try {
-    const conversation = await Conversation.findOne({
-      participants: { $all: [userId, otherUserId] },
-    });
+    let conversation;
+
+    // Ưu tiên tìm theo conversationId (group hoặc 1-1 đều được)
+    if (conversationId) {
+      conversation = await Conversation.findOne({
+        _id: conversationId,
+        participants: userId,
+      });
+    } else if (otherUserId) {
+      // Nếu không có conversationId thì tìm theo 2 người
+      conversation = await Conversation.findOne({
+        isGroup: false,
+        participants: { $all: [userId, otherUserId], $size: 2 },
+      });
+    } else {
+      return res
+        .status(400)
+        .json({ error: "Missing conversationId or otherUserId" });
+    }
 
     if (!conversation) {
       return res.status(404).json({ error: "Conversation not found" });
@@ -108,12 +122,132 @@ async function getMessages(req, res) {
 
     const messages = await Message.find({
       conversationId: conversation._id,
-    }).sort({ createdAt: 1 });
-
+    })
+      .populate("sender", "username profilePic")
+      .sort({ createdAt: 1 });
     return res.status(200).json(messages);
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
 }
+const deleteMessage = async (req, res) => {
+  const { messageId } = req.params;
+  const userId = req.user?._id;
 
-export { sendMessage, getMessages };
+  try {
+    const message = await Message.findById(messageId);
+    if (!message) {
+      return res.status(404).json({ error: "Message not found" });
+    }
+
+    if (!message.sender.equals(userId)) {
+      return res
+        .status(403)
+        .json({ error: "Not authorized to delete this message" });
+    }
+
+    if (message.media && message.media.length > 0) {
+      await deleteMediaFiles(message.media);
+    }
+    const conversation = await Conversation.findById(message.conversationId);
+    if (!conversation) {
+      return res.status(404).json({ error: "Conversation not found" });
+    }
+    const isLastMessage = conversation.lastMessage._id.toString() === messageId;
+    await message.deleteOne();
+    if (isLastMessage) {
+      const newLastMessage = await Message.findOne({
+        conversationId: message.conversationId,
+      })
+        .sort({ createdAt: -1 })
+        .exec();
+
+      // Nếu không còn tin nhắn nào trong cuộc trò chuyện, không cập nhật lastMessage
+      if (newLastMessage) {
+        await Conversation.findByIdAndUpdate(
+          message.conversationId,
+          {
+            $set: {
+              lastMessage: {
+                _id: newLastMessage._id,
+                text: newLastMessage.text,
+                sender: newLastMessage.sender,
+                seen: newLastMessage.seen,
+                media: newLastMessage.media,
+                createdAt: newLastMessage.createdAt,
+              },
+            },
+            updatedAt: new Date(),
+          },
+          { new: true }
+        );
+      } else {
+        // Nếu không còn tin nhắn nào, có thể set lastMessage về null hoặc một giá trị mặc định
+        await Conversation.findByIdAndUpdate(
+          message.conversationId,
+          {
+            $set: {
+              lastMessage: null,
+            },
+            updatedAt: new Date(),
+          },
+          { new: true }
+        );
+      }
+    }
+    return res.status(200).json({ message: "Message deleted successfully" });
+  } catch (error) {
+    console.error("❌ Delete message error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+const updatedMessage = async (req, res) => {
+  const { messageId } = req.params;
+  const { text } = req.body;
+  const userId = req.user?._id;
+
+  if (!text?.trim()) {
+    return res.status(400).json({ error: "Text is required" });
+  }
+
+  try {
+    const message = await Message.findById(messageId);
+    if (!message) {
+      return res.status(404).json({ error: "Message not found" });
+    }
+
+    if (!message.sender.equals(userId)) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    message.text = text;
+    // message.editedAt = new Date();
+    await message.save();
+    await Conversation.findOneAndUpdate(
+      { _id: message.conversationId },
+      {
+        $set: {
+          lastMessage: {
+            _id: resultMessage._id,
+            text: message.text,
+            sender: senderId,
+            seen: false,
+            media,
+            createdAt: new Date(),
+          },
+          updatedAt: new Date(),
+        },
+      },
+      { new: true }
+    );
+    return res.status(200).json({
+      message: "Message updated successfully",
+      updatedMessage: message,
+    });
+  } catch (error) {
+    console.error("Update message error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export { sendMessage, getMessages, deleteMessage, updatedMessage };

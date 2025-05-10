@@ -9,6 +9,7 @@ import PropTypes from "prop-types";
 import useShowToast from "@hooks/useShowToast";
 import { useRecoilValue } from "recoil";
 import userAtom from "../../atoms/userAtom";
+import api from "../../services/api";
 
 const ReplyModal = ({ isOpen, onClose, post, onPostUpdate }) => {
     const [reply, setReply] = useState("");
@@ -24,8 +25,7 @@ const ReplyModal = ({ isOpen, onClose, post, onPostUpdate }) => {
 
         setIsSubmitting(true);
         try {
-            const res = await fetch(`/api/posts/reply/${post._id}`, {
-                method: "PUT",
+            const res = await api.put(`/api/posts/reply/${post._id}`, {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ text: reply }),
             });
@@ -51,7 +51,8 @@ const ReplyModal = ({ isOpen, onClose, post, onPostUpdate }) => {
             onClose();
             showToast("Success", "Reply added successfully", "success");
         } catch (error) {
-            showToast("Error", error.message, "error");
+            const message = error.response?.data?.message || error.message;
+            showToast("Error", message || "Failed to reply", "error");
         } finally {
             setIsSubmitting(false);
         }

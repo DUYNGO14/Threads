@@ -347,12 +347,12 @@ const refreshToken = async (req, res) => {
 const checkToken = async (req, res) => {
   const accessToken = req.headers.authorization?.split(" ")[1]; // Lấy access token từ header
   if (!accessToken) {
-    return res.status(401).json({ success: false });
+    return res.status(200).json({ success: false });
   }
 
   try {
     jwt.verify(accessToken, process.env.JWT_SECRET); // Kiểm tra token
-    return res.json({ success: true });
+    return res.status(200).json({ success: true });
   } catch (error) {
     return res.status(401).json({ success: false });
   }

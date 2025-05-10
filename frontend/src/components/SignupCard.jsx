@@ -49,18 +49,14 @@ const SignupCard = () => {
         return 0; // Weak
     };
 
-    const debouncedSetInputs = useDebouncedCallback((name, value) => {
+    const handleChange = (e) => {
+        const { name, value } = e.target;
         setState((prev) => ({ ...prev, [name]: value }));
 
         if (name === "password") {
             const strength = checkPasswordStrength(value);
             setState((prev) => ({ ...prev, passwordStrength: strength }));
         }
-    }, 300);
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        debouncedSetInputs(name, value);
     };
 
     const toggleShowPassword = () => {
@@ -126,7 +122,7 @@ const SignupCard = () => {
                                     <Input
                                         type="text"
                                         name="name"
-                                        defaultValue={state.name}
+                                        value={state.name}
                                         onChange={handleChange}
                                     />
                                 </FormControl>
@@ -137,7 +133,7 @@ const SignupCard = () => {
                                     <Input
                                         type="text"
                                         name="username"
-                                        defaultValue={state.username}
+                                        value={state.username}
                                         onChange={handleChange}
                                     />
                                 </FormControl>
@@ -148,7 +144,7 @@ const SignupCard = () => {
                             <Input
                                 type="email"
                                 name="email"
-                                defaultValue={state.email}
+                                value={state.email}
                                 onChange={handleChange}
                             />
                         </FormControl>
@@ -158,7 +154,7 @@ const SignupCard = () => {
                                 <Input
                                     type={state.showPassword ? 'text' : 'password'}
                                     name="password"
-                                    defaultValue={state.password}
+                                    value={state.password}
                                     onChange={handleChange}
                                 />
                                 <InputRightElement h={'full'}>

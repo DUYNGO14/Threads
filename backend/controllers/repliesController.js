@@ -24,6 +24,7 @@ const updateComment = async (req, res) => {
   try {
     const { id } = req.params; // ID của comment cần cập nhật
     const { text } = req.body; // Trường cần cập nhật (text của comment)
+    console.log(text);
     if (!text || text.trim() === "") {
       return res.status(400).json({ error: "Text field is required" });
     }

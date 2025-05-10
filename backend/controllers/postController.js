@@ -20,14 +20,17 @@ import { moderateTextWithSightengine } from "../utils/moderate/moderateTextWithS
 import { sendNotification } from "../services/notificationService.js";
 import { formatResponse } from "../utils/formatResponse.js";
 import { isMutualOrOneWayFollow } from "./userController.js";
+import { getRecommendedPosts } from "../services/recommendationService.js";
+import { updateRecentInteractions } from "../utils/recentInteraction.js";
 const createPost = async (req, res) => {
   try {
-    const { postedBy, text, tags } = req.body;
-    const user = await User.findById(postedBy);
+    const { userId } = req.user._id;
 
-    if (!user) {
+    const { postedBy, text, tags, notification } = req.body;
+    const user = await User.findById(postedBy);
+    console.log("user", user);
+    if (!user)
       return res.status(404).json(formatResponse("error", "User not found"));
-    }
 
     if (text && text.length > MAX_CHAR) {
       return res
@@ -70,19 +73,17 @@ const createPost = async (req, res) => {
       }
 
       for (const file of mediaFiles) {
-        if (file.type === "image") {
-          const moderation = await moderateMedia(file.url, file.type);
-          if (!moderation.ok) {
-            await deleteMediaFiles(mediaFiles);
-            return res
-              .status(400)
-              .json(
-                formatResponse(
-                  "error",
-                  `Media moderation failed: ${file.type} contains unsafe content`
-                )
-              );
-          }
+        const moderation = await moderateMedia(file.url, file.type);
+        if (!moderation.ok) {
+          await deleteMediaFiles(mediaFiles);
+          return res
+            .status(400)
+            .json(
+              formatResponse(
+                "error",
+                `Media moderation failed: ${file.type} contains unsafe content`
+              )
+            );
         }
       }
     }
@@ -92,22 +93,43 @@ const createPost = async (req, res) => {
       text: cleanedText,
       media: mediaFiles,
       status: "approved",
-      tags: tags, // Chuyển đổi chuỗi JSON thành mảng
+      tags: tags || "",
     });
-
     await newPost.save();
-
     const populatedPost = await Post.findById(newPost._id).populate(
       "postedBy",
       "_id username name profilePic"
     );
-    await appendToCache(`posts:${user.username}`, populatedPost);
+    await appendToCache(`posts:${user.username}`, populatedPost._id);
+    if (notification) {
+      let receivers = [];
+      if (notification === "all") {
+        receivers = [...user.following, ...user.followers];
+      } else if (notification === "following") {
+        receivers = user.following;
+      } else if (notification === "followers") {
+        receivers = user.followers;
+      } else if (notification === "nobody") {
+        receivers = [];
+      }
+
+      if (receivers.length > 0) {
+        await sendNotification({
+          sender: req.user,
+          receivers: receivers,
+          type: "post",
+          content: `Just posted a new post`,
+          post: populatedPost._id,
+        });
+      }
+    }
     return res
       .status(201)
       .json(
         formatResponse("success", "Post created successfully", populatedPost)
       );
   } catch (err) {
+    console.error("createPost error:", err);
     return res
       .status(500)
       .json(formatResponse("error", "Something went wrong. Try again."));
@@ -116,52 +138,66 @@ const createPost = async (req, res) => {
 
 const updatePost = async (req, res) => {
   try {
-    const id = req.params.id;
-    const redisKey = `posts:${req.user.username}`;
-    const { text, deleteMedia } = req.body; // Nhận các public_id của media cần xóa
-    cons;
-    const post = await Post.findById(id);
+    const { postId } = req.params;
+    const { text, tags, postedBy } = req.body;
+    const post = await Post.findById(postId);
     if (!post) {
-      return res.status(404).json({ error: "Post not found" });
+      return res.status(404).json(formatResponse("error", "Post not found"));
+    }
+    if (post.createdAt < new Date(Date.now() - 24 * 60 * 60 * 1000)) {
+      return res
+        .status(400)
+        .json(formatResponse("error", "Post is too old to edit"));
+    }
+    // Check quyền: chỉ chủ post hoặc admin được sửa
+    if (post.postedBy.toString() !== postedBy) {
+      const user = await User.findById(postedBy);
+      if (!user || user.role !== "admin") {
+        return res.status(403).json(formatResponse("error", "Unauthorized"));
+      }
     }
 
-    // Kiểm tra quyền sở hữu bài viết
-    if (post.postedBy.toString() !== req.user._id.toString()) {
-      return res.status(401).json({ error: "Unauthorized to update post" });
+    // Kiểm tra text length
+    if (text && text.length > MAX_CHAR) {
+      return res
+        .status(400)
+        .json(
+          formatResponse(
+            "error",
+            `Text must be less than ${MAX_CHAR} characters`
+          )
+        );
     }
 
-    // Nếu có text mới, cập nhật text
-    if (text) {
-      post.text = text;
+    // Kiểm duyệt text
+    const moderationResult = await moderateTextWithSightengine(text || "");
+    if (!moderationResult.ok) {
+      return res
+        .status(400)
+        .json(formatResponse("error", moderationResult.message));
     }
 
-    // Nếu có các tệp media mới, xử lý thêm vào
-    if (req.files && req.files.length > 0) {
-      const uploadedMedia = await uploadFiles(req.files);
-      post.media = post.media.concat(uploadedMedia);
-    }
-
-    // Kiểm tra các media cũ để xóa (so với media trong `post.media`)
-    if (deleteMedia && deleteMedia.length > 0) {
-      // Xóa các media khỏi Cloudinary
-      const deletePromises = deleteMedia.map((publicId) =>
-        deleteMediaFromCloudinary(publicId)
-      );
-
-      await Promise.all(deletePromises);
-
-      // Cập nhật lại dữ liệu bài viết để loại bỏ các media đã xóa
-      post.media = post.media.filter(
-        (media) => !deleteMedia.includes(media.public_id)
-      );
-    }
-
-    // Lưu bài viết đã cập nhật
+    const cleanedText = moderationResult.cleanedText || text || "";
+    // Cập nhật post
+    post.text = cleanedText;
+    post.tags = tags || "";
     await post.save();
-    await deleteRedis(redisKey);
-    return res.status(200).json(post);
+
+    const populatedPost = await Post.findById(post._id).populate(
+      "postedBy",
+      "_id username name profilePic"
+    );
+
+    return res
+      .status(200)
+      .json(
+        formatResponse("success", "Post updated successfully", populatedPost)
+      );
   } catch (err) {
-    return res.status(500).json({ error: "Internal Server Error" });
+    console.error("updatePost error:", err);
+    return res
+      .status(500)
+      .json(formatResponse("error", "Something went wrong. Try again."));
   }
 };
 
@@ -306,7 +342,7 @@ const likeUnlikePost = async (req, res) => {
     // Like
     post.likes.push(userId);
     await post.save();
-
+    await updateRecentInteractions(userId, postId, "like");
     const isMutualFollow = await isMutualOrOneWayFollow(userId, post.postedBy);
 
     // Không tự gửi thông báo cho mình
@@ -359,7 +395,7 @@ const replyToPost = async (req, res) => {
 
     post.replies.push(newReply._id);
     await post.save();
-
+    await updateRecentInteractions(userId, postId, "reply");
     const truncatedText = cleanReply.cleanedText.slice(0, 20) + "...";
     const isMutualFollow = await isMutualOrOneWayFollow(userId, post.postedBy);
     if (post.postedBy.toString() !== userId.toString() && isMutualFollow) {
@@ -388,40 +424,49 @@ const getReposts = async (req, res) => {
     const redisKey = `reposted:${username}`;
     const { page, limit, skip } = getPaginationParams(req);
 
-    const cached = await getRedis(redisKey); // Kiểm tra cache (nếu đã có)
+    // Kiểm tra cache trước
+    const cachedPostIds = await getRedis(redisKey);
 
-    if (cached) {
-      // Nếu dữ liệu có trong cache, phân trang và trả về
-      const paginated = cached.slice(skip, skip + limit);
+    if (cachedPostIds) {
+      // Nếu cache có, phân trang qua các ID bài viết
+      const paginatedIds = cachedPostIds.slice(skip, skip + limit);
+
+      // Lấy các bài viết chi tiết từ MongoDB theo ID
+      const posts = await Post.find({ _id: { $in: paginatedIds } })
+        .sort({ createdAt: -1 })
+        .populate("postedBy", "_id username name profilePic");
+
       return res.json({
         page,
         limit,
-        totalPosts: cached.length,
-        totalPages: Math.ceil(cached.length / limit),
-        posts: paginated,
+        totalPosts: cachedPostIds.length,
+        totalPages: Math.ceil(cachedPostIds.length / limit),
+        posts,
       });
     }
 
-    // Tìm người dùng và lấy danh sách các bài viết đã repost
+    // Nếu không có cache, lấy thông tin người dùng và các bài đã repost
     const user = await User.findOne({ username }).select("_id reposts");
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    // Lấy tất cả các bài đăng mà người dùng đã repost
-    const posts = await Post.find({ _id: { $in: user.reposts } })
+    // Lưu các ID bài repost vào cache
+    const postIds = user.reposts;
+    await setRedis(redisKey, postIds, 900); // Cache ID bài viết trong 15 phút
+
+    // Phân trang ID bài viết
+    const paginatedIds = postIds.slice(skip, skip + limit);
+
+    // Lấy chi tiết các bài viết từ MongoDB
+    const posts = await Post.find({ _id: { $in: paginatedIds } })
       .sort({ createdAt: -1 })
       .populate("postedBy", "_id username name profilePic");
-
-    await setRedis(redisKey, posts, 1800); // Cache kết quả trong 30 phút
-
-    // Phân trang bài viết
-    const paginated = posts.slice(skip, skip + limit);
 
     res.status(200).json({
       page,
       limit,
-      totalPosts: posts.length,
-      totalPages: Math.ceil(posts.length / limit),
-      posts: paginated,
+      totalPosts: postIds.length,
+      totalPages: Math.ceil(postIds.length / limit),
+      posts,
     });
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -519,73 +564,6 @@ const getAllPosts = async (req, res) => {
     return res.status(500).json({ error: "Lỗi server", message: err.message });
   }
 };
-const getSuggestedPosts = async (req, res) => {
-  try {
-    const { page, limit, lastSeenId } = getPaginationParams(req); // Pagination params
-    const userId = req.user?._id;
-
-    // Lọc bài viết từ những người mà user đã tương tác (like, repost) hoặc đang follow
-    const followingIds = req.user?.following || []; // Các người dùng mà user đang theo dõi
-    const interactedIds = [
-      ...(req.user?.likes || []), // Bài viết mà người dùng đã like
-      ...(req.user?.reposts || []), // Bài viết mà người dùng đã repost
-    ];
-
-    // Điều kiện truy vấn: lấy bài viết từ những người mà user theo dõi hoặc đã tương tác
-    const query = {
-      $or: [
-        { postedBy: { $in: followingIds } }, // Bài viết từ người theo dõi
-        { _id: { $in: interactedIds } }, // Bài viết người dùng đã like hoặc repost
-        { status: "approved" }, // Lọc các bài viết đã được phê duyệt
-      ],
-    };
-
-    // Tính điểm cho các bài viết (likes, reposts, followers, thời gian)
-    const posts = await Post.find(query)
-      .populate("postedBy", "_id username name profilePic followers") // Lấy thêm followers của người đăng
-      .sort({ createdAt: -1 }) // Sắp xếp theo thời gian đăng
-      .limit(limit) // Giới hạn số lượng bài viết trả về
-      .skip(lastSeenId ? 1 : 0); // Nếu có lastSeenId, bỏ qua bài viết đã thấy
-
-    // Tính điểm cho các bài viết
-    posts.forEach((post) => {
-      let score = 0;
-
-      // Điểm cho likes
-      score += post.likes.length * 0.1; // 0.1 điểm cho mỗi lượt thích
-
-      // Điểm cho reposts
-      score += post.repostedBy.length * 0.2; // 0.2 điểm cho mỗi lượt repost
-
-      // Điểm cho followers của người đăng
-      score += post.postedBy.followers.length * 0.05; // 0.05 điểm cho mỗi follower
-
-      // Điểm cho thời gian đăng (bài viết mới hơn sẽ có điểm cao hơn)
-      const timeFactor =
-        (Date.now() - post.createdAt.getTime()) / (1000 * 60 * 60 * 24); // Số ngày kể từ khi bài viết được đăng
-      score -= timeFactor * 0.1; // Cộng dồn điểm (bài viết mới được ưu tiên hơn)
-
-      post.score = score; // Gán điểm cho bài viết
-
-      // Cập nhật bài viết với điểm mới (nếu cần thiết)
-      post.save();
-    });
-
-    // Sắp xếp bài viết theo điểm từ cao xuống thấp
-    const sortedPosts = posts.sort((a, b) => b.score - a.score);
-
-    // Trả về kết quả
-    return res.status(200).json({
-      page,
-      limit,
-      totalPosts: sortedPosts.length,
-      posts: sortedPosts,
-    });
-  } catch (err) {
-    console.error("Lỗi gợi ý bài viết:", err.message);
-    return res.status(500).json({ error: "Lỗi server", message: err.message });
-  }
-};
 
 // Lấy bài viết của 1 người dùng cụ thể theo username
 const getUserPosts = async (req, res) => {
@@ -594,36 +572,52 @@ const getUserPosts = async (req, res) => {
     const redisKey = `posts:${username}`;
     const { page, limit, skip } = getPaginationParams(req);
 
-    const cached = await getRedis(redisKey); // đã là object
+    // Check cache
+    const cachedIds = await getRedis(redisKey);
 
-    if (cached) {
-      const paginated = cached.slice(skip, skip + limit);
-      return res.json({
-        page,
-        limit,
-        totalPosts: cached.length,
-        totalPages: Math.ceil(cached.length / limit),
-        posts: paginated,
-      });
+    let postIds;
+
+    if (cachedIds) {
+      postIds = cachedIds;
+    } else {
+      // Find user
+      const user = await User.findOne({ username }).select("_id");
+      if (!user) return res.status(404).json({ error: "User not found" });
+
+      // Get post IDs sorted by date
+      const posts = await Post.find({ postedBy: user._id })
+        .sort({ createdAt: -1 })
+        .select("_id");
+
+      postIds = posts.map((p) => p._id.toString());
+
+      // Cache post IDs for 30 min
+      await setRedis(redisKey, postIds, 1800);
     }
 
-    const user = await User.findOne({ username }).select("_id");
-    if (!user) return res.status(404).json({ error: "User not found" });
+    // Paginate IDs
+    const paginatedIds = postIds.slice(skip, skip + limit);
 
-    const posts = await Post.find({ postedBy: user._id })
-      .sort({ createdAt: -1 })
-      .populate("postedBy", "_id username name profilePic");
+    // Query posts and map by ID
+    const posts = await Post.find({ _id: { $in: paginatedIds } }).populate(
+      "postedBy",
+      "_id username name profilePic"
+    );
 
-    await setRedis(redisKey, posts, 1800); // cache 30 phút
+    const postsMap = posts.reduce((acc, post) => {
+      acc[post._id.toString()] = post;
+      return acc;
+    }, {});
 
-    const paginated = posts.slice(skip, skip + limit);
+    // Ensure order matches paginatedIds
+    const orderedPosts = paginatedIds.map((id) => postsMap[id]).filter(Boolean);
 
     return res.status(200).json({
       page,
       limit,
-      totalPosts: posts.length,
-      totalPages: Math.ceil(posts.length / limit),
-      posts: paginated,
+      totalPosts: postIds.length,
+      totalPages: Math.ceil(postIds.length / limit),
+      posts: orderedPosts,
     });
   } catch (error) {
     console.error("getUserPosts error", error);
@@ -635,7 +629,6 @@ const repost = async (req, res) => {
   try {
     const { id: postId } = req.params;
     const userId = req.user._id;
-
     const post = await Post.findById(postId);
     if (!post) {
       return res.status(404).json({ error: "Post not found" });
@@ -686,7 +679,7 @@ const repost = async (req, res) => {
     } finally {
       session.endSession();
     }
-
+    await updateRecentInteractions(userId, postId, "repost");
     // ⚠️ Các thao tác sau khi transaction đã kết thúc
     const isFollowed = await isMutualOrOneWayFollow(userId, post.postedBy);
     if (isFollowed) {
@@ -699,7 +692,7 @@ const repost = async (req, res) => {
       });
     }
 
-    await appendToCache(redisKey, post);
+    await appendToCache(redisKey, post._id); // Cache lại danh sách reposts của user
     return res.status(200).json({ message: "Post reposted successfully" });
   } catch (err) {
     console.error("Error in repost:", err);
@@ -747,6 +740,25 @@ const getTags = async (req, res) => {
   }
 };
 
+const getRecommendedFeed = async (req, res) => {
+  try {
+    const { page, limit, skip } = getPaginationParams(req);
+    const userId = req.user?._id ?? null; // nếu chưa đăng nhập
+
+    const posts = await getRecommendedPosts(userId, {
+      limit: parseInt(limit),
+      page: parseInt(page),
+    });
+
+    return res.json(formatResponse(200, "success", posts));
+  } catch (err) {
+    console.error("Feed recommendation error:", err);
+    return res
+      .status(500)
+      .json(formatResponse(500, "error", "Internal Server Error"));
+  }
+};
+
 export {
   createPost,
   getPost,
@@ -759,6 +771,6 @@ export {
   getAllPosts,
   updatePost,
   repost,
-  getSuggestedPosts,
   getTags,
+  getRecommendedFeed,
 };

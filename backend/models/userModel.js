@@ -84,6 +84,21 @@ const userSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    recentInteractions: {
+      type: [
+        {
+          postId: { type: mongoose.Schema.Types.ObjectId, ref: "Post" },
+          type: {
+            type: String,
+            enum: ["like", "reply", "repost"],
+          },
+          interactedAt: { type: Date, default: Date.now },
+          postOwner: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+          postTags: [String],
+        },
+      ],
+      default: [],
+    },
   },
   {
     timestamps: true,

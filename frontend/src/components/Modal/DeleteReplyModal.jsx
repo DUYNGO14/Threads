@@ -1,6 +1,8 @@
 import {
     Modal, ModalOverlay, ModalContent, ModalHeader,
-    ModalCloseButton, ModalBody, ModalFooter, Button
+    ModalCloseButton, ModalBody, ModalFooter, Button,
+    useColorModeValue,
+    Divider
 } from "@chakra-ui/react";
 import { useState } from "react";
 import useShowToast from "@hooks/useShowToast";
@@ -29,18 +31,19 @@ const DeleteReplyModal = ({ isOpen, onClose, replyId, onSuccess, postId }) => {
     return (
         <Modal isOpen={isOpen} onClose={onClose}>
             <ModalOverlay />
-            <ModalContent>
-                <ModalHeader>Xoá bình luận?</ModalHeader>
+            <ModalContent bg={useColorModeValue('gray.100', 'gray.dark')}>
+                <ModalHeader textAlign="center">Delete Reply?</ModalHeader>
+                <Divider maxW={'90%'} mx={'auto'} />
                 <ModalCloseButton />
-                <ModalBody>Bạn có chắc muốn xoá bình luận này?</ModalBody>
+                <ModalBody>Are you sure you want to delete this reply?</ModalBody>
                 <ModalFooter>
-                    <Button onClick={onClose} mr={3}>Huỷ</Button>
+                    <Button onClick={onClose} mr={3}>Cancel</Button>
                     <Button
                         colorScheme="red"
                         isLoading={isDeleting || loading} // Khi đang xóa hoặc load dữ liệu
                         onClick={handleDelete}
                     >
-                        Xoá
+                        Delete
                     </Button>
                 </ModalFooter>
             </ModalContent>

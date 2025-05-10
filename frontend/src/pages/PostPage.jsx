@@ -13,6 +13,7 @@ import { DeleteIcon } from "@chakra-ui/icons";
 import postsAtom from "../atoms/postsAtom";
 import Carousels from "@components/Carousels";
 import api from "../services/api.js";
+import { renderMentionText } from "../components/renderMentionText.jsx";
 const PostPage = () => {
     const { user, loading } = useGetUserProfile();
     const [posts, setPosts] = useRecoilState(postsAtom);
@@ -229,7 +230,7 @@ const PostPage = () => {
                 </Flex>
             </Flex>
 
-            <Text whiteSpace="pre-line" my={3}>{currentPost.text}</Text>
+            <Text whiteSpace="pre-line" my={3}>{renderMentionText(currentPost.text)}</Text>
 
             {currentPost.media?.length > 0 && (
                 <Carousels medias={currentPost.media} />

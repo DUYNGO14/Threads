@@ -16,16 +16,27 @@ const messageSchema = new mongoose.Schema(
     },
     media: [
       {
-        url: String,
+        url: { type: String, required: true }, // URL của file
         type: {
-          type: String, // "image", "video", "audio", "gif"
+          type: String,
           enum: ["image", "video", "audio", "gif"],
-        },
+          required: true,
+        }, // Kiểu file
+        public_id: String, // ID của file trong Cloudinary
       },
     ],
     seen: {
       type: Boolean,
       default: false,
+    },
+    isSystem: {
+      type: Boolean,
+      default: false,
+    },
+    systemType: {
+      type: String,
+      enum: ["join", "leave", "kick", "rename", "create"],
+      default: null,
     },
   },
   { timestamps: true }

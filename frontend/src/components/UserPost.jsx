@@ -5,6 +5,7 @@ import PropTypes from 'prop-types';
 import Carousels from "./Carousels";
 import { formatDistanceToNow } from "date-fns";
 import { MdNavigateNext } from "react-icons/md";
+import { renderMentionText } from "./renderMentionText";
 const UserPost = ({ post }) => {
     const postedBy = post.postedBy;
     return (
@@ -13,35 +14,6 @@ const UserPost = ({ post }) => {
                 <Flex flexDirection="column" alignItems="center">
                     <Avatar size="md" name={postedBy.username} src={postedBy.profilePic} />
                     <Box w="1px" h="full" bg="gray.light" my={2}></Box>
-                    {/* <Box position="relative" w="full">
-                        <Avatar
-                            size="xs"
-                            name="Jone Done"
-                            src="https://bit.ly/dan-abramov"
-                            position="absolute"
-                            top="0px"
-                            left="15px"
-                            padding="2px"
-                        />
-                        <Avatar
-                            size="xs"
-                            name="Jone Done"
-                            src="https://bit.ly/sage-adebayo"
-                            position="absolute"
-                            bottom="0px"
-                            right="-5px"
-                            padding="2px"
-                        />
-                        <Avatar
-                            size="xs"
-                            name="Jone Done"
-                            src="https://randomuser.me/api/portraits/men/42.jpg"
-                            position="absolute"
-                            bottom="0px"
-                            left="4px"
-                            padding="2px"
-                        />
-                    </Box> */}
                 </Flex>
                 <Flex flex={1} flexDirection="column" gap={2}>
                     <Flex justifyContent="space-between" w="full">
@@ -61,7 +33,7 @@ const UserPost = ({ post }) => {
 
                         </Flex>
                     </Flex>
-                    <Text fontSize="sm">{post.text}</Text>
+                    <Text fontSize="sm"> {renderMentionText(post.text)}</Text>
                     {post.media && (
                         <Box borderRadius={6} overflow="hidden" >
                             <Carousels medias={post.media} />

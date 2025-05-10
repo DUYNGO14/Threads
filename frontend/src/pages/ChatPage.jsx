@@ -1,4 +1,4 @@
-import { SearchIcon } from "@chakra-ui/icons";
+import { BellIcon, SearchIcon } from "@chakra-ui/icons";
 import {
     Avatar,
     Box,
@@ -13,10 +13,13 @@ import {
     useBreakpointValue,
     useColorModeValue,
     Select,
+    IconButton,
+    Divider,
+    VStack,
+    Switch,
+    FormControl,
 } from "@chakra-ui/react";
-import { GiConversation } from "react-icons/gi";
-import Conversation from "@components/Conversation";
-import MessageContainer from "@components/MessageContainer";
+import Conversation from "@components/Conversation";;
 import { useEffect, useState } from "react";
 import useShowToast from "@hooks/useShowToast";
 import { useRecoilState, useRecoilValue } from "recoil";
@@ -24,6 +27,10 @@ import { conversationsAtom, selectedConversationAtom } from "../atoms/messagesAt
 import userAtom from "../atoms/userAtom";
 import { useSocket } from "@context/SocketContext";
 import api from "../services/api.js";
+import PopoverSettingChat from "../components/Popover/PopoverSettingChat.jsx";
+import SettingsChat from "../components/Messages/ChatSettings.jsx";
+import MessageArea from "../components/Messages/MessageArea.jsx";
+import useDebounce from "@hooks/useDebounce";
 const ChatPage = () => {
     const [searchingUser, setSearchingUser] = useState(false);
     const [loadingConversations, setLoadingConversations] = useState(true);
@@ -36,12 +43,21 @@ const ChatPage = () => {
     const { socket, onlineUsers } = useSocket();
     const [filter, setFilter] = useState("all");
     const [followedUsers, setFollowedUsers] = useState([]);
-
-    const isMobile = useBreakpointValue({ base: true, md: false });
+    const [showChatSettings, setShowChatSettings] = useState(false);
     const backgroundColor = useColorModeValue("gray.100", "gray.dark");
     const borderColor = useColorModeValue("gray.200", "gray.600");
     const textColor = useColorModeValue("gray.600", "gray.400");
     const bgColor = useColorModeValue("white", "gray.800")
+    const debouncedSearchQuery = useDebounce(searchText, 300);
+    const isMobile = useBreakpointValue({ base: true, md: false });
+    const sidebarFlex = useBreakpointValue({ base: 100, md: 25 });
+    const settingsFlex = useBreakpointValue({ base: 100, md: showChatSettings ? 25 : 0 });
+    const messageFlex = useBreakpointValue({
+        base: 100,
+        md: 100 - (sidebarFlex || 0) - (settingsFlex || 0),
+    });
+
+
     // Khi xóa hội thoại
     const handleDeleteConversation = (conversationId) => {
         setConversations((prev) => prev.filter(c => c._id !== conversationId));
@@ -62,7 +78,7 @@ const ChatPage = () => {
         };
 
         fetchFollowedUsers();
-    }, [currentUser.username, showToast]);
+    }, []);
 
     // Lấy danh sách cuộc trò chuyện
     useEffect(() => {
@@ -79,23 +95,33 @@ const ChatPage = () => {
             }
         };
         fetchConversations();
-    }, [showToast, setConversations, currentUser.username]);
-
+    }, []);
     // Tìm kiếm người dùng
-    const handleConversationSearch = async (e) => {
-        e.preventDefault();
-        setSearchingUser(true);
-        try {
-            const res = await api.get(`/api/users/search/${searchText}`);
-            const users = res.data;
-            const filteredUsers = users.filter((user) => user._id !== currentUser._id);
-            setSearchResults(filteredUsers);
-        } catch (error) {
-            showToast("Error", error.message, "error");
-        } finally {
-            setSearchingUser(false);
-        }
-    };
+    useEffect(() => {
+        const fetchSearchResults = async () => {
+            if (!debouncedSearchQuery.trim()) {
+                setSearchResults([]);
+                return;
+            }
+            setSearchingUser(true);
+            try {
+                const res = await api.get(`/api/users/search?query=${debouncedSearchQuery}`);
+                console.log(res.data);
+                if (Array.isArray(res.data)) {
+                    setSearchResults(res.data);
+                } else {
+                    setSearchResults([]);
+                }
+            } catch (error) {
+                console.error("Search error:", error);
+                showToast("Error", error.message, "error");
+            } finally {
+                setSearchingUser(false);
+            }
+        };
+        fetchSearchResults();
+    }, [debouncedSearchQuery]);
+
 
     const handleSelectUser = async (user) => {
         try {
@@ -130,22 +156,55 @@ const ChatPage = () => {
 
     // Cập nhật tin nhắn đã xem
     useEffect(() => {
-        socket?.on("messagesSeen", ({ conversationId }) => {
+        if (!socket) return;
+
+        const handleMessagesSeen = ({ conversationId }) => {
             setConversations((prev) =>
                 prev.map((conversation) =>
                     conversation._id === conversationId
                         ? {
                             ...conversation,
-                            lastMessage: {
-                                ...conversation.lastMessage,
-                                seen: true,
-                            },
+                            lastMessage: conversation.lastMessage
+                                ? { ...conversation.lastMessage, seen: true }
+                                : conversation.lastMessage, // Giữ nguyên nếu lastMessage là null
                         }
                         : conversation
                 )
             );
-        });
-    }, [socket]);
+        };
+
+        const handleNewGroup = (newGroup) => {
+            setConversations((prev) => [newGroup, ...prev]);
+        };
+
+        const handleAddUserToGroup = ({ conversation, sender }) => {
+            setConversations((prev) => [conversation, ...prev]);
+            showToast("Success", `${sender.username} has been added to the group ${conversation.groupName}.`, "success");
+        };
+
+        const handleKickUser = ({ conversationId, userIdToRemove }) => {
+            if (userIdToRemove === currentUser._id) {
+                showToast("Info", "You have been kicked from this group.", "info");
+                // Optionally, redirect to another page or update the UI
+                setShowChatSettings(false);
+                setConversations((prev) => prev.filter((conversation) => conversation._id !== conversationId));
+                if (selectedConversation._id === conversationId) {
+                    setSelectedConversation({});
+                }
+            }
+        }
+
+        socket.on("messagesSeen", handleMessagesSeen);
+        socket.on("newGroup", handleNewGroup);
+        socket.on("kickUser", handleKickUser);
+        socket.on("addUserToGroup", handleAddUserToGroup);
+        return () => {
+            socket.off("messagesSeen", handleMessagesSeen);
+            socket.off("newGroup", handleNewGroup);
+            socket.off("kickUser", handleKickUser);
+            socket.off("addUserToGroup", handleAddUserToGroup);
+        };
+    }, [socket, currentUser._id]);
 
     // Cập nhật số lượng tin nhắn chưa đọc
     useEffect(() => {
@@ -164,149 +223,143 @@ const ChatPage = () => {
     }, [socket]);
     const handleClose = () => {
         setSelectedConversation({});
+        setShowChatSettings(false);
     }
+
     return (
-        <Box w="full" minH="100vh" p={4} overflowX="hidden">
-            <Flex
-                direction="row"
-                w="full"
-                maxW="1200px"
-                mx="auto"
-                gap={4}
-            >
-                {/* Sidebar: Your Conversations */}
-                {(!isMobile || !selectedConversation?._id) && (
-                    <Flex flex={30} direction="column" w="full" maxW="350px">
+        <Box w="full" h="100vh" p={4} overflowX="hidden">
+            <Flex direction="row" w="full" h="90%" mx="auto" gap={4} flexWrap="nowrap">
+                <Flex
+                    display={(!isMobile || !selectedConversation?._id) ? "flex" : "none"}
+                    flex={sidebarFlex}
+                    direction="column"
+                    w="full"
+                    maxW={{ base: "full", md: "350px" }}
+                    overflowY="auto"
+                    h="full"
+                >
+                    <Box display="flex" alignItems="center" justifyContent="space-between">
                         <Text fontWeight={800} fontSize="xl" color={textColor}>
                             Your Conversations
                         </Text>
-
-                        <form onSubmit={handleConversationSearch}>
-                            <InputGroup mt={2}>
-                                <InputLeftElement pointerEvents="none">
-                                    <SearchIcon color="gray.400" />
-                                </InputLeftElement>
-                                <Input
-                                    placeholder="Search for a user"
-                                    value={searchText}
-                                    onChange={(e) => setSearchText(e.target.value)}
-                                    bg={bgColor}
-                                />
-                            </InputGroup>
-                        </form>
-                        {conversations.length === 0 && followedUsers.length > 0 && (
-                            <Box mt={2} borderRadius="md" p={2} bg={backgroundColor}>
-                                <Text fontWeight="bold">People you follow</Text>
-                                {followedUsers.map((user) => (
-                                    <Flex
-                                        key={user._id}
-                                        alignItems="center"
-                                        justifyContent="space-between"
-                                        p={2}
-                                        borderBottom="1px solid"
-                                        borderColor={borderColor}
-                                    >
-                                        <Flex alignItems="center" gap={3}>
-                                            <Avatar size="sm" src={user.profilePic} />
-                                            <Box>
-                                                <Text fontWeight="bold">{user.name}</Text>
-                                                <Text fontSize="sm" color="gray.500">@{user.username}</Text>
-                                            </Box>
-                                        </Flex>
-                                        <Button size="sm" onClick={() => handleSelectUser(user)}>Message</Button>
-                                    </Flex>
-                                ))}
-                            </Box>
-                        )}
-                        {searchResults.length > 0 ? (
-                            <Box mt={2} borderRadius="md" p={2} bg={backgroundColor}>
-                                {searchResults.map((user) => (
-                                    <Flex
-                                        key={user._id}
-                                        alignItems="center"
-                                        justifyContent="space-between"
-                                        p={2}
-                                        borderBottom="1px solid"
-                                        borderColor={borderColor}
-                                    >
-                                        <Flex alignItems="center" gap={3}>
-                                            <Avatar size="sm" src={user.profilePic} />
-                                            <Box>
-                                                <Text fontWeight="bold">{user.name}</Text>
-                                                <Text fontSize="sm" color="gray.500">@{user.username}</Text>
-                                            </Box>
-                                        </Flex>
-                                        <Button size="sm" onClick={() => handleSelectUser(user)}>Message</Button>
-                                    </Flex>
-                                ))}
-                            </Box>
-                        ) : (
-                            <Box mt={2}>
-                                <Select
-                                    value={filter}
-                                    onChange={(e) => setFilter(e.target.value)}
-                                    size="sm"
-                                    variant="filled"
-                                    borderRadius="md"
-                                    focusBorderColor="blue.400"
+                        <PopoverSettingChat />
+                    </Box>
+                    <FormControl>
+                        <InputGroup mt={2}>
+                            <InputLeftElement pointerEvents="none">
+                                <SearchIcon color="gray.400" />
+                            </InputLeftElement>
+                            <Input
+                                placeholder="Search for a user"
+                                value={searchText}
+                                onChange={(e) => setSearchText(e.target.value)}
+                                bg={bgColor}
+                            />
+                        </InputGroup>
+                    </FormControl>
+                    {conversations.length === 0 && followedUsers.length > 0 && searchResults.length === 0 && (
+                        <Box mt={2} borderRadius="md" p={2} bg={backgroundColor}>
+                            <Text fontWeight="bold">People you follow</Text>
+                            {followedUsers.map((user) => (
+                                <Flex
+                                    key={user._id}
+                                    alignItems="center"
+                                    justifyContent="space-between"
+                                    p={2}
+                                    borderBottom="1px solid"
+                                    borderColor={borderColor}
                                 >
-                                    <option value="visible">Message is showing</option>
-                                    <option value="hidden">Message is hidden</option>
-                                </Select>
-                            </Box>
-                        )}
-
-                        {loadingConversations &&
-                            Array(5).fill(0).map((_, i) => (
-                                <Flex key={i} gap={4} align="center" p={1} borderRadius="md">
-                                    <SkeletonCircle size="10" />
-                                    <Flex w="full" direction="column" gap={2}>
-                                        <Skeleton h="10px" w="80px" />
-                                        <Skeleton h="8px" w="90%" />
+                                    <Flex alignItems="center" gap={3}>
+                                        <Avatar size="sm" src={user.profilePic} />
+                                        <Box>
+                                            <Text fontWeight="bold">{user.name}</Text>
+                                            <Text fontSize="sm" color="gray.500">@{user.username}</Text>
+                                        </Box>
                                     </Flex>
+                                    <Button size="sm" onClick={() => handleSelectUser(user)}>Message</Button>
                                 </Flex>
                             ))}
-
-                        {!loadingConversations &&
-                            conversations.map((conversation) => {
-                                const otherUser = conversation.participants.find(p => p._id !== currentUser._id);
-                                const isOnline = onlineUsers.includes(otherUser._id);
-                                return (
-                                    <Conversation
-                                        key={conversation._id}
-                                        isOnline={isOnline}
-                                        conversation={conversation}
-                                        isMobile={isMobile}
-                                        onDelete={handleDeleteConversation}
-                                    />
-                                );
-                            })}
-                    </Flex>
-                )}
-
-                {/* Message Container */}
-                {(!isMobile || selectedConversation?._id) && (
-                    <Flex flex={70} w="full">
-                        {selectedConversation?._id ? (
-                            <MessageContainer isOnline={onlineUsers.includes(selectedConversation.userId)} onClose={handleClose} />
-                        ) : (
-                            <Flex
+                        </Box>
+                    )}
+                    {searchResults.length > 0 ? (
+                        <Box mt={2} borderRadius="md" p={2} bg={backgroundColor}>
+                            <Text fontWeight="bold">Result for {searchText}</Text>
+                            {searchResults.map((user) => (
+                                <Flex
+                                    key={user._id}
+                                    alignItems="center"
+                                    justifyContent="space-between"
+                                    p={2}
+                                    borderBottom="1px solid"
+                                    borderColor={borderColor}
+                                >
+                                    <Flex alignItems="center" gap={3}>
+                                        <Avatar size="sm" src={user.profilePic} />
+                                        <Box>
+                                            <Text fontWeight="bold">{user.name}</Text>
+                                            <Text fontSize="sm" color="gray.500">@{user.username}</Text>
+                                        </Box>
+                                    </Flex>
+                                    <Button size="sm" onClick={() => handleSelectUser(user)}>Message</Button>
+                                </Flex>
+                            ))}
+                        </Box>
+                    ) : (
+                        <Box mt={2}>
+                            <Select
+                                value={filter}
+                                onChange={(e) => setFilter(e.target.value)}
+                                size="sm"
+                                variant="filled"
                                 borderRadius="md"
-                                p={4}
-                                w="full"
-                                align="center"
-                                justify="center"
-                                direction="column"
-                                minH="300px"
+                                focusBorderColor="blue.400"
                             >
-                                <GiConversation size={100} />
-                                <Text fontSize={20}>Select a conversation to start messaging</Text>
+                                <option value="visible">Message is showing</option>
+                                <option value="hidden">Message is hidden</option>
+                            </Select>
+                        </Box>
+                    )}
+
+                    {loadingConversations &&
+                        Array(5).fill(0).map((_, i) => (
+                            <Flex key={i} gap={4} align="center" p={1} borderRadius="md">
+                                <SkeletonCircle size="10" />
+                                <Flex w="full" direction="column" gap={2}>
+                                    <Skeleton h="10px" w="80px" />
+                                    <Skeleton h="8px" w="90%" />
+                                </Flex>
                             </Flex>
-                        )}
-                    </Flex>
+                        ))}
+
+                    {!loadingConversations &&
+                        conversations.map((conversation) => {
+                            const otherUser = conversation.participants.find(p => p._id !== currentUser._id);
+                            const isOnline = onlineUsers.includes(otherUser?._id);
+                            return (
+                                <Conversation
+                                    key={conversation._id}
+                                    isOnline={isOnline}
+                                    conversation={conversation}
+                                    isMobile={isMobile}
+                                    onDelete={handleDeleteConversation}
+                                />
+                            );
+                        })}
+                </Flex>
+
+                <MessageArea
+                    isMobile={isMobile}
+                    messageFlex={messageFlex}
+                    setShowChatSettings={setShowChatSettings}
+                    showChatSettings={showChatSettings}
+                    onlineUsers={onlineUsers}
+                    handleClose={handleClose} />
+
+                {showChatSettings && (
+                    <SettingsChat setShowChatSettings={setShowChatSettings} settingsFlex={settingsFlex} handleDeleteConversation={handleDeleteConversation} />
                 )}
             </Flex>
-        </Box>
+        </Box >
     );
 };
 

@@ -1,6 +1,9 @@
 import Conversation from "../models/conversationModel.js";
 import Message from "../models/messageModel.js";
 import { getUnreadCountsForUser } from "../utils/getUnreadCounts.js";
+import User from "../models/userModel.js";
+import { getRecipientSocketId, io } from "../setup/setupServer.js";
+import { deleteMediaFiles } from "../utils/uploadUtils.js";
 export const initiateConversation = async (req, res) => {
   const userId = req.user._id;
   const { receiverId } = req.body;
@@ -12,21 +15,79 @@ export const initiateConversation = async (req, res) => {
 
   try {
     let conversation = await Conversation.findOne({
+      isGroup: false,
       participants: { $all: [userId, receiverId] },
     });
 
     if (!conversation) {
       conversation = new Conversation({
         participants: [userId, receiverId],
+        lastMessage: null,
       });
       await conversation.save();
     }
 
     conversation = await conversation.populate("participants", "-password");
-
     return res.status(200).json(conversation);
   } catch (err) {
     console.error("Error initiating conversation:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+export const createGroupConversation = async (req, res) => {
+  const userId = req.user._id;
+  const { groupName, participants } = req.body;
+
+  if (!participants || !Array.isArray(participants)) {
+    return res.status(400).json({ error: "Participants are required." });
+  }
+
+  if (participants.length < 2) {
+    return res
+      .status(400)
+      .json({ error: "Group must have at least 3 members including you." });
+  }
+
+  try {
+    // Thêm người tạo nhóm (admin) vào danh sách participants
+    const allParticipants = [...new Set([...participants, userId.toString()])];
+
+    // Nếu không có groupName thì tạo theo tên 2 người đầu tiên
+    let finalGroupName = groupName;
+    if (!finalGroupName) {
+      // Lấy thông tin hai thành viên đầu tiên
+      const users = await User.find({ _id: { $in: allParticipants } }).select(
+        "username"
+      );
+      const names = users.slice(0, 2).map((u) => u.username);
+      finalGroupName = names.join(", ") + (users.length > 2 ? ",..." : "");
+    }
+
+    const newGroup = await Conversation.create({
+      groupName: finalGroupName,
+      participants: allParticipants,
+      groupAdmin: userId,
+      isGroup: true,
+    });
+
+    await newGroup.populate([
+      { path: "participants", select: "-password" },
+      { path: "groupAdmin", select: "-password" },
+    ]);
+
+    const recipientIds = allParticipants.filter(
+      (id) => id.toString() !== userId.toString()
+    );
+
+    for (const rId of recipientIds) {
+      const socketId = getRecipientSocketId(rId);
+      if (socketId) {
+        io.to(socketId).emit("newGroup", newGroup);
+      }
+    }
+    return res.status(201).json(newGroup);
+  } catch (err) {
+    console.error("Error creating group conversation:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -63,6 +124,11 @@ export const deleteConversation = async (req, res) => {
     );
 
     if (allParticipantsDeleted) {
+      const messages = await Message.find({ conversationId: conversationId });
+      const allMedia = messages.flatMap((msg) => msg.media || []);
+      if (allMedia.length > 0) {
+        await deleteMediaFiles(allMedia);
+      }
       // Xoá tất cả message liên quan
       await Promise.all([
         Message.deleteMany({ conversationId: conversation._id }),
@@ -92,7 +158,7 @@ export const getConversations = async (req, res) => {
     })
       .populate({
         path: "participants",
-        select: "username profilePic",
+        select: "_id username name profilePic",
       })
       .sort({ updatedAt: -1 });
 
@@ -100,52 +166,239 @@ export const getConversations = async (req, res) => {
 
     const enrichedConversations = conversations.map((conv) => {
       const unreadCount = unreadCounts[conv._id] || 0;
-      const otherParticipant = conv.participants.find(
-        (p) => p._id.toString() !== userId.toString()
-      );
 
-      return {
+      const result = {
         _id: conv._id,
-        participants: [otherParticipant],
+        participants: [],
+        isGroup: conv.isGroup,
         lastMessage: conv.lastMessage,
         createdAt: conv.createdAt,
         unreadCount,
       };
+
+      if (conv.isGroup) {
+        // Group: trả về toàn bộ thành viên + thông tin nhóm
+        result.participants = conv.participants;
+        result.groupName = conv.groupName;
+        result.groupAdmin = conv.groupAdmin;
+      } else {
+        // 1-1: chỉ trả về người còn lại
+        const otherParticipant = conv.participants.find(
+          (p) => p._id.toString() !== userId.toString()
+        );
+        result.participants = [otherParticipant];
+      }
+
+      return result;
     });
+
     return res.status(200).json(enrichedConversations);
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
 };
 
-export const createGroupChat = async (req, res) => {
-  const { groupName, participants, userId } = req.body;
+export const leaveGroupConversation = async (req, res) => {
+  const userId = req.user._id;
+  const { conversationId } = req.params;
+
+  if (!conversationId)
+    return res.status(400).json({ error: "Conversation ID is required" });
 
   try {
-    // Kiểm tra xem tất cả người tham gia có tồn tại không
-    const usersExist = await User.find({ _id: { $in: participants } });
-    if (usersExist.length !== participants.length) {
-      return res.status(400).send("Một hoặc nhiều người dùng không tồn tại");
+    const conversation = await Conversation.findById(conversationId);
+
+    if (!conversation)
+      return res.status(404).json({ error: "Conversation not found" });
+
+    if (!conversation.isGroup)
+      return res.status(400).json({ error: "Conversation is not a group" });
+    if (conversation.groupAdmin.equals(userId)) {
+      return res.status(400).json({ error: "You are the group admin" });
+    }
+    if (conversation.participants.some((p) => p.equals(userId))) {
+      conversation.participants = conversation.participants.filter(
+        (p) => !p.equals(userId)
+      );
+      await conversation.save();
+      const systemMessage = await Message.create({
+        conversationId: conversation._id,
+        sender: null, // system
+        text: `${req.user.username} has out of the group.`,
+        isSystem: true,
+        systemType: "leave",
+      });
+      io.to(conversationId).emit("newMessage", systemMessage);
+      return res.status(200).json({ message: "Left group successfully" });
+    } else {
+      return res.status(400).json({ error: "You are not in this group" });
+    }
+  } catch (err) {
+    console.error("Error leaving group conversation:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+export const addMembersToGroup = async (req, res) => {
+  const userId = req.user._id.toString();
+  const { conversationId } = req.params;
+  const { newMembersIds } = req.body;
+
+  if (!conversationId || !newMembersIds) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  try {
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation)
+      return res.status(404).json({ error: "Conversation not found" });
+
+    if (!conversation.isGroup) {
+      return res.status(400).json({ error: "Not a group conversation" });
     }
 
-    // Tạo nhóm chat mới
-    const newGroup = new Conversation({
-      participants: [userId, ...participants],
-      groupName,
-      groupAdmin: userId,
-      isGroup: true,
+    if (conversation.groupAdmin.toString() !== userId) {
+      return res.status(403).json({ error: "Only the admin can add members" });
+    }
+
+    const newMembers = newMembersIds.filter(
+      (newMember) =>
+        !conversation.participants.some((id) => id.toString() === newMember)
+    );
+
+    if (newMembers.length === 0) {
+      return res.status(400).json({ error: "No new members to add" });
+    }
+
+    conversation.participants = [...conversation.participants, ...newMembers];
+    await conversation.save();
+    const systemMessage = await Message.create({
+      conversationId: conversation._id,
+      sender: null, // System
+      text: `${newMembers.length} member(s) have joined the group.`,
+      isSystem: true,
+      systemType: "join",
     });
-
-    await newGroup.save();
-
-    // Tải thông tin người tham gia (trừ người tạo)
-    const populatedGroup = await newGroup.populate({
-      path: "participants",
-      select: "username profilePic",
+    io.to(conversationId).emit("newMessage", systemMessage);
+    // 🔥 Populate thông tin user sau khi thêm
+    const updatedConversation = await Conversation.findById(conversation._id)
+      .populate({
+        path: "participants",
+        select: "_id username name profilePic",
+      })
+      .lean();
+    for (const rId of newMembersIds) {
+      const socketId = getRecipientSocketId(rId);
+      if (socketId) {
+        io.to(socketId).emit("addUserToGroup", {
+          conversation: updatedConversation,
+          sender: req.user,
+        });
+      }
+    }
+    return res.status(200).json({
+      message: "Members added successfully",
+      conversation: updatedConversation,
     });
-
-    return res.status(201).json(populatedGroup);
   } catch (err) {
-    return res.status(500).send(err.message);
+    console.error("Add members error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const removeUserFromGroup = async (req, res) => {
+  const userId = req.user._id.toString();
+  const { conversationId } = req.params;
+  const { userIdToRemove } = req.body;
+  if (!conversationId || !userIdToRemove) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  try {
+    const userRemone = await User.findById(userIdToRemove);
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation)
+      return res.status(404).json({ error: "Conversation not found" });
+
+    if (!conversation.isGroup) {
+      return res.status(400).json({ error: "Not a group conversation" });
+    }
+
+    const isParticipant = conversation.participants.some(
+      (id) => id.toString() === userId
+    );
+    if (!isParticipant) {
+      return res.status(403).json({ error: "You are not a participant" });
+    }
+
+    const isUserInGroup = conversation.participants.some(
+      (id) => id.toString() === userIdToRemove
+    );
+    if (!isUserInGroup) {
+      return res
+        .status(400)
+        .json({ error: "User to remove is not in the group" });
+    }
+
+    if (conversation.groupAdmin.toString() === userIdToRemove) {
+      return res.status(400).json({ error: "Cannot remove the group admin" });
+    }
+
+    conversation.participants = conversation.participants.filter(
+      (id) => id.toString() !== userIdToRemove
+    );
+    await conversation.save();
+    const systemMessage = await Message.create({
+      conversationId: conversation._id,
+      sender: null, // system
+      text: `${userRemone.username} has been removed from the group.`,
+      isSystem: true,
+      systemType: "kick",
+    });
+    const socketId = getRecipientSocketId(userIdToRemove);
+    io.to(socketId).emit("kickUser", { conversationId, userIdToRemove });
+    io.to(conversationId).emit("newMessage", systemMessage);
+    return res.status(200).json({ message: "User removed successfully" });
+  } catch (err) {
+    console.error("Remove member error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const deleteGroupConversation = async (req, res) => {
+  const userId = req.user._id.toString();
+  const { conversationId } = req.params;
+
+  if (!conversationId) {
+    return res.status(400).json({ error: "Conversation ID is required" });
+  }
+
+  try {
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation)
+      return res.status(404).json({ error: "Conversation not found" });
+
+    if (!conversation.isGroup) {
+      return res.status(400).json({ error: "Not a group conversation" });
+    }
+
+    if (conversation.groupAdmin.toString() !== userId) {
+      return res
+        .status(403)
+        .json({ error: "Only the admin can delete the group" });
+    }
+
+    const messages = await Message.find({ conversationId: conversationId });
+    const allMedia = messages.flatMap((msg) => msg.media || []);
+    if (allMedia.length > 0) {
+      await deleteMediaFiles(allMedia);
+    }
+    await Promise.all([
+      Message.deleteMany({ conversation: conversationId }),
+      conversation.deleteOne(),
+    ]);
+    return res.status(200).json({ message: "Group deleted successfully" });
+  } catch (err) {
+    console.error("Delete group error:", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };

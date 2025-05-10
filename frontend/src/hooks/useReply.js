@@ -14,10 +14,13 @@ const useReply = (postId, onSuccess) => {
   const submitReply = async (text) => {
     setLoading(true);
     try {
-      const res = await api.put(`/api/posts/reply/${postId}`, {
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
+      const res = await api.put(
+        `/api/posts/reply/${postId}`,
+        { text },
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
       const data = await res.data;
       if (data.error) throw new Error(data.error);
 
@@ -31,14 +34,19 @@ const useReply = (postId, onSuccess) => {
   };
 
   // Chỉnh sửa reply
-  const editReply = async (replyId, text) => {
+  const editReply = async (replyId, reply) => {
+    console.log(replyId, reply);
     setLoading(true);
     try {
-      const res = await api.put(`/api/replies/${replyId}`, {
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
+      const res = await api.put(
+        `/api/replies/${replyId}`,
+        { text: reply },
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
       const data = await res.data;
+      console.log(data);
       if (data.error) throw new Error(data.error);
       onSuccess(data);
       showToast("Success", "Reply edited successfully", "success");
@@ -58,9 +66,7 @@ const useReply = (postId, onSuccess) => {
       });
       const data = await res.data;
       if (data.error) throw new Error(data.error);
-
-      // Cập nhật lại state hoặc UI sau khi xóa reply
-      onSuccess(data.repliesId); // Có thể gọi một callback để cập nhật UI nếu cần
+      onSuccess(replyId);
       showToast("Success", "Reply deleted successfully", "success");
     } catch (err) {
       showToast("Error", err.message, "error");

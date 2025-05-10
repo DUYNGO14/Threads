@@ -18,3 +18,8 @@ export const unreadConversationsCountAtom = atom({
   key: "unreadConversationsCount",
   default: 0,
 });
+
+export const messagesAtom = atom({
+  key: "messagesAtom",
+  default: [],
+});

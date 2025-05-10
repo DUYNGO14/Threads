@@ -147,7 +147,7 @@ const UserPage = () => {
                 backdropFilter="blur(10px)"
                 py={3}
             >
-                <Flex justify="space-between" align="center" px={4} maxW="600px" mx="auto">
+                <Flex justify="space-between" align="center" px={{ base: 2, md: 4 }} maxW="600px" mx="auto" wrap="wrap">
                     <IconButton
                         icon={<IoArrowBackOutline />}
                         variant="ghost"
@@ -156,36 +156,25 @@ const UserPage = () => {
                         color={colorMode === "dark" ? "white" : "black"}
                         onClick={() => navigate(-1)}
                     />
-
                     <Box textAlign="center" flex="1" ml="-40px">
-                        <Text
-                            fontSize="md"
-                            fontWeight="bold"
-                            color={colorMode === "dark" ? "whiteAlpha.900" : "gray.800"}
-                        >
+                        <Text fontSize={{ base: "sm", md: "md" }} fontWeight="bold" color={colorMode === "dark" ? "whiteAlpha.900" : "gray.800"}>
                             Thread
                         </Text>
-                        <Text fontSize="xs" color="gray.500">{user.username}</Text>
+                        <Text fontSize={{ base: "xs", md: "sm" }} color="gray.500">{user.username}</Text>
                     </Box>
-
                 </Flex>
             </Box>
 
             <UserHeader user={user} onTabChange={handleTabChange} />
 
-            <Box position="sticky" top="0" zIndex={1000} bg="transparent" boxShadow="md" width="100%" p={2}>
-                <Tabs
-                    tabs={myTabs}
-                    onTabChange={handleTabClick}
-                    initialTab={feedType}
-                    requireAuth={true}
-                />
+            <Box position="sticky" top="0" zIndex={1000} bg="transparent" boxShadow="md" width="100%" maxW="600px" mx="auto" p={{ base: 2, md: 4 }}>
+                <Tabs tabs={myTabs} onTabChange={handleTabClick} initialTab={feedType} requireAuth={true} />
             </Box>
 
             {posts.length === 0 && !fetchingPosts ? (
                 <Flex justifyContent={"center"} alignItems={"center"} h={"200px"}>
                     <Box textAlign={"center"}>
-                        <Text fontSize={"xl"} color={"gray.500"}>
+                        <Text fontSize={{ base: "lg", md: "xl" }} color={"gray.500"}>
                             {feedType === "threads" ? "No posts yet" : "No reposts yet"}
                         </Text>
                     </Box>
@@ -232,6 +221,7 @@ const UserPage = () => {
                 </>
             )}
         </>
+
     );
 };
 

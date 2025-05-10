@@ -29,24 +29,15 @@ export const sendNotification = async ({
         sender: sender._id,
         receiver: receiverId,
         type,
+        ...(type !== "reply" && reply && { reply }),
         ...(post && { post }),
-        ...(reply && { reply }),
         ...(message && { message }),
       };
 
-      // Tìm thông báo gần nhất trong 10s
-      const existing = await Notification.findOne(query)
-        .sort({ createdAt: -1 })
-        .lean();
+      // Kiểm tra đã tồn tại chưa
+      const existing = await Notification.findOne(query).lean();
 
-      const now = new Date();
       if (existing) {
-        const timeDiff = (now - new Date(existing.createdAt)) / 1000;
-
-        // Nếu có rồi trong 10s gần nhất -> bỏ qua
-        if (timeDiff < 10) continue;
-
-        // Nếu bị đánh dấu không hợp lệ thì revive lại
         await Notification.updateOne(
           { _id: existing._id },
           {
@@ -54,6 +45,7 @@ export const sendNotification = async ({
             createdAt: now, // cập nhật lại thời gian
           }
         );
+        // Nếu đã tồn tại rồi -> bỏ qua
         continue;
       }
 

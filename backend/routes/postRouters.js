@@ -10,8 +10,9 @@ import {
   getAllPosts,
   repost,
   getReposts,
-  getSuggestedPosts,
   getTags,
+  getRecommendedFeed,
+  updatePost,
 } from "../controllers/postController.js";
 import protectRoute from "../middlewares/protectRoute.js";
 import multer from "multer";
@@ -23,17 +24,17 @@ const upload = multer({ dest: "uploads/" });
 
 router.get("/followed", protectRoute, getFollowingPosts);
 router.get("/propose", protectRoute, getAllPosts);
-router.get("/suggests", protectRoute, getSuggestedPosts);
 router.get("/tags", protectRoute, getTags);
 router.get("/reposts/:username", getReposts);
 router.get("/user/:username", getUserPosts);
-
+router.get("/recommended", protectRoute, getRecommendedFeed);
 router.get("/:id", getPost);
 
 router.post("/create", protectRoute, uploadMedia, createPost);
 router.delete("/:id", protectRoute, deletePost);
 router.put("/like/:id", protectRoute, likeUnlikePost);
 router.put("/reply/:id", protectRoute, replyToPost);
-router.put("/update/:id", protectRoute, upload.array("media", 10), createPost);
+router.put("/:postId/update", protectRoute, uploadMedia, updatePost);
 router.put("/repost/:id", protectRoute, repost);
+
 export default router;

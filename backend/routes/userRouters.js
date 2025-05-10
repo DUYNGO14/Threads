@@ -21,8 +21,9 @@ router.get("/profile/:query", getUserProfile);
 router.get("/suggested", protectRoute, getSuggestedUsers);
 router.get("/:username/followed", protectRoute, getListFollowers);
 router.get("/:username/following", protectRoute, getListFollowing);
-router.get("/search/:query", searchUsers);
-router.get("/search", protectRoute, searchSuggestedUsers);
+router.get("/search-suggested", protectRoute, searchSuggestedUsers);
+router.get("/search", protectRoute, searchUsers);
+
 router.get("/tags", protectRoute, getTags);
 router.post("/follow/:id", protectRoute, followUnFollowUser); // Toggle state(follow/unfollow)
 router.put("/update/:id", protectRoute, updateUser);

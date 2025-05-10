@@ -15,6 +15,7 @@ import {
     MenuItem,
     MenuList,
     useDisclosure,
+    Icon,
 } from "@chakra-ui/react";
 import moment from "moment";
 import { useState } from "react";
@@ -26,13 +27,11 @@ import { selectedConversationAtom } from "../atoms/messagesAtom";
 import userAtom from "../atoms/userAtom";
 import { useSocket } from "@context/SocketContext";
 import { useNavigate } from "react-router-dom";
-import DeleteConfirmationModal from "./Modal/DeleteConfirmationModal"; // Import modal đã tách
 import useShowToast from "@hooks/useShowToast";
 import api from "../services/api.js";
+import ShowAvatarGroup from "./AvatarGroup.jsx";
 
-const Conversation = ({ conversation, isOnline, isMobile = false, onDelete }) => {
-    const [hovered, setHovered] = useState(false);
-    const { isOpen, onOpen, onClose } = useDisclosure();
+const Conversation = ({ conversation, isOnline, onDelete }) => {
     const currentUser = useRecoilValue(userAtom);
     const user = conversation.participants.find((p) => p._id !== currentUser._id);
     const lastMessage = conversation.lastMessage;
@@ -41,30 +40,39 @@ const Conversation = ({ conversation, isOnline, isMobile = false, onDelete }) =>
     const { socket } = useSocket();
     const navigate = useNavigate();
     const showToast = useShowToast();
-    const backgroundColor = useColorModeValue("white", "gray.dark");
-    const handleDelete = async () => {
-        try {
-            const res = await api.delete(`/api/conversations/delete/${conversation._id}`);
-            const data = await res.data;
-            if (res.status === 200) {
-                onDelete(conversation._id);
-                showToast("Success", data.message, "success");
-            } else {
-                console.error(data.message || "Xóa thất bại");
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            onClose();
-        }
-    };
+
     const getLastMessageText = () => {
         if (!lastMessage?.text) return <BsFillImageFill size={16} />;
         return lastMessage.text.length > 18
             ? lastMessage.text.substring(0, 18) + "..."
             : lastMessage.text;
     };
+    const handle = () => {
+        setSelectedConversation({
+            _id: conversation._id,
+            isGroup: conversation.isGroup,
 
+            ...(conversation.isGroup
+                ? {
+                    groupName: conversation.groupName,
+                    participants: conversation.participants, // danh sách tất cả user
+                    groupAdmin: conversation.groupAdmin,
+                }
+                : {
+                    userId: user._id,
+                    userProfilePic: user.profilePic,
+                    username: user.username,
+                }),
+            mock: conversation.mock,
+        });
+
+        if (socket) {
+            socket.emit("markMessagesAsSeen", {
+                conversationId: conversation._id,
+                userId: currentUser._id,
+            });
+        }
+    }
     return (
         <>
             <Flex
@@ -72,53 +80,39 @@ const Conversation = ({ conversation, isOnline, isMobile = false, onDelete }) =>
                 alignItems={"center"}
                 p={"1"}
                 position="relative"
-                onMouseEnter={() => setHovered(true)}
-                onMouseLeave={() => setHovered(false)}
                 _hover={{
                     cursor: "pointer",
                     bg: useColorModeValue("gray.600", "gray.dark"),
                     color: "white",
                 }}
-                onClick={() => {
-                    setSelectedConversation({
-                        _id: conversation._id,
-                        userId: user._id,
-                        userProfilePic: user.profilePic,
-                        username: user.username,
-                        mock: conversation.mock,
-                    });
-                    if (socket) {
-                        socket.emit("markMessagesAsSeen", {
-                            conversationId: conversation._id,
-                            userId: currentUser._id,
-                        });
-                    }
-                }}
+                onClick={() => handle()}
                 bg={
-                    selectedConversation?._id === conversation._id ? (colorMode === "light" ? "w" : "gray.dark") : ""
+                    selectedConversation?._id === conversation._id ? (colorMode === "light" ? "white" : "gray.dark") : ""
                 }
                 borderRadius={"md"}
                 justifyContent="space-between"
             >
                 <Flex gap={4} alignItems={"center"}>
                     <WrapItem>
-                        <Avatar
+                        {conversation.isGroup ? (
+                            <ShowAvatarGroup users={conversation.participants} />
+                        ) : (<Avatar
                             size={{ base: "xs", sm: "sm", md: "md" }}
                             src={user.profilePic}
                         >
                             <AvatarBadge boxSize='1em' bg={isOnline ? 'green.500' : 'red.500'} />
-                        </Avatar>
+                        </Avatar>)}
                     </WrapItem>
 
                     <Stack direction={"column"} fontSize={"sm"}>
                         <Text fontWeight='700' display={"flex"} alignItems={"center"}>
-                            {user.username}
+                            {conversation.isGroup ? conversation.groupName : user.username}
                         </Text>
                         <Text fontSize={"xs"} display={"flex"} alignItems={"center"} gap={1}>
-                            {currentUser._id === lastMessage.sender && (
-                                <Box color={lastMessage.seen ? "blue.400" : ""}>
+                            {lastMessage?.sender && currentUser._id === lastMessage.sender && (
+                                <span color={lastMessage?.seen ? "blue.400" : ""}>
                                     <TiTick size={16} />
-                                </Box>
+                                </span>
                             )}
                             {getLastMessageText()}
                         </Text>
@@ -131,32 +125,8 @@ const Conversation = ({ conversation, isOnline, isMobile = false, onDelete }) =>
                             {conversation.unreadCount}
                         </Badge>
                     )}
-                    <Box width="24px" height="24px">
-                        {hovered && (
-                            <Menu>
-                                <MenuButton
-                                    as={IconButton}
-                                    icon={<BsThreeDotsVertical />}
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={(e) => e.stopPropagation()}
-                                />
-                                <MenuList bg={backgroundColor}>
-                                    <MenuItem onClick={() => { navigate(`/${user.username}`) }}>Xem người dùng</MenuItem>
-                                    <MenuItem onClick={(e) => { e.stopPropagation(); onOpen(); }}>Xóa cuộc trò chuyện</MenuItem>
-                                </MenuList>
-                            </Menu>
-                        )}
-                    </Box>
                 </Flex>
             </Flex>
-
-            {/* Modal xác nhận xóa */}
-            <DeleteConfirmationModal
-                isOpen={isOpen}
-                onClose={onClose}
-                onConfirm={handleDelete}
-            />
         </>
     );
 };

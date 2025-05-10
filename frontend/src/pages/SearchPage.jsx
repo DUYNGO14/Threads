@@ -33,21 +33,33 @@ const SearchPage = () => {
     useEffect(() => {
         const fetchSearchResults = async () => {
             if (!debouncedSearchQuery.trim()) {
-                setSearchResult([]);
+                setSearchResult([]); // Nếu không có truy vấn, trả về mảng rỗng
                 return;
             }
-            const res = await api.get(`/api/users/search?q=${debouncedSearchQuery}`);
-            const data = await res.data;
-            if (data.message) {
-                showToast("Error", data.message, "error");
-            } else if (Array.isArray(data)) {
-                setSearchResult(data);
-            } else {
-                setSearchResult([]);
+
+            try {
+                const res = await api.get(`/api/users/search-suggested?q=${debouncedSearchQuery}`);
+                const data = await res.data;
+
+                // Kiểm tra nếu có lỗi từ backend
+                if (data.error) {
+                    showToast("Error", data.error, "error");
+                    setSearchResult([]); // Trả về mảng rỗng nếu có lỗi
+                } else if (Array.isArray(data)) {
+                    setSearchResult(data); // Gán kết quả tìm kiếm nếu trả về mảng người dùng
+                } else {
+                    setSearchResult([]); // Trả về mảng rỗng nếu dữ liệu không đúng định dạng
+                }
+            } catch (error) {
+                console.error("Error fetching search results:", error);
+                showToast("Error", "An error occurred while fetching the search results", "error");
+                setSearchResult([]); // Nếu có lỗi API, trả về mảng rỗng
             }
         };
+
         fetchSearchResults();
     }, [debouncedSearchQuery, showToast]);
+
 
     useEffect(() => {
         const getSuggestedUsers = async () => {
@@ -73,18 +85,18 @@ const SearchPage = () => {
     }, [showToast, setSuggestUsers]);
 
     return (
-        <Flex justify="center" h="100vh">
+        <Flex justify="center" h="100vh" px={{ base: 2, md: 4 }}>
             <Box
                 w="full"
-                p={4}
+                maxW={{ base: "100%", md: "600px" }}
+                p={{ base: 3, md: 4 }}
                 borderRadius="2xl"
                 position="relative"
                 h="full"
                 overflow="hidden"
             >
-                {/* Sticky Search Header */}
-                <Box position="sticky" top="0" zIndex={10} pb={4} >
-                    <Text fontWeight="bold" fontSize="lg" textAlign="center" mb={4}>
+                <Box position="sticky" top="0" zIndex={10} pb={4}>
+                    <Text fontWeight="bold" fontSize={{ base: "md", md: "lg" }} textAlign="center" mb={4}>
                         Search
                     </Text>
 
@@ -97,6 +109,8 @@ const SearchPage = () => {
                             borderRadius="full"
                             bg={colorMode === "dark" ? "gray.800" : "white"}
                             onChange={(e) => setSearchQuery(e.target.value)}
+                            fontSize={{ base: "sm", md: "md" }}
+                            py={{ base: 2, md: 3 }}
                         />
                         <Box ml={2} mt={1}>
                             <Icon as={SettingsIcon} color="gray.400" />
@@ -104,9 +118,12 @@ const SearchPage = () => {
                     </InputGroup>
                 </Box>
 
-                {/* Scrollable Results */}
-                <Box overflowY="auto" h="calc(100% - 150px)" pr={2}>
-                    <Text fontWeight="medium" mb={2} fontSize="md">
+                <Box overflowY="auto" h="calc(100% - 150px)" pr={{ base: 1, md: 2 }} sx={{
+                    '&::-webkit-scrollbar': { display: 'none' },
+                    '-ms-overflow-style': 'none',  // IE, Edge
+                    'scrollbar-width': 'none',     // Firefox
+                }}>
+                    <Text fontWeight="medium" mb={2} fontSize={{ base: "sm", md: "md" }}>
                         Follow suggestions
                     </Text>
 
@@ -126,7 +143,7 @@ const SearchPage = () => {
                                 <Box key={user._id || idx}>
                                     <UserItemSuggest user={user} />
                                     {idx < usersToRender.length - 1 && (
-                                        <Divider borderColor="gray.700" mt={4} />
+                                        <Divider borderColor="gray.700" mt={{ base: 3, md: 4 }} />
                                     )}
                                 </Box>
                             ))
@@ -135,6 +152,7 @@ const SearchPage = () => {
                 </Box>
             </Box>
         </Flex>
+
     );
 };
 

@@ -40,7 +40,17 @@ export default function UpdateProfilePage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (updating) return;
-
+        if (isEqual(inputs, {
+            name: user.name,
+            username: user.username,
+            email: user.email,
+            bio: user.bio,
+            socialLinks: user.socialLinks || {},
+            password: "",
+        })) {
+            showToast("Nothing changed", "No changes detected", "info");
+            return;
+        }
         const updatedUser = {
             ...inputs,
             profilePic: imgUrl || user.profilePic,

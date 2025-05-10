@@ -1,9 +1,6 @@
 import {
     Avatar, Box, Divider, Flex, Menu, MenuButton, MenuItem, MenuList,
-    Portal, Text, useColorModeValue, useToast,
-    AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader,
-    AlertDialogContent, AlertDialogOverlay, Button, Select,
-    Input
+    Portal, Text, useColorModeValue,
 } from "@chakra-ui/react";
 import { formatDistanceToNow } from "date-fns";
 import { CgMoreO } from "react-icons/cg";
@@ -97,29 +94,31 @@ const Comment = ({ reply, lastReply, postId, currentUser, onReplyUpdate, onReply
 
             {!lastReply && <Divider />}
 
-            <EditReplyModal
+            {isOpen && modalType === "edit" && <EditReplyModal
                 isOpen={isOpen && modalType === "edit"}
                 onClose={closeModal}
                 postId={postId}
                 replyId={reply._id}
                 initialText={reply.text}
                 onSuccess={onReplyUpdate}
-            />
+            />}
 
-            <DeleteReplyModal
+            {isOpen && modalType === "delete" && <DeleteReplyModal
                 isOpen={isOpen && modalType === "delete"}
                 onClose={closeModal}
                 postId={postId}
                 replyId={reply._id}
                 onSuccess={onReplyDelete}
-            />
+            />}
 
             {/* Popup chọn lý do report */}
-            <ReportDialog
+            {isReportOpen && <ReportDialog
+                type="comment"
                 isOpen={isReportOpen}
                 onClose={() => setIsReportOpen(false)}
                 onSubmit={submitReport}
-            />
+                comment={reply}
+            />}
         </>
     );
 };

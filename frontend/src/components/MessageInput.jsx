@@ -1,22 +1,18 @@
 import {
-    Flex,
-    Image,
-    Modal,
-    ModalBody,
-    ModalCloseButton,
-    ModalContent,
-    ModalHeader,
-    ModalOverlay,
     Spinner,
     useDisclosure,
     IconButton,
     Box,
+    Popover,
+    PopoverTrigger,
+    PopoverContent,
+    PopoverBody,
+    HStack,
 } from "@chakra-ui/react";
 import { useRef, useState } from "react";
 import { IoSendSharp } from "react-icons/io5";
 import { BsFillImageFill } from "react-icons/bs";
 import { MdOutlineInsertEmoticon, MdOutlineGifBox } from "react-icons/md";
-import { useOutsideClick } from "@chakra-ui/react-use-outside-click";
 import TextareaAutosize from "react-textarea-autosize";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import EmojiPicker from "emoji-picker-react";
@@ -29,27 +25,14 @@ const MessageInput = ({ setMessages }) => {
     const [messageText, setMessageText] = useState("");
     const [mediaFiles, setMediaFiles] = useState([]);
     const [isSending, setIsSending] = useState(false);
-    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-    const [showGifPicker, setShowGifPicker] = useState(false);
 
     const imageRef = useRef(null);
-    const emojiRef = useRef(null);
-    const gifRef = useRef(null);
 
     const showToast = useShowToast();
     const selectedConversation = useRecoilValue(selectedConversationAtom);
     const setConversations = useSetRecoilState(conversationsAtom);
     const { isOpen, onOpen, onClose } = useDisclosure();
 
-    useOutsideClick({
-        ref: emojiRef,
-        handler: () => setShowEmojiPicker(false),
-    });
-
-    useOutsideClick({
-        ref: gifRef,
-        handler: () => setShowGifPicker(false),
-    });
 
     const handleMediaChange = (e) => {
         const files = Array.from(e.target.files);
@@ -66,7 +49,6 @@ const MessageInput = ({ setMessages }) => {
             const file = new File([blob], "gif.gif", { type: "image/gif" });
 
             setMediaFiles([file]);
-            setShowGifPicker(false);
             onOpen();
         } catch (error) {
             showToast("Error", "Unable to load GIF", "error");
@@ -86,7 +68,8 @@ const MessageInput = ({ setMessages }) => {
         try {
             const formData = new FormData();
             if (messageText.trim()) formData.append("message", messageText.trim());
-            formData.append("recipientId", selectedConversation.userId);
+            formData.append("conversationId", selectedConversation._id); // 🔁 thay recipientId
+
             mediaFiles.forEach((file) => formData.append("media", file));
 
             const res = await api.post("/api/messages", formData, {
@@ -122,21 +105,47 @@ const MessageInput = ({ setMessages }) => {
         }
     };
 
+
     const handleEmojiClick = (emoji) => {
         setMessageText((prev) => prev + emoji.emoji);
     };
 
-    const toggleEmojiPicker = () => setShowEmojiPicker((prev) => !prev);
-    const toggleGifPicker = () => setShowGifPicker((prev) => !prev);
-
     return (
-        <Flex gap={2} alignItems="flex-end" position="relative" w="full">
-            <Flex gap={1} alignItems="center">
+        <Box position="relative" w="full">
+            {/* Emoji bên trái */}
+            <Box position="absolute" left="8px" top="50%" transform="translateY(-50%)" zIndex="1">
+                <Popover placement="top-start" isLazy>
+                    <PopoverTrigger>
+                        <IconButton
+                            icon={<MdOutlineInsertEmoticon />}
+                            aria-label="Emoji"
+                            size="sm"
+                            variant="ghost"
+                        />
+                    </PopoverTrigger>
+                    <PopoverContent w="auto" border="none" boxShadow="lg" bg="transparent" zIndex={10}>
+                        <PopoverBody p={0}>
+                            <EmojiPicker onEmojiClick={handleEmojiClick} />
+                        </PopoverBody>
+                    </PopoverContent>
+                </Popover>
+            </Box>
+
+            {/* Icon bên phải */}
+            <HStack
+                spacing={1}
+                position="absolute"
+                right="8px"
+                top="50%"
+                transform="translateY(-50%)"
+                zIndex="1"
+            >
                 <IconButton
-                    color={"blue.500"}
                     icon={<BsFillImageFill />}
+                    size="md"
+                    variant="ghost"
                     onClick={() => imageRef.current.click()}
-                    aria-label="Upload media"
+                    aria-label="Image"
                 />
                 <input
                     type="file"
@@ -147,136 +156,60 @@ const MessageInput = ({ setMessages }) => {
                     onChange={handleMediaChange}
                 />
 
-                <IconButton
-                    color={"blue.500"}
-                    icon={<MdOutlineInsertEmoticon />}
-                    onClick={toggleEmojiPicker}
-                    aria-label="Insert emoji"
-                />
-                <IconButton
-                    color={"blue.500"}
-                    icon={<MdOutlineGifBox />}
-                    onClick={toggleGifPicker}
-                    aria-label="Insert gif"
-                />
-            </Flex>
-            {/* Textarea */}
-            <Flex flex={1} direction="column" gap={2}>
-                <TextareaAutosize
-                    minRows={1}
-                    maxRows={4}
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            handleSendMessage();
-                        }
-                    }}
-                    style={{
-                        width: "100%",
-                        border: "1px solid #ccc",
-                        borderRadius: "8px",
-                        padding: "8px 12px",
-                        fontSize: "1rem",
-                        fontFamily: "inherit",
-                        resize: "none",
-                        outline: "none",
-                    }}
-                    placeholder="Type a message"
-                />
-            </Flex>
+                <Popover placement="top-start" isLazy>
+                    <PopoverTrigger>
+                        <IconButton
+                            icon={<MdOutlineGifBox />}
+                            fontWeight={"bold"}
+                            size="md"
+                            variant="ghost"
+                            aria-label="GIF"
+                        />
+                    </PopoverTrigger>
+                    <PopoverContent w="auto" border="none" boxShadow="lg" bg="transparent" zIndex={10}>
+                        <PopoverBody p={0}>
+                            <GiphyPicker onGifSelect={handleGifSelect} />
+                        </PopoverBody>
+                    </PopoverContent>
+                </Popover>
 
-            {/* Actions */}
-            <Flex alignItems="center" >
                 <IconButton
-                    color={"blue.500"}
                     icon={isSending ? <Spinner size="sm" /> : <IoSendSharp />}
+                    size="sm"
+                    variant="ghost"
+                    color={"blue.500"}
+                    isDisabled={!messageText.trim() && mediaFiles.length === 0}
                     onClick={handleSendMessage}
                     aria-label="Send"
                 />
+            </HStack>
 
-            </Flex>
+            {/* Textarea chính */}
+            <TextareaAutosize
+                minRows={1}
+                maxRows={4}
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                    }
+                }}
+                style={{
+                    width: "100%",
+                    padding: "8px 100px 8px 40px", // padding left + right để chừa chỗ icon
+                    border: "1px solid #ccc",
+                    borderRadius: "999px",
+                    fontSize: "1rem",
+                    fontFamily: "inherit",
+                    resize: "none",
+                    outline: "none",
+                }}
+                placeholder="Type a message"
+            />
+        </Box>
 
-            {/* Emoji Picker */}
-            {showEmojiPicker && (
-                <Box ref={emojiRef} position="absolute" bottom="60px" right="60px" zIndex={10}>
-                    <EmojiPicker onEmojiClick={handleEmojiClick} />
-                </Box>
-            )}
-
-            {/* Gif Picker */}
-            {showGifPicker && (
-                <Box ref={gifRef} position="absolute" bottom="60px" right="60px" zIndex={10}>
-                    <GiphyPicker onGifSelect={handleGifSelect} />
-                </Box>
-            )}
-
-            {/* Preview Modal */}
-            <Modal isOpen={isOpen} onClose={onClose} size="xl">
-                <ModalOverlay />
-                <ModalContent>
-                    <ModalHeader>Preview Media</ModalHeader>
-                    <ModalCloseButton />
-                    <ModalBody>
-                        <Flex wrap="wrap" gap={2} justifyContent="center">
-                            {mediaFiles.map((file, idx) => {
-                                const url = URL.createObjectURL(file);
-                                const type = file.type.split("/")[0];
-
-                                const handleRemoveMedia = () => {
-                                    setMediaFiles((prev) => prev.filter((_, i) => i !== idx));
-                                };
-
-                                return (
-                                    <Box key={idx} position="relative" boxSize="120px">
-                                        <IconButton
-                                            size="xs"
-                                            icon={<Box as="span" fontSize="16px">✕</Box>}
-                                            onClick={handleRemoveMedia}
-                                            aria-label="Remove media"
-                                            position="absolute"
-                                            top="0"
-                                            right="0"
-                                            zIndex="2"
-                                            colorScheme="red"
-                                        />
-                                        {type === "image" && (
-                                            <Image src={url} alt="preview" boxSize="100%" objectFit="cover" borderRadius="md" />
-                                        )}
-                                        {type === "video" && (
-                                            <video src={url} controls width="100%" height="100%" style={{ borderRadius: "8px" }} />
-                                        )}
-                                        {type === "audio" && (
-                                            <audio src={url} controls style={{ width: "100%" }} />
-                                        )}
-                                    </Box>
-                                );
-                            })}
-                        </Flex>
-
-                        <Flex justifyContent="space-between" mt={4}>
-                            <Box>
-                                <IconButton
-                                    icon={<Box as="span" fontWeight="bold">🗑️</Box>}
-                                    aria-label="Remove all media"
-                                    size="sm"
-                                    colorScheme="red"
-                                    onClick={() => setMediaFiles([])}
-                                />
-                            </Box>
-
-                            {isSending ? (
-                                <Spinner size="md" />
-                            ) : (
-                                <IoSendSharp size={24} cursor="pointer" onClick={handleSendMessage} />
-                            )}
-                        </Flex>
-                    </ModalBody>
-
-                </ModalContent>
-            </Modal>
-        </Flex>
     );
 };
 

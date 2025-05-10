@@ -44,7 +44,7 @@ const CreatePost = () => {
                     </Button>
                 </Box>
             </Draggable>
-            <CreatePostModal isOpen={isOpen} onClose={onClose} username={user?.username} />
+            <CreatePostModal isOpen={isOpen} onClose={onClose} />
         </>
     );
 };

@@ -38,14 +38,9 @@ const LoginCard = () => {
     const setUser = useSetRecoilState(userAtom);
     const showToast = useShowToast();
 
-    // Debounce input để giảm số lần cập nhật state khi gõ phím
-    const debouncedSetInputs = useDebouncedCallback((name, value) => {
-        setState((prev) => ({ ...prev, [name]: value }));
-    }, 300);
-
     const handleChange = (e) => {
         const { name, value } = e.target;
-        debouncedSetInputs(name, value);
+        setState((prev) => ({ ...prev, [name]: value }));
     };
 
     const toggleShowPassword = () => {
@@ -107,7 +102,7 @@ const LoginCard = () => {
                             <Input
                                 type="text"
                                 name="emailOrUsername"
-                                defaultValue={state.emailOrUsername}
+                                value={state.emailOrUsername}
                                 onChange={handleChange}
                             />
                         </FormControl>
@@ -117,7 +112,7 @@ const LoginCard = () => {
                                 <Input
                                     type={state.showPassword ? 'text' : 'password'}
                                     name="password"
-                                    defaultValue={state.password}
+                                    value={state.password}
                                     onChange={handleChange}
                                 />
                                 <InputRightElement h={'full'}>

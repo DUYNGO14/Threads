@@ -13,7 +13,10 @@ export const socketHandler = (io) => {
   io.on("connection", async (socket) => {
     const userId = socket.handshake.query.userId;
 
-    if (!userId || userId === "undefined") return;
+    if (!userId || userId === "undefined") {
+      socket.disconnect();
+      return;
+    }
 
     console.log(`🔌 User connected: ${userId}`);
     setUserSocket(userId, socket.id);
@@ -30,27 +33,31 @@ export const socketHandler = (io) => {
     }
     // 📩 Đánh dấu tin nhắn đã xem
     socket.on("markMessagesAsSeen", async ({ conversationId, userId }) => {
+      if (!conversationId || !userId) return;
       try {
         await Message.updateMany(
           { conversationId, seen: false, sender: { $ne: userId } },
           { $set: { seen: true } }
         );
+        if (result.modifiedCount > 0) {
+          await Conversation.updateOne(
+            { _id: conversationId, "lastMessage._id": { $exists: true } },
+            { $set: { "lastMessage.seen": true } }
+          );
 
-        await Conversation.updateOne(
-          { _id: conversationId },
-          { $set: { "lastMessage.seen": true } }
-        );
+          // ✅ emit theo userId (room), không cần socketId
+          io.to(userId).emit("messagesSeen", { conversationId });
 
-        // ✅ emit theo userId (room), không cần socketId
-        io.to(userId).emit("messagesSeen", { conversationId });
-
-        const unreadCountMap = await getUnreadCountsForUser(userId);
-        io.to(userId).emit("updateUnreadCounts", unreadCountMap);
+          const unreadCountMap = await getUnreadCountsForUser(userId);
+          io.to(userId).emit("updateUnreadCounts", unreadCountMap);
+        }
       } catch (err) {
         console.error("❌ Lỗi khi đánh dấu đã xem:", err);
       }
     });
     socket.on("notification:seen", async ({ notificationId }) => {
+      if (!notificationId) return;
+
       try {
         const updated = await Notification.findByIdAndUpdate(
           notificationId,
@@ -60,15 +67,34 @@ export const socketHandler = (io) => {
         if (updated) {
           // Gửi lại notification đã cập nhật về client để đồng bộ UI
           io.to(socket.id).emit("markNotificationsAsSeen", updated);
+        } else {
+          console.log("❌ Notification không tồn tại");
         }
       } catch (err) {
         console.error("Error marking notification as seen:", err);
       }
     });
+    socket.on("joinRoom", (conversationId) => {
+      if (!conversationId) return;
+
+      socket.join(conversationId);
+      console.log(`Socket ${socket.id} joined room ${conversationId}`);
+    });
+
+    socket.on("leaveRoom", (conversationId) => {
+      if (!conversationId) return;
+
+      socket.leave(conversationId);
+      console.log(`Socket ${socket.id} left room ${conversationId}`);
+    });
     socket.on("disconnect", () => {
+      const userId = socket.handshake.query.userId;
       console.log(`🔌 User disconnected: ${userId}`);
-      removeUserSocket(userId);
-      io.emit("getOnlineUsers", getOnlineUsers());
+
+      if (userId) {
+        removeUserSocket(userId);
+        io.emit("getOnlineUsers", getOnlineUsers());
+      }
     });
   });
 };

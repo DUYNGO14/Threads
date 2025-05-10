@@ -125,33 +125,38 @@ const getUserProfile = async (req, res) => {
 };
 const searchUsers = async (req, res) => {
   try {
-    const { query } = req.params;
+    const query = req.query.query?.trim();
+    const searchText = query;
 
-    if (!query || query.trim() === "") {
+    if (!searchText) {
       return res.status(400).json({ error: "Search query is required" });
     }
 
+    // Lấy ID của người dùng hiện tại từ req.user
+    const currentUserId = req.user._id;
+
     const searchCondition = {
       $or: [
-        { username: { $regex: query, $options: "i" } },
-        { name: { $regex: query, $options: "i" } },
+        { username: { $regex: searchText, $options: "i" } },
+        { name: { $regex: searchText, $options: "i" } },
       ],
+      isBlocked: false,
+      isFrozen: false,
+      _id: { $ne: currentUserId }, // Loại bỏ người dùng hiện tại khỏi kết quả
     };
 
     const users = await User.find(searchCondition)
-      .select("-password -updatedAt -email -followers -following") // tuỳ ý bỏ bớt các field không cần thiết
-      .limit(10); // giới hạn kết quả
-
-    if (!users.length) {
-      return res.status(404).json({ error: "No users found" });
-    }
+      .collation({ locale: "vi", strength: 1 })
+      .select("username name profilePic bio")
+      .limit(10);
 
     return res.status(200).json(users);
   } catch (error) {
-    console.error("Error in searchUsersController:", error);
+    console.error("Error in searchUsers:", error);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
 // Cập nhật thông tin người dùng
 const updateUser = async (req, res) => {
   try {
@@ -457,41 +462,42 @@ const getListFollowing = async (req, res) => {
 
 const searchSuggestedUsers = async (req, res) => {
   try {
-    const query = req.query.q;
-    if (!query || query.trim() === "") {
+    const query = req.query.q?.trim();
+    if (!query) {
       return res.status(400).json({ error: "Search query is required" });
     }
 
-    // Điều kiện tìm kiếm cơ bản
     const searchCondition = {
       $or: [
         { username: { $regex: query, $options: "i" } },
         { name: { $regex: query, $options: "i" } },
       ],
+      isBlocked: false,
+      isFrozen: false,
     };
+
+    // Nếu đã đăng nhập, loại trừ bản thân và những người đã follow
     if (req.user) {
       const currentUser = await User.findById(req.user._id).select("following");
       const excludedUserIds = [
-        ...currentUser.following,
+        ...currentUser.following.map((id) => id.toString()),
         req.user._id.toString(),
       ];
       searchCondition._id = { $nin: excludedUserIds };
     }
 
     const users = await User.find(searchCondition)
+      .collation({ locale: "vi", strength: 1 }) // Hỗ trợ tìm tiếng Việt không dấu
       .select("username name profilePic bio")
       .limit(10);
 
-    if (!users.length) {
-      return res.status(404).json({ error: "No users found" });
-    }
-
     return res.status(200).json(users);
   } catch (error) {
-    console.error("Error in searchUsersController:", error);
+    console.error("Error in searchSuggestedUsers:", error);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
 export {
   followUnFollowUser,
   updateUser,

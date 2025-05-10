@@ -3,29 +3,24 @@ import { Button, Text, Avatar, Box, Flex, useColorModeValue } from "@chakra-ui/r
 import { Link } from "react-router-dom";
 import useFollowUnfollow from "@hooks/useFollowUnfollow"; // Custom hook follow/unfollow
 import numeral from "numeral";
-const FollowItem = ({ user, activeTab, setFollowing }) => {
+import { useNavigate } from "react-router-dom"; // thêm dòng này
+
+const FollowItem = ({ user, activeTab, setFollowing, handleNavigate }) => {
+
     const onSuccess = (isNowFollowing) => {
-        // Xử lý khi follow/unfollow thành công
-        // Nếu đang ở tab "following" và unfollow thì remove user khỏi list
         if (activeTab === "following" && !isNowFollowing) {
             setFollowing((prev) => prev.filter((u) => u._id !== user._id));
         }
     };
 
     const { handleFollowUnfollow, updating, following } = useFollowUnfollow(user, onSuccess);
-
-    const bg = useColorModeValue("white", "gray.800");
-
+    const bg = useColorModeValue('gray.100', 'gray.dark');
     return (
         <Flex align="center" justify="space-between" p={3} bg={bg} borderBottom="1px solid" borderColor="gray.200">
-            <Flex gap={3} align="center">
-                <Link to={`/user/${user.username}`}>
-                    <Avatar src={user.profilePic} name={user.name} size="md" />
-                </Link>
+            <Flex gap={3} align="center" onClick={() => handleNavigate(`/user/${user.username}`)} cursor="pointer">
+                <Avatar src={user.profilePic} name={user.name} size="md" />
                 <Box>
-                    <Link to={`/user/${user.username}`}>
-                        <Text fontWeight="bold">{user.username}</Text>
-                    </Link>
+                    <Text fontWeight="bold">{user.username}</Text>
                     <Text fontSize="sm" color="gray.500">
                         {user.name}
                         <Text as="span" ml={1}>
@@ -40,5 +35,6 @@ const FollowItem = ({ user, activeTab, setFollowing }) => {
         </Flex>
     );
 };
+
 
 export default FollowItem;

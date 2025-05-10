@@ -1,4 +1,4 @@
-import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, FormControl, Input, ModalCloseButton } from "@chakra-ui/react";
+import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, FormControl, Input, ModalCloseButton, useColorModeValue, Divider } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import useReply from "@hooks/useReply";
@@ -29,8 +29,9 @@ const EditReplyModal = ({ isOpen, onClose, postId, replyId, initialText, onSucce
     return (
         <Modal isOpen={isOpen} onClose={onClose}>
             <ModalOverlay />
-            <ModalContent>
-                <ModalHeader>Edit Reply</ModalHeader>
+            <ModalContent bg={useColorModeValue('gray.100', 'gray.dark')}>
+                <ModalHeader textAlign="center">Edit Reply</ModalHeader>
+                <Divider maxW={'90%'} mx={'auto'} />
                 <ModalCloseButton />
                 <ModalBody>
                     <FormControl>

@@ -1,21 +1,23 @@
-import { Avatar, AvatarBadge, Badge, Divider, Flex, IconButton, Image, Skeleton, SkeletonCircle, Text, useColorModeValue, WrapItem } from "@chakra-ui/react";
+import { Avatar, AvatarBadge, Badge, Box, Divider, Flex, Icon, IconButton, Image, Skeleton, SkeletonCircle, Text, useColorModeValue, WrapItem } from "@chakra-ui/react";
 import { CloseIcon } from "@chakra-ui/icons";
 import Message from "./Message";
 import MessageInput from "./MessageInput";
 import { useEffect, useRef, useState } from "react";
 import useShowToast from "@hooks/useShowToast";
-import { conversationsAtom, selectedConversationAtom } from "../atoms/messagesAtom";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { conversationsAtom, messagesAtom, selectedConversationAtom } from "../atoms/messagesAtom";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import userAtom from "../atoms/userAtom";
 import { useSocket } from "@context/SocketContext.jsx";
 import messageSound from "../assets/sounds/message.mp3";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api.js";
-const MessageContainer = ({ isOnline, onClose }) => {
+import { PiWarningCircleBold } from "react-icons/pi";
+import ShowAvatarGroup from "./AvatarGroup.jsx";
+const MessageContainer = ({ isOnline, onClose, setShowChatSettings, showChatSettings }) => {
     const showToast = useShowToast();
     const selectedConversation = useRecoilValue(selectedConversationAtom);
     const [loadingMessages, setLoadingMessages] = useState(true);
-    const [messages, setMessages] = useState([]);
+    const [messages, setMessages] = useRecoilState(messagesAtom);
     const currentUser = useRecoilValue(userAtom);
     const { socket } = useSocket();
     const setConversations = useSetRecoilState(conversationsAtom);
@@ -25,10 +27,21 @@ const MessageContainer = ({ isOnline, onClose }) => {
     useEffect(() => {
         selectedConversationRef.current = selectedConversation;
     }, [selectedConversation]);
+    useEffect(() => {
+        if (selectedConversation && selectedConversation._id) {
+            socket.emit("joinRoom", selectedConversation._id); // tham gia room
+        }
+
+        return () => {
+            if (selectedConversation && selectedConversation._id) {
+                socket.emit("leaveRoom", selectedConversation._id); // rời room khi đổi hoặc thoát
+            }
+        };
+    }, [selectedConversation._id, socket]);
 
     useEffect(() => {
         const handleNewMessage = (message) => {
-            if (selectedConversationRef.current._id === message.conversationId) {
+            if (selectedConversation._id === message.conversationId) {
                 setMessages((prev) => [...prev, message]);
             }
 
@@ -37,8 +50,8 @@ const MessageContainer = ({ isOnline, onClose }) => {
                 sound.play();
             }
 
-            setConversations((prev) => {
-                return prev.map((conversation) =>
+            setConversations((prev) =>
+                prev.map((conversation) =>
                     conversation._id === message.conversationId
                         ? {
                             ...conversation,
@@ -48,14 +61,13 @@ const MessageContainer = ({ isOnline, onClose }) => {
                             },
                         }
                         : conversation
-                );
-            });
+                )
+            );
         };
 
         socket.on("newMessage", handleNewMessage);
         return () => socket.off("newMessage", handleNewMessage);
-    }, [socket, setConversations]);
-
+    }, [socket, setConversations, selectedConversation._id]);
 
     useEffect(() => {
         if (
@@ -91,7 +103,14 @@ const MessageContainer = ({ isOnline, onClose }) => {
             setMessages([]);
             try {
                 if (selectedConversation.mock) return;
-                const res = await api.get(`api/messages/${selectedConversation.userId}`);
+
+                let res;
+                if (selectedConversation.isGroup) {
+                    res = await api.get(`/api/messages?conversationId=${selectedConversation._id}`);
+                } else {
+                    res = await api.get(`/api/messages?otherUserId=${selectedConversation.userId}`);
+                }
+
                 const data = await res.data;
                 if (data.error) {
                     showToast("Error", data.error, "error");
@@ -105,8 +124,16 @@ const MessageContainer = ({ isOnline, onClose }) => {
             }
         };
 
-        if (selectedConversation.userId) getMessages();
-    }, [showToast, selectedConversation.userId, selectedConversation.mock]);
+        if (selectedConversation._id) getMessages();
+    }, [
+        showToast,
+        selectedConversation._id,
+        selectedConversation.userId,
+        selectedConversation.mock,
+        selectedConversation.isGroup,
+        setMessages,
+    ]);
+
     return (
 
         <Flex
@@ -118,13 +145,15 @@ const MessageContainer = ({ isOnline, onClose }) => {
             overflow={"hidden"}
             position={"relative"}
             h={"full"}
-
+            w={"full"}
         >
             {/* Message header */}
-            <Flex cursor={"pointer"} w={"full"} h={12} alignItems={"center"} gap={2} >
-                <Flex onClick={() => { navigate(`/user/${selectedConversation.username}`) }}>
+            <Flex cursor={"pointer"} w={"full"} alignItems={"center"} gap={2} justifyContent={"space-between"}>
+                <Flex >
                     <WrapItem mr={2}>
-                        <Avatar
+                        {selectedConversation.isGroup ? (
+                            <ShowAvatarGroup users={selectedConversation.participants} />
+                        ) : (<Avatar
                             size={{
                                 base: "xs",
                                 sm: "sm",
@@ -132,28 +161,47 @@ const MessageContainer = ({ isOnline, onClose }) => {
                             }}
                             src={selectedConversation.userProfilePic}
                         >
-                            {isOnline ? <AvatarBadge boxSize='1em' bg='green.500' /> : <AvatarBadge boxSize='1em' bg='red.500' />}
-                        </Avatar>
-                    </WrapItem >
-                    <Text display={"flex"} alignItems={"center"} >
-                        {selectedConversation.username}
-                    </Text>
 
+                            {isOnline ? <AvatarBadge boxSize='1em' bg='green.500' /> : <AvatarBadge boxSize='1em' bg='red.500' />}
+                        </Avatar>)}
+
+                    </WrapItem >
+                    <Box>
+                        <Text ml={2} display={"flex"} alignItems={"center"} >
+                            {selectedConversation.username || selectedConversation.groupName}
+                        </Text>
+                        {!selectedConversation.isGroup && (
+                            <Badge ml={2} size={"xs"} colorScheme={isOnline ? "green" : "red"}>
+                                {isOnline ? "Online" : "Offline"}
+                            </Badge>
+                        )}
+                    </Box>
                 </Flex>
-                {isOnline ? (<Badge colorScheme="green">Online</Badge>) : (<Badge colorScheme="red">Offline</Badge>)}
-                <IconButton
-                    icon={<CloseIcon />}
-                    aria-label="Close conversation"
-                    onClick={onClose}
-                    variant="ghost"
-                    colorScheme="red"
-                    ml="auto"
-                />
+
+
+                <Flex>
+                    <IconButton
+                        icon={<PiWarningCircleBold />}
+                        aria-label="Close conversation"
+                        onClick={() => setShowChatSettings(!showChatSettings)}
+                        variant="ghost"
+                        colorScheme="white"
+                        mx={2}
+                    />
+                    <IconButton
+                        icon={<CloseIcon />}
+                        aria-label="Close conversation"
+                        onClick={onClose}
+                        variant="ghost"
+                        colorScheme="red"
+                    />
+                </Flex>
+
             </Flex>
 
             <Divider my={2} />
 
-            <Flex flexDir={"column"} gap={4} my={4} p={2} height={"400px"} w={"full"} overflowY={"auto"}>
+            <Flex flexDir={"column"} gap={4} my={4} p={2} height={"full"} w={"full"} overflowY={"auto"}>
                 {loadingMessages &&
                     [...Array(5)].map((_, i) => (
                         <Flex
@@ -174,19 +222,36 @@ const MessageContainer = ({ isOnline, onClose }) => {
                         </Flex>
                     ))}
 
-                {!loadingMessages &&
-                    messages.map((message) => (
-
-                        <Flex
-                            key={message._id}
-                            direction={"column"}
-                            ref={messages.length - 1 === messages.indexOf(message) ? messageEndRef : null}
-                        >
-                            <Message message={message} ownMessage={currentUser._id === message.sender} />
+                {!loadingMessages ? (
+                    messages && messages.length > 0 ? (
+                        messages.map((message, index) =>
+                            message.isSystem ? (
+                                <Text
+                                    key={message._id}
+                                    fontSize="sm"
+                                    textAlign="center"
+                                    color="gray.500"
+                                    ref={messages.length - 1 === index ? messageEndRef : null}
+                                >
+                                    {message.text}
+                                </Text>
+                            ) : (
+                                <Message
+                                    key={message._id}
+                                    ref={messages.length - 1 === index ? messageEndRef : null}
+                                    message={message}
+                                    ownMessage={currentUser._id === message.sender._id}
+                                />
+                            )
+                        )
+                    ) : (
+                        <Flex h="full" alignItems="center" justifyContent="center" w="full">
+                            No messages yet
                         </Flex>
-                    ))}
-            </Flex>
+                    )
+                ) : null}
 
+            </Flex>
             <MessageInput setMessages={setMessages} />
         </Flex>
     );

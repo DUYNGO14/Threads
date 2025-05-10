@@ -9,6 +9,7 @@ import api from "../services/api.js";
 const EnterOtpCard = () => {
     const [otp, setOtp] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [resendLoading, setResendLoading] = useState(false);
     const setAuthScreen = useSetRecoilState(authScreenAtom);
     const showToast = useShowToast();
 
@@ -16,7 +17,7 @@ const EnterOtpCard = () => {
     const email = localStorage.getItem("email-for-verification");
     const handleResendOTP = async () => {
         try {
-
+            setResendLoading(true);
             const res = await api.post("/api/auth/resend-otp", { email });
             console.log(res);
             const data = res.data;
@@ -27,6 +28,8 @@ const EnterOtpCard = () => {
                 error.message || // Lấy thông báo mặc định từ Axios
                 "An unexpected error occurred"; // Thông báo mặc định nếu không có thông tin
             showToast("Error", errorMessage || "Something went wrong", "error");
+        } finally {
+            setResendLoading(false);
         }
     };
     const handleVerifyOtp = async () => {
@@ -70,7 +73,7 @@ const EnterOtpCard = () => {
                 <Button colorScheme="blue" isLoading={isLoading} onClick={handleVerifyOtp}>
                     Verify OTP
                 </Button>
-                <Button colorScheme="blue" isLoading={isLoading} variant="outline" onClick={handleResendOTP}>
+                <Button colorScheme="blue" isLoading={resendLoading} variant="outline" onClick={handleResendOTP}>
                     Resend OTP
                 </Button>
             </Stack>

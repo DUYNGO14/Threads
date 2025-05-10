@@ -1,18 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import {
-    Button, Flex, FormControl, IconButton, Input, Modal,
-    ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalHeader,
-    ModalOverlay, Text, Tooltip, Divider, useColorModeValue,
+    Button, Flex, FormControl, IconButton, Input, Text, Tooltip
 } from "@chakra-ui/react";
 import { BsFillImageFill } from "react-icons/bs";
 import PostPreview from "./PostPreview";
+import BaseModal from "@components/Modal/BaseModal";
 import { MAX_CHAR, MAX_FILES, ALLOWED_TYPES, MAX_FILE_SIZE_MB } from "../constant/uploads";
 import useShowToast from "@hooks/useShowToast";
 import { useRecoilState, useRecoilValue } from "recoil";
-import userAtom from "../atoms/userAtom";
-import postsAtom from "../atoms/postsAtom";
+import userAtom from "@atoms/userAtom";
+import postsAtom from "@atoms/postsAtom";
 import useDebounceSubmit from "@hooks/useDebounceSubmit";
-import api from "../services/api";
+import api from "@services/api";
 
 const CreatePostModal = ({ isOpen, onClose }) => {
     const [postText, setPostText] = useState("");
@@ -20,6 +19,7 @@ const CreatePostModal = ({ isOpen, onClose }) => {
     const [tags, setTags] = useState("");
     const [remainingChar, setRemainingChar] = useState(MAX_CHAR);
     const [suggestedTags, setSuggestedTags] = useState([]);
+    const [notification, setNotification] = useState("all");
     const imageRef = useRef(null);
     const user = useRecoilValue(userAtom);
     const [posts, setPosts] = useRecoilState(postsAtom);
@@ -28,12 +28,12 @@ const CreatePostModal = ({ isOpen, onClose }) => {
     useEffect(() => {
         return () => mediaFiles.forEach((file) => URL.revokeObjectURL(file.preview));
     }, [mediaFiles]);
+
     useEffect(() => {
         if (!isOpen) return;
         const fetchTags = async () => {
             try {
                 const res = await api.get("/api/posts/tags");
-                console.log(res.data);
                 setSuggestedTags(res.data);
             } catch (err) {
                 console.error("Failed to fetch tags:", err);
@@ -41,16 +41,14 @@ const CreatePostModal = ({ isOpen, onClose }) => {
         };
         fetchTags();
     }, [isOpen]);
+
     const handleTextChange = (e) => {
         const inputText = e.target.value.slice(0, MAX_CHAR);
         setPostText(inputText);
         setRemainingChar(MAX_CHAR - inputText.length);
     };
 
-    const handleTagChange = (e) => {
-        const inputTags = e.target.value.slice(0, 100);
-        setTags(inputTags);
-    };
+    const handleTagChange = (e) => setTags(e.target.value.slice(0, 100));
 
     const isValidFile = (file) => {
         if (!ALLOWED_TYPES.includes(file.type)) {
@@ -67,15 +65,12 @@ const CreatePostModal = ({ isOpen, onClose }) => {
     const handleFileChange = (e) => {
         const selected = Array.from(e.target.files);
         const spaceLeft = MAX_FILES - mediaFiles.length;
-
         if (spaceLeft <= 0) {
             showToast("Error", `Maximum ${MAX_FILES} files allowed`, "error");
             return;
         }
-
         const limitedFiles = selected.slice(0, spaceLeft);
         const validFiles = limitedFiles.filter(isValidFile);
-
         const newFiles = validFiles.map((file) => ({
             file,
             preview: URL.createObjectURL(file),
@@ -85,7 +80,6 @@ const CreatePostModal = ({ isOpen, onClose }) => {
                     ? "audio"
                     : "image",
         }));
-
         setMediaFiles((prev) => [...prev, ...newFiles]);
     };
 
@@ -99,7 +93,7 @@ const CreatePostModal = ({ isOpen, onClose }) => {
         setMediaFiles([]);
         setRemainingChar(MAX_CHAR);
         setTags("");
-        imageRef.current.value = null;
+        if (imageRef.current) imageRef.current.value = null;
     };
 
     const submitPost = async () => {
@@ -107,11 +101,12 @@ const CreatePostModal = ({ isOpen, onClose }) => {
             showToast("Error", "Post content is required", "error");
             return;
         }
-
+        const cleanedText = postText.replace(/\n{3,}/g, '\n');
         const formData = new FormData();
         formData.append("postedBy", user._id);
-        formData.append("text", postText);
+        formData.append("text", cleanedText);
         formData.append("tags", tags);
+        formData.append("notification", notification);
         mediaFiles.forEach(({ file }) => formData.append("media", file));
 
         try {
@@ -128,7 +123,6 @@ const CreatePostModal = ({ isOpen, onClose }) => {
             onClose();
             handleClearForm();
         } catch (error) {
-            console.error("Error creating post:", error);
             const errorMessage = error.response?.data?.message || error.message || "An unexpected error occurred";
             showToast("Error", errorMessage, "error");
         }
@@ -136,66 +130,61 @@ const CreatePostModal = ({ isOpen, onClose }) => {
 
     const { handleSubmit: handleCreatePost, isLoading } = useDebounceSubmit(submitPost);
 
+    const footer = (
+        <>
+            <Button onClick={handleClearForm} colorScheme="red" mr={3}>
+                Delete
+            </Button>
+            <Button onClick={handleCreatePost} colorScheme="blue" isLoading={isLoading}>
+                Post
+            </Button>
+        </>
+    );
+
     return (
-        <Modal isOpen={isOpen} onClose={onClose} size="xl" isCentered>
-            <ModalOverlay backdropFilter="blur(10px)" />
-            <ModalContent bg={useColorModeValue('gray.100', 'gray.dark')}>
-                <ModalHeader fontSize="xl" fontWeight="bold" textAlign="center">New thread</ModalHeader>
-                <Divider />
-                <ModalCloseButton />
-                <ModalBody>
-                    <FormControl>
-                        <PostPreview
-                            user={user}
-                            postText={postText}
-                            tags={tags}
-                            mediaFiles={mediaFiles}
-                            onRemoveFile={handleRemoveFile}
-                            onTextChange={handleTextChange}
-                            handleTagChange={handleTagChange}
-                            suggestedTags={suggestedTags}
+        <BaseModal isOpen={isOpen} onClose={onClose} title="New thread" footer={footer}>
+            <FormControl>
+                <PostPreview
+                    user={user}
+                    postText={postText}
+                    tags={tags}
+                    mediaFiles={mediaFiles}
+
+                    onRemoveFile={handleRemoveFile}
+                    onTextChange={handleTextChange}
+                    handleTagChange={handleTagChange}
+                    setNotification={setNotification}
+                    notification={notification}
+                    suggestedTags={suggestedTags}
+                />
+                <Flex justify="space-between" align="center" mt={2}>
+                    <Text fontSize="xs" fontWeight="bold" color={remainingChar < 50 ? "red.500" : "gray.500"}>
+                        {remainingChar}/{MAX_CHAR} characters remaining
+                    </Text>
+                    <Tooltip label="Add media">
+                        <IconButton
+                            icon={<BsFillImageFill />}
+                            onClick={() => imageRef.current.click()}
+                            colorScheme="blue"
+                            variant="ghost"
+                            aria-label="Add media"
+                            _hover={{ transform: "scale(1.1)" }}
+                            transition="all 0.2s"
+                            isDisabled={mediaFiles.length >= MAX_FILES}
                         />
-
-                        <Flex justify="space-between" align="center" mt={2}>
-                            <Text fontSize="xs" fontWeight="bold" color={remainingChar < 50 ? "red.500" : "gray.500"}>
-                                {remainingChar}/{MAX_CHAR} characters remaining
-                            </Text>
-                            <Tooltip label="Add media">
-                                <IconButton
-                                    icon={<BsFillImageFill />}
-                                    onClick={() => imageRef.current.click()}
-                                    colorScheme="blue"
-                                    variant="ghost"
-                                    aria-label="Add media"
-                                    _hover={{ transform: "scale(1.1)" }}
-                                    transition="all 0.2s"
-                                    isDisabled={mediaFiles.length >= MAX_FILES}
-                                />
-                            </Tooltip>
-                        </Flex>
-
-                        <Input
-                            type="file"
-                            hidden
-                            ref={imageRef}
-                            multiple
-                            accept="image/*,video/*,audio/*"
-                            onChange={handleFileChange}
-                            disabled={mediaFiles.length >= MAX_FILES}
-                        />
-                    </FormControl>
-                </ModalBody>
-
-                <ModalFooter>
-                    <Button onClick={handleClearForm} colorScheme="red" mr={3}>
-                        Delete
-                    </Button>
-                    <Button onClick={handleCreatePost} colorScheme="blue" isLoading={isLoading}>
-                        Post
-                    </Button>
-                </ModalFooter>
-            </ModalContent>
-        </Modal>
+                    </Tooltip>
+                </Flex>
+                <Input
+                    type="file"
+                    hidden
+                    ref={imageRef}
+                    multiple
+                    accept="image/*,video/*,audio/*"
+                    onChange={handleFileChange}
+                    disabled={mediaFiles.length >= MAX_FILES}
+                />
+            </FormControl>
+        </BaseModal>
     );
 };
 

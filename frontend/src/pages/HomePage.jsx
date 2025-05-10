@@ -41,6 +41,14 @@ const HomePage = () => {
         { value: "propose", label: "For you" },
         { value: "followed", label: "Following", requireAuth: true },
     ];
+    // useEffect(() => {
+    //     const getPosts = async () => {
+    //         const res = await api.get("/api/posts/recommended");
+    //         const data = await res.data;
+    //         console.log(data);
+    //     }
+    //     getPosts();
+    // }, []);
 
     const fetchPosts = useCallback(async (pageNum = 1, isInit = false) => {
         const controller = new AbortController();

@@ -18,13 +18,15 @@ import { useRecoilState } from "recoil";
 import { followersAtom, followingAtom } from "../../atoms/followAtoms";
 import FollowItem from "../FollowItem";
 import api from "../../services/api";
+import { useNavigate } from "react-router-dom";
 
 const FollowersFollowingModal = ({ isOpen, onClose, username }) => {
     const [followers, setFollowers] = useRecoilState(followersAtom);
     const [following, setFollowing] = useRecoilState(followingAtom);
     const [activeTab, setActiveTab] = useState("followers");
     const [loading, setLoading] = useState(false);
-    const bg = useColorModeValue("gray.50", "gray.dark");
+    const navigate = useNavigate(); // thêm dòng này
+    const bg = useColorModeValue('gray.100', 'gray.dark')
 
     useEffect(() => {
         if (!isOpen) setActiveTab("followers");
@@ -54,10 +56,13 @@ const FollowersFollowingModal = ({ isOpen, onClose, username }) => {
         };
 
         fetchData();
-    }, [username, isOpen]);
+    }, [username, isOpen, setFollowers, setFollowing]);
 
     const dataToRender = activeTab === "followers" ? followers : following;
-
+    const handleNavigate = (url) => {
+        onClose();
+        navigate(url);
+    };
     return (
         <Modal isOpen={isOpen} onClose={onClose} size="md" isCentered>
             <ModalOverlay />
@@ -81,7 +86,7 @@ const FollowersFollowingModal = ({ isOpen, onClose, username }) => {
                         </Text>
                     ) : (
                         dataToRender.map((user) => (
-                            <FollowItem key={user._id} user={user} activeTab={activeTab} setFollowing={setFollowing} />
+                            <FollowItem key={user._id} user={user} activeTab={activeTab} setFollowing={setFollowing} handleNavigate={handleNavigate} />
                         ))
                     )}
                 </ModalBody>

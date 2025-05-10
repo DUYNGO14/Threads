@@ -35,7 +35,6 @@ const Actions = ({ post, onPostUpdate }) => {
     const [reply, setReply] = useState("");
     const showToast = useShowToast();
     const { isOpen, onOpen, onClose } = useDisclosure();
-    const socket = useSocket();
 
     useEffect(() => {
         if (post && user) {
@@ -118,14 +117,14 @@ const Actions = ({ post, onPostUpdate }) => {
 
     const copyURL = () => {
         if (!post.postedBy || !post.postedBy.username) {
-            showToast("Error", "Không thể tạo link cho bài viết này", "error");
+            showToast("Error", "Unable to copy link", "error");
             return;
         }
 
         const postURL = `${window.location.origin}/${post.postedBy.username}/post/${post._id}`;
         navigator.clipboard.writeText(postURL)
-            .then(() => showToast("Success", "Link đã được sao chép", "success"))
-            .catch(() => showToast("Error", "Không thể sao chép link", "error"));
+            .then(() => showToast("Success", "Copy link successfully", "success"))
+            .catch(() => showToast("Error", "Unable to copy link", "error"));
     };
 
     const handleRepost = async () => {
