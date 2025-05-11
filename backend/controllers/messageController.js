@@ -130,6 +130,60 @@ async function getMessages(req, res) {
     return res.status(500).json({ error: error.message });
   }
 }
+// async function getMessages(req, res) {
+//   const { conversationId, otherUserId, limit = 20, skip = 0 } = req.query; // Thêm limit và skip với giá trị mặc định
+//   const userId = req.user?._id;
+
+//   try {
+//     let conversation;
+
+//     // Ưu tiên tìm theo conversationId (group hoặc 1-1 đều được)
+//     if (conversationId) {
+//       conversation = await Conversation.findOne({
+//         _id: conversationId,
+//         participants: userId,
+//       });
+//     } else if (otherUserId) {
+//       // Nếu không có conversationId thì tìm theo 2 người
+//       conversation = await Conversation.findOne({
+//         isGroup: false,
+//         participants: { $all: [userId, otherUserId], $size: 2 },
+//       });
+//     } else {
+//       return res
+//         .status(400)
+//         .json({ error: "Missing conversationId or otherUserId" });
+//     }
+
+//     if (!conversation) {
+//       return res.status(404).json({ error: "Conversation not found" });
+//     }
+
+//     // Lấy tổng số tin nhắn để biết còn tin nhắn cũ hơn không
+//     const totalMessages = await Message.countDocuments({
+//       conversationId: conversation._id,
+//     });
+
+//     const messages = await Message.find({
+//       conversationId: conversation._id,
+//     })
+//       .populate("sender", "username profilePic")
+//       .sort({ createdAt: -1 }) // Sắp xếp giảm dần theo thời gian
+//       .skip(parseInt(skip))
+//       .limit(parseInt(limit));
+
+//     // Đảo ngược mảng để hiển thị tin nhắn cũ nhất lên trước
+//     const sortedMessages = messages.reverse();
+
+//     return res.status(200).json({
+//       messages: sortedMessages,
+//       hasMore: totalMessages > parseInt(skip) + parseInt(limit),
+//       totalMessages,
+//     });
+//   } catch (error) {
+//     return res.status(500).json({ error: error.message });
+//   }
+// }
 const deleteMessage = async (req, res) => {
   const { messageId } = req.params;
   const userId = req.user?._id;
@@ -195,6 +249,11 @@ const deleteMessage = async (req, res) => {
         );
       }
     }
+    io.to(message.conversationId).emit("unsendMessage", {
+      conversationId: message.conversationId,
+      messageId,
+    });
+
     return res.status(200).json({ message: "Message deleted successfully" });
   } catch (error) {
     console.error("❌ Delete message error:", error);
@@ -228,11 +287,11 @@ const updatedMessage = async (req, res) => {
       {
         $set: {
           lastMessage: {
-            _id: resultMessage._id,
+            _id: message._id,
             text: message.text,
             sender: senderId,
             seen: false,
-            media,
+            media: message.media,
             createdAt: new Date(),
           },
           updatedAt: new Date(),
@@ -240,6 +299,11 @@ const updatedMessage = async (req, res) => {
       },
       { new: true }
     );
+    io.to(message.conversationId).emit("updateMessage", {
+      conversationId: message.conversationId,
+      messageId,
+      text,
+    });
     return res.status(200).json({
       message: "Message updated successfully",
       updatedMessage: message,

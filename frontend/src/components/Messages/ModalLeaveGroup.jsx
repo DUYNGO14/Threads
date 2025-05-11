@@ -1,4 +1,3 @@
-import React, { useState } from 'react'
 import BaseModal from "@components/Modal/BaseModal";
 import { Button, Text } from '@chakra-ui/react';
 import useSettingChatPage from '@/hooks/useSettingChatPage';

@@ -22,11 +22,11 @@ const MessageContainer = ({ isOnline, onClose, setShowChatSettings, showChatSett
     const { socket } = useSocket();
     const setConversations = useSetRecoilState(conversationsAtom);
     const messageEndRef = useRef(null);
-    const navigate = useNavigate();
     const selectedConversationRef = useRef(selectedConversation);
     useEffect(() => {
         selectedConversationRef.current = selectedConversation;
     }, [selectedConversation]);
+
     useEffect(() => {
         if (selectedConversation && selectedConversation._id) {
             socket.emit("joinRoom", selectedConversation._id); // tham gia room
@@ -38,7 +38,42 @@ const MessageContainer = ({ isOnline, onClose, setShowChatSettings, showChatSett
             }
         };
     }, [selectedConversation._id, socket]);
+    useEffect(() => {
+        const getMessages = async () => {
+            setLoadingMessages(true);
+            setMessages([]); // Xóa các tin nhắn cũ trước khi tải tin nhắn mới
+            try {
+                if (!selectedConversation._id || selectedConversation.mock) return;
+                // Nếu cuộc trò chuyện là mock thì không làm gì
+                let res;
+                if (selectedConversation.isGroup) {
+                    res = await api.get(`/api/messages?conversationId=${selectedConversation._id}`);
+                } else {
+                    res = await api.get(`/api/messages?otherUserId=${selectedConversation.userId}`);
+                }
 
+                const data = await res.data;
+                if (data.error) {
+                    showToast("Error", data.error, "error");
+                    return;
+                }
+                setMessages(data); // Cập nhật trạng thái messages với dữ liệu mới
+            } catch (error) {
+                showToast("Error", error.message, "error");
+            } finally {
+                setLoadingMessages(false);
+            }
+        };
+
+        if (selectedConversation._id) getMessages(); // Gọi API khi có cuộc trò chuyện đã chọn
+    }, [
+        showToast,
+        selectedConversation._id,
+        selectedConversation.userId,
+        selectedConversation.mock,
+        selectedConversation.isGroup,
+        setMessages,
+    ]);
     useEffect(() => {
         const handleNewMessage = (message) => {
             if (selectedConversation._id === message.conversationId) {
@@ -80,59 +115,32 @@ const MessageContainer = ({ isOnline, onClose, setShowChatSettings, showChatSett
             });
         }
     }, [messages, currentUser._id, selectedConversation, socket]);
-    useEffect(() => {
-        const handleSeen = ({ conversationId }) => {
-            if (selectedConversation._id === conversationId) {
-                setMessages((prev) =>
-                    prev.map((message) => ({ ...message, seen: true }))
-                );
-            }
-        };
+    const handleSeen = ({ conversationId }) => {
+        if (selectedConversation._id === conversationId) {
+            setMessages((prev) =>
+                prev.map((message) => ({ ...message, seen: true }))
+            );
+        }
+    };
 
+
+    useEffect(() => {
         socket.on("messagesSeen", handleSeen);
-        return () => socket.off("messagesSeen", handleSeen);
-    }, [selectedConversation._id, socket]);
 
-    useEffect(() => {
-        messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages]);
 
-    useEffect(() => {
-        const getMessages = async () => {
-            setLoadingMessages(true);
-            setMessages([]);
-            try {
-                if (selectedConversation.mock) return;
+        return () => {
+            socket.off("messagesSeen", handleSeen);
 
-                let res;
-                if (selectedConversation.isGroup) {
-                    res = await api.get(`/api/messages?conversationId=${selectedConversation._id}`);
-                } else {
-                    res = await api.get(`/api/messages?otherUserId=${selectedConversation.userId}`);
-                }
-
-                const data = await res.data;
-                if (data.error) {
-                    showToast("Error", data.error, "error");
-                    return;
-                }
-                setMessages(data);
-            } catch (error) {
-                showToast("Error", error.message, "error");
-            } finally {
-                setLoadingMessages(false);
-            }
         };
+    }, [selectedConversation._id, socket, setMessages]);
 
-        if (selectedConversation._id) getMessages();
-    }, [
-        showToast,
-        selectedConversation._id,
-        selectedConversation.userId,
-        selectedConversation.mock,
-        selectedConversation.isGroup,
-        setMessages,
-    ]);
+
+    useEffect(() => {
+        if (!loadingMessages) {
+            messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
+    }, [messages, loadingMessages]);
+
 
     return (
 

@@ -31,11 +31,13 @@ import PopoverSettingChat from "../components/Popover/PopoverSettingChat.jsx";
 import SettingsChat from "../components/Messages/ChatSettings.jsx";
 import MessageArea from "../components/Messages/MessageArea.jsx";
 import useDebounce from "@hooks/useDebounce";
+import { useUserSearch } from "@hooks/useUserSearch";
+import DrawerExample from "../components/Messages/DrawerSettingChat.jsx";
 const ChatPage = () => {
     const [searchingUser, setSearchingUser] = useState(false);
     const [loadingConversations, setLoadingConversations] = useState(true);
     const [searchText, setSearchText] = useState("");
-    const [searchResults, setSearchResults] = useState([]);
+    // const [searchResults, setSearchResults] = useState([]);
     const [selectedConversation, setSelectedConversation] = useRecoilState(selectedConversationAtom);
     const [conversations, setConversations] = useRecoilState(conversationsAtom);
     const currentUser = useRecoilValue(userAtom);
@@ -48,15 +50,15 @@ const ChatPage = () => {
     const borderColor = useColorModeValue("gray.200", "gray.600");
     const textColor = useColorModeValue("gray.600", "gray.400");
     const bgColor = useColorModeValue("white", "gray.800")
-    const debouncedSearchQuery = useDebounce(searchText, 300);
     const isMobile = useBreakpointValue({ base: true, md: false });
     const sidebarFlex = useBreakpointValue({ base: 100, md: 25 });
     const settingsFlex = useBreakpointValue({ base: 100, md: showChatSettings ? 25 : 0 });
     const messageFlex = useBreakpointValue({
         base: 100,
-        md: 100 - (sidebarFlex || 0) - (settingsFlex || 0),
+        md: 100 - (sidebarFlex || 0),
     });
-
+    const debouncedSearchQuery = useDebounce(searchText, 300);
+    const searchResults = useUserSearch(debouncedSearchQuery);
 
     // Khi xóa hội thoại
     const handleDeleteConversation = (conversationId) => {
@@ -96,32 +98,6 @@ const ChatPage = () => {
         };
         fetchConversations();
     }, []);
-    // Tìm kiếm người dùng
-    useEffect(() => {
-        const fetchSearchResults = async () => {
-            if (!debouncedSearchQuery.trim()) {
-                setSearchResults([]);
-                return;
-            }
-            setSearchingUser(true);
-            try {
-                const res = await api.get(`/api/users/search?query=${debouncedSearchQuery}`);
-                console.log(res.data);
-                if (Array.isArray(res.data)) {
-                    setSearchResults(res.data);
-                } else {
-                    setSearchResults([]);
-                }
-            } catch (error) {
-                console.error("Search error:", error);
-                showToast("Error", error.message, "error");
-            } finally {
-                setSearchingUser(false);
-            }
-        };
-        fetchSearchResults();
-    }, [debouncedSearchQuery]);
-
 
     const handleSelectUser = async (user) => {
         try {
@@ -146,58 +122,66 @@ const ChatPage = () => {
                 username: otherUser.username,
                 userProfilePic: otherUser.profilePic,
             });
-
-            setSearchResults([]);
             setSearchText("");
         } catch (error) {
             showToast("Error", error.message, "error");
         }
     };
+    const handleMessagesSeen = ({ conversationId }) => {
+        setConversations((prev) =>
+            prev.map((conversation) =>
+                conversation._id === conversationId
+                    ? {
+                        ...conversation,
+                        lastMessage: conversation.lastMessage
+                            ? { ...conversation.lastMessage, seen: true }
+                            : conversation.lastMessage, // Giữ nguyên nếu lastMessage là null
+                    }
+                    : conversation
+            )
+        );
+    };
 
+    const handleNewGroup = (newGroup) => {
+        setConversations((prev) => [newGroup, ...prev]);
+    };
+
+    const handleAddUserToGroup = ({ conversation, sender }) => {
+        setConversations((prev) => [conversation, ...prev]);
+        showToast("Success", `${sender.username} has been added to the group ${conversation.groupName}.`, "success");
+    };
+
+    const handleKickUser = ({ conversationId, userIdToRemove }) => {
+        if (userIdToRemove === currentUser._id) {
+            showToast("Info", "You have been kicked from this group.", "info");
+            // Optionally, redirect to another page or update the UI
+            setShowChatSettings(false);
+            setConversations((prev) => prev.filter((conversation) => conversation._id !== conversationId));
+            if (selectedConversation._id === conversationId) {
+                setSelectedConversation({});
+            }
+        }
+    }
+
+    const handleUpdateUnreadCounts = ({ map }) => {
+        if (!map || typeof map !== 'object') {
+            return;
+        }
+        setConversations((prev) =>
+            prev.map((c) => ({
+                ...c,
+                unreadCount: map[c._id] || 0,
+            }))
+        );
+    }
     // Cập nhật tin nhắn đã xem
     useEffect(() => {
         if (!socket) return;
-
-        const handleMessagesSeen = ({ conversationId }) => {
-            setConversations((prev) =>
-                prev.map((conversation) =>
-                    conversation._id === conversationId
-                        ? {
-                            ...conversation,
-                            lastMessage: conversation.lastMessage
-                                ? { ...conversation.lastMessage, seen: true }
-                                : conversation.lastMessage, // Giữ nguyên nếu lastMessage là null
-                        }
-                        : conversation
-                )
-            );
-        };
-
-        const handleNewGroup = (newGroup) => {
-            setConversations((prev) => [newGroup, ...prev]);
-        };
-
-        const handleAddUserToGroup = ({ conversation, sender }) => {
-            setConversations((prev) => [conversation, ...prev]);
-            showToast("Success", `${sender.username} has been added to the group ${conversation.groupName}.`, "success");
-        };
-
-        const handleKickUser = ({ conversationId, userIdToRemove }) => {
-            if (userIdToRemove === currentUser._id) {
-                showToast("Info", "You have been kicked from this group.", "info");
-                // Optionally, redirect to another page or update the UI
-                setShowChatSettings(false);
-                setConversations((prev) => prev.filter((conversation) => conversation._id !== conversationId));
-                if (selectedConversation._id === conversationId) {
-                    setSelectedConversation({});
-                }
-            }
-        }
-
         socket.on("messagesSeen", handleMessagesSeen);
         socket.on("newGroup", handleNewGroup);
         socket.on("kickUser", handleKickUser);
         socket.on("addUserToGroup", handleAddUserToGroup);
+        socket.on("updateUnreadCounts", handleUpdateUnreadCounts);
         return () => {
             socket.off("messagesSeen", handleMessagesSeen);
             socket.off("newGroup", handleNewGroup);
@@ -206,21 +190,6 @@ const ChatPage = () => {
         };
     }, [socket, currentUser._id]);
 
-    // Cập nhật số lượng tin nhắn chưa đọc
-    useEffect(() => {
-        socket?.on("updateUnreadCounts", (map) => {
-            setConversations((prev) =>
-                prev.map((c) => ({
-                    ...c,
-                    unreadCount: map[c._id] || 0,
-                }))
-            );
-        });
-
-        return () => {
-            socket?.off("updateUnreadCounts");
-        };
-    }, [socket]);
     const handleClose = () => {
         setSelectedConversation({});
         setShowChatSettings(false);
@@ -354,10 +323,7 @@ const ChatPage = () => {
                     showChatSettings={showChatSettings}
                     onlineUsers={onlineUsers}
                     handleClose={handleClose} />
-
-                {showChatSettings && (
-                    <SettingsChat setShowChatSettings={setShowChatSettings} settingsFlex={settingsFlex} handleDeleteConversation={handleDeleteConversation} />
-                )}
+                {showChatSettings && <DrawerExample isOpen={showChatSettings} onClose={() => setShowChatSettings(false)} />}
             </Flex>
         </Box >
     );

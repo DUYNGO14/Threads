@@ -1,6 +1,6 @@
 import { Avatar, Box, Flex, Image, Skeleton, Text, useDisclosure } from "@chakra-ui/react";
 import { TiTick } from "react-icons/ti";
-import { useState } from "react";
+import { forwardRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { selectedConversationAtom } from "@atoms/messagesAtom";
 import userAtom from "@atoms/userAtom";
@@ -9,7 +9,7 @@ import { RenderLinkUrl } from "./RenderLinkUrl";
 import MessageMenu from "./MessageMenu";
 import { useMessageActions } from "@hooks/useMessageActions";
 
-const Message = ({ ownMessage, message }) => {
+const Message = forwardRef(({ ownMessage, message }, ref) => {
     const selectedConversation = useRecoilValue(selectedConversationAtom);
     const user = useRecoilValue(userAtom);
     const [loadedMedia, setLoadedMedia] = useState({});
@@ -127,7 +127,7 @@ const Message = ({ ownMessage, message }) => {
     );
 
     return ownMessage ? (
-        <Flex gap={2} alignSelf="flex-end">
+        <Flex gap={2} alignSelf="flex-end" ref={ref}>
             {content}
             <Box
                 alignSelf="flex-end"
@@ -140,13 +140,14 @@ const Message = ({ ownMessage, message }) => {
             <Avatar src={user.profilePic} w="7" h={7} />
         </Flex>
     ) : (
-        <Flex gap={2}>
+        <Flex gap={2} ref={ref}>
 
             <Avatar src={message.sender.profilePic || selectedConversation.userProfilePic} w="7" h={7} />
             {content}
         </Flex>
     );
-};
+});
+Message.displayName = "Message";
 
 Message.propTypes = {
     ownMessage: PropTypes.bool.isRequired,

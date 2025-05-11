@@ -1,12 +1,11 @@
 import { Avatar, Box, Button, Divider, Flex, IconButton, Text, VStack } from '@chakra-ui/react'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { IoMdPersonAdd } from 'react-icons/io'
 import { useRecoilValue } from 'recoil';
 import userAtom from '@atoms/userAtom';
 import { useNavigate } from 'react-router-dom';
 import { selectedConversationAtom } from '@atoms/messagesAtom';
 import { MdOutlineGroupRemove } from "react-icons/md";
-import useShowToast from '@hooks/useShowToast';
 import ModalDeleteGroup from './ModalDeleteGroup';
 import ModalLeaveGroup from './ModalLeaveGroup';
 import ModalDeleteConversion from './ModalDeleteConversion';

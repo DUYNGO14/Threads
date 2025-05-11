@@ -70,10 +70,7 @@ export const createGroupConversation = async (req, res) => {
       isGroup: true,
     });
 
-    await newGroup.populate([
-      { path: "participants", select: "-password" },
-      { path: "groupAdmin", select: "-password" },
-    ]);
+    await newGroup.populate([{ path: "participants", select: "-password" }]);
 
     const recipientIds = allParticipants.filter(
       (id) => id.toString() !== userId.toString()
@@ -399,6 +396,43 @@ export const deleteGroupConversation = async (req, res) => {
     return res.status(200).json({ message: "Group deleted successfully" });
   } catch (err) {
     console.error("Delete group error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const updateNameGroup = async (req, res) => {
+  const userId = req.user._id.toString();
+  const { conversationId } = req.params;
+  const { name } = req.body;
+
+  if (!conversationId || !name) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  try {
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation)
+      return res.status(404).json({ error: "Conversation not found" });
+
+    if (!conversation.isGroup) {
+      return res.status(400).json({ error: "Not a group conversation" });
+    }
+
+    if (conversation.groupAdmin.toString() !== userId) {
+      return res
+        .status(403)
+        .json({ error: "Only the admin can update the group name" });
+    }
+
+    conversation.groupName = name;
+    io.to(conversationId).emit("updateGroupName", {
+      conversationId,
+      groupNameNew: conversation.groupName,
+    });
+    await conversation.save();
+    return res.status(200).json({ message: "Group name updated successfully" });
+  } catch (err) {
+    console.error("Update group name error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 };

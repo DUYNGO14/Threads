@@ -85,7 +85,7 @@ const Header = () => {
                 >
                     <Image
                         cursor="pointer" alt="logo" w={8}
-                        src={colorMode === "dark" ? "/light-logo.svg" : "/dark-logo.svg"}
+                        src={colorMode === "dark" ? "/logo-light.svg" : "/logo-dark.svg"}
                         onClick={() => handleNav("/")}
                     />
                     <VStack spacing={4} w="full" align="center">

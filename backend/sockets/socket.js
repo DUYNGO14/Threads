@@ -5,7 +5,6 @@ import { getUnreadCountsForUser } from "../utils/getUnreadCounts.js";
 import {
   setUserSocket,
   removeUserSocket,
-  getRecipientSocketId,
   getOnlineUsers,
 } from "../utils/socketUsers.js";
 
@@ -35,7 +34,7 @@ export const socketHandler = (io) => {
     socket.on("markMessagesAsSeen", async ({ conversationId, userId }) => {
       if (!conversationId || !userId) return;
       try {
-        await Message.updateMany(
+        const result = await Message.updateMany(
           { conversationId, seen: false, sender: { $ne: userId } },
           { $set: { seen: true } }
         );
