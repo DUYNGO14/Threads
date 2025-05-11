@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Box, Button, Flex } from "@chakra-ui/react";
 
 const AudioPlayer = ({ url, onModalClick }) => {
@@ -8,9 +8,11 @@ const AudioPlayer = ({ url, onModalClick }) => {
     const audioRef = useRef(null);
     const containerRef = useRef(null);
 
+    // Giả lập dữ liệu waveform
     const waveformData = useRef(Array(50).fill(0).map(() => Math.random() * 0.7 + 0.3)).current;
 
-    useEffect(() => {
+    // Hàm dừng audio khi không còn hiển thị
+    const pauseAudioWhenNotInView = useCallback(() => {
         const observer = new IntersectionObserver(entries => {
             entries.forEach(entry => {
                 if (!entry.isIntersecting && audioRef.current) {
@@ -18,14 +20,19 @@ const AudioPlayer = ({ url, onModalClick }) => {
                     setIsPlaying(false);
                 }
             });
-        }, { threshold: 0.5 });
+        }, { threshold: 0.7 });
 
         if (containerRef.current) observer.observe(containerRef.current);
-
-        return () => observer.disconnect();
+        return observer;
     }, []);
 
     useEffect(() => {
+        const observer = pauseAudioWhenNotInView();
+        return () => observer.disconnect();
+    }, [pauseAudioWhenNotInView]);
+
+    // Quản lý sự kiện audio
+    const setupAudioEvents = useCallback(() => {
         const audio = audioRef.current;
         if (!audio) return;
 
@@ -35,32 +42,46 @@ const AudioPlayer = ({ url, onModalClick }) => {
             setIsPlaying(false);
             setCurrentTime(0);
         };
+        const onError = () => {
+            console.error("Failed to load audio.");
+            setIsPlaying(false);
+        };
 
         audio.addEventListener("loadedmetadata", onLoaded);
         audio.addEventListener("timeupdate", onTimeUpdate);
         audio.addEventListener("ended", onEnded);
+        audio.addEventListener("error", onError);
 
         return () => {
-            audio.pause();
             audio.removeEventListener("loadedmetadata", onLoaded);
             audio.removeEventListener("timeupdate", onTimeUpdate);
             audio.removeEventListener("ended", onEnded);
+            audio.removeEventListener("error", onError);
         };
     }, []);
 
-    const togglePlayPause = (e) => {
+    useEffect(() => {
+        const cleanupAudio = setupAudioEvents();
+        return cleanupAudio;
+    }, [setupAudioEvents]);
+
+    // Xử lý play/pause
+    const togglePlayPause = useCallback((e) => {
         e.stopPropagation();
         if (audioRef.current) {
             if (isPlaying) {
                 audioRef.current.pause();
             } else {
-                audioRef.current.play();
+                audioRef.current.play().catch((error) => {
+                    console.error("Error playing audio:", error);
+                });
             }
             setIsPlaying(prev => !prev);
         }
-    };
+    }, [isPlaying]);
 
-    const handleWaveformClick = (e) => {
+    // Xử lý nhấn vào waveform để chuyển thời gian phát
+    const handleWaveformClick = useCallback((e) => {
         e.stopPropagation();
         if (audioRef.current) {
             const bounds = e.currentTarget.getBoundingClientRect();
@@ -68,16 +89,18 @@ const AudioPlayer = ({ url, onModalClick }) => {
             const time = (x / bounds.width) * duration;
             audioRef.current.currentTime = time;
         }
-    };
+    }, [duration]);
 
-    const handleModalClick = (e) => {
+    // Xử lý sự kiện khi nhấn vào modal
+    const handleModalClick = useCallback((e) => {
         if (isPlaying && audioRef.current) {
             audioRef.current.pause();
             setIsPlaying(false);
         }
         onModalClick?.(e);
-    };
+    }, [isPlaying, onModalClick]);
 
+    // Tính tiến trình phát
     const progress = duration ? (currentTime / duration) * 100 : 0;
 
     return (

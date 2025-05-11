@@ -8,7 +8,6 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import "react-datepicker/dist/react-datepicker.css";
 import userAtom from "./atoms/userAtom";
-import { setupInterceptors } from "./services/api";
 
 import MainLayout from "@layouts/MainLayout";
 import BaseLayout from "@layouts/BaseLayout";
@@ -42,10 +41,6 @@ import AdminPostManagement from "./pages/Admin/AdminPostManagement";
 function App() {
   const user = useRecoilValue(userAtom);
   const { pathname } = useLocation();
-  const navigate = useNavigate();
-  useEffect(() => {
-    setupInterceptors(navigate);
-  }, [navigate]);
 
   const routeConfig = {
     authRoutes: ["/auth", "/oauth-success", "/oauth-failure", "/reset-password"],

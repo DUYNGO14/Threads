@@ -21,7 +21,7 @@ import UpdatePostModal from "./UpdatePostModal";
 import CountdownUpdatePost from "./CountdownUpdatePost";
 import { renderMentionText } from "./renderMentionText.jsx";
 
-const Post = ({ post, postedBy, onPostUpdate }) => {
+const Post = ({ post, postedBy, onPostUpdate, type }) => {
     const showToast = useShowToast();
     const currentUser = useRecoilValue(userAtom);
     const navigate = useNavigate();
@@ -74,7 +74,7 @@ const Post = ({ post, postedBy, onPostUpdate }) => {
     return (
         <>
             <Box w="full" id={`post-${post._id}`} borderRadius="md" boxShadow="sm" mb={2} p={4}>
-                {post.repostedBy?.length > 0 && (
+                {type === "followed" && post.repostedBy?.length > 0 && (
                     <Flex fontSize="xs" color="gray.500" wrap="wrap" align="center" mb={2}>
                         <Text mr={1} fontWeight="medium">Reposted by:</Text>
                         {post.repostedBy.map((user, index) => (

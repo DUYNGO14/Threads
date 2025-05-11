@@ -22,6 +22,13 @@ import { formatResponse } from "../utils/formatResponse.js";
 import { isMutualOrOneWayFollow } from "./userController.js";
 import { getRecommendedPosts } from "../services/recommendationService.js";
 import { updateRecentInteractions } from "../utils/recentInteraction.js";
+const shuffleArray = (arr) => {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+};
 const createPost = async (req, res) => {
   try {
     const { userId } = req.user._id;
@@ -758,6 +765,105 @@ const getRecommendedFeed = async (req, res) => {
       .json(formatResponse(500, "error", "Internal Server Error"));
   }
 };
+const getFeed = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    const { page, limit, skip } = getPaginationParams(req); // skip = (page - 1) * limit
+
+    // Nếu người dùng chưa đăng nhập, chỉ trả về các bài viết trending
+    if (!userId) {
+      const trendingRaw = await Post.find({
+        createdAt: { $gte: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2) },
+        status: "approved",
+      }).populate("postedBy", "_id username name profilePic");
+
+      const trendingSorted = trendingRaw.sort(
+        (a, b) =>
+          b.likes.length +
+          b.repostedBy.length -
+          (a.likes.length + a.repostedBy.length)
+      );
+
+      const paginated = trendingSorted.slice(skip, skip + limit);
+
+      return res.status(200).json({
+        posts: paginated,
+        hasMore: trendingSorted.length > skip + limit,
+      });
+    }
+
+    const user = await User.findById(userId).select(
+      "following recentInteractions"
+    );
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Lấy top tags từ tương tác gần đây
+    const tags = user.recentInteractions
+      .flatMap((i) => i.postTags)
+      .filter(Boolean);
+    const tagCount = tags.reduce((acc, tag) => {
+      acc[tag] = (acc[tag] || 0) + 1;
+      return acc;
+    }, {});
+    const topTags = Object.entries(tagCount)
+      .sort((a, b) => b[1] - a[1])
+      .map(([tag]) => tag)
+      .slice(0, 3);
+
+    // Fetch các bài viết liên quan
+    const [followingPosts, tagBasedPosts, trendingRaw] = await Promise.all([
+      Post.find({
+        postedBy: { $in: user.following },
+        status: "approved",
+      })
+        .populate("postedBy", "_id username name profilePic")
+        .sort({ createdAt: -1 })
+        .limit(30),
+
+      Post.find({
+        tags: { $in: topTags },
+        postedBy: { $nin: user.following.concat(userId) },
+        status: "approved",
+      })
+        .populate("postedBy", "_id username name profilePic")
+        .sort({ createdAt: -1 })
+        .limit(30),
+
+      Post.find({
+        createdAt: { $gte: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2) },
+        status: "approved",
+      }).populate("postedBy", "_id username name profilePic"),
+    ]);
+
+    const trendingPosts = trendingRaw
+      .sort(
+        (a, b) =>
+          b.likes.length +
+          b.repostedBy.length -
+          (a.likes.length + a.repostedBy.length)
+      )
+      .slice(0, 30);
+
+    // Gộp, loại trùng, shuffle
+    const allPosts = [...followingPosts, ...tagBasedPosts, ...trendingPosts];
+    const uniquePosts = allPosts.filter(
+      (post, index, self) =>
+        index === self.findIndex((p) => p._id.equals(post._id))
+    );
+    const shuffled = shuffleArray(uniquePosts);
+
+    const resultBatch = shuffled.slice(skip, skip + limit);
+    const hasMore = shuffled.length > skip + limit;
+
+    return res.status(200).json({
+      posts: resultBatch,
+      hasMore,
+    });
+  } catch (err) {
+    console.error("Error generating feed:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 export {
   createPost,
@@ -773,4 +879,5 @@ export {
   repost,
   getTags,
   getRecommendedFeed,
+  getFeed,
 };

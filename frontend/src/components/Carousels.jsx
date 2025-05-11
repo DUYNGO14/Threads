@@ -3,7 +3,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/pagination";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import ModalPost from "./ModalPost";
 import AudioPlayer from "./AudioPlayer";
 
@@ -14,23 +14,48 @@ const Carousels = ({ medias }) => {
 
     const maxHeight = useBreakpointValue({ base: "50vh", md: "60vh", lg: "70vh" });
 
-    useEffect(() => {
-        if (!videoRefs.current.length) return;
+    // Xử lý logic IntersectionObserver khi video vào/ra khỏi vùng hiển thị
+    const handleVideoPlayPause = useCallback(() => {
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {
                     const video = entry.target;
-                    if (entry.isIntersecting) video.play();
-                    else video.pause();
+                    if (entry.isIntersecting) {
+                        videoRefs.current.forEach((otherVideo) => {
+                            if (otherVideo !== video) otherVideo.pause();
+                        });
+
+                        setTimeout(() => {
+                            if (video.readyState >= 2) {
+                                video.play().catch((error) => {
+                                    console.error("Video play failed:", error);
+                                });
+                            }
+                        }, 0);
+                    } else {
+                        video.pause();
+                    }
                 });
             },
             { threshold: 0.8 }
         );
+
         videoRefs.current.forEach((video) => video && observer.observe(video));
+        return observer;
+    }, []);
+
+    useEffect(() => {
+        const observer = handleVideoPlayPause();
         return () => {
+            observer.disconnect();
             videoRefs.current.forEach((video) => video && observer.unobserve(video));
         };
-    }, [medias]);
+    }, [handleVideoPlayPause]);
+
+    const handleSwiperSlideChange = useCallback(() => {
+        // Dừng tất cả audio khi chuyển slide
+        document.querySelectorAll("audio").forEach((audio) => audio.pause());
+    }, []);
 
     return (
         <Box position="relative" overflow="hidden" w="100%">
@@ -41,9 +66,7 @@ const Carousels = ({ medias }) => {
                 slidesPerView={"auto"}
                 centeredSlides={false}
                 onSwiper={(swiper) => (swiperRef.current = swiper)}
-                onSlideChange={() => {
-                    document.querySelectorAll("audio").forEach((audio) => audio.pause());
-                }}
+                onSlideChange={handleSwiperSlideChange}
                 style={{
                     width: "100%",
                     paddingBottom: medias.length > 1 ? "8px" : "0",
@@ -77,7 +100,8 @@ const Carousels = ({ medias }) => {
                                     borderRadius="12px"
                                 />
                             ) : media.type === "video" ? (
-                                <Box as="video"
+                                <Box
+                                    as="video"
                                     ref={(el) => (videoRefs.current[index] = el)}
                                     muted
                                     loop

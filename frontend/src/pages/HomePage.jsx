@@ -15,8 +15,8 @@ import PostSkeleton from "@components/PostSkeleton";
 import userAtom from "../atoms/userAtom";
 import useShowToast from "@hooks/useShowToast";
 import api from "../services/api.js";
-const INITIAL_POSTS_LIMIT = 5;
-const SCROLL_POSTS_LIMIT = 5;
+const INITIAL_POSTS_LIMIT = 10;
+const SCROLL_POSTS_LIMIT = 10;
 
 const HomePage = () => {
     const currentUser = useRecoilValue(userAtom);
@@ -41,14 +41,6 @@ const HomePage = () => {
         { value: "propose", label: "For you" },
         { value: "followed", label: "Following", requireAuth: true },
     ];
-    // useEffect(() => {
-    //     const getPosts = async () => {
-    //         const res = await api.get("/api/posts/recommended");
-    //         const data = await res.data;
-    //         console.log(data);
-    //     }
-    //     getPosts();
-    // }, []);
 
     const fetchPosts = useCallback(async (pageNum = 1, isInit = false) => {
         const controller = new AbortController();
@@ -60,31 +52,24 @@ const HomePage = () => {
         isInit ? setLoading(true) : setLoadingMore(true);
 
         try {
-            const endpoint = feedType === "propose" ? "/api/posts/propose" : "/api/posts/followed";
+            const endpoint = feedType === "propose" ? "/api/posts/feed" : "/api/posts/followed";
             const limit = isInit ? INITIAL_POSTS_LIMIT : SCROLL_POSTS_LIMIT;
-
-            const res = await api.get(`${endpoint}?page=${pageNum}&limit=${limit}`, { signal });
+            const params = { page: pageNum, limit };
+            const res = await api.get(`${endpoint}`, { params, signal });
             const data = await res.data;
-            if (data.error) {
-                showToast("Lỗi", data.error, "error");
-                return;
-            }
-
             const newPosts = data.posts || [];
             setPosts(prev => isInit ? newPosts : [...prev, ...newPosts].filter((p, i, self) => i === self.findIndex(x => x._id === p._id)));
             setHasMore(newPosts.length >= limit);
             if (isInit) setInitialLoadDone(true);
 
         } catch (err) {
-            if (err.name !== "AbortError") {
-                showToast("Lỗi", err.message, "error");
-            }
+            console.error(err);
         } finally {
             isInit ? setLoading(false) : setLoadingMore(false);
         }
 
         return () => controller.abort();
-    }, [feedType, loading, loadingMore, hasMore]);
+    }, [feedType, loading, loadingMore, hasMore, showToast]);
 
 
     // Load khi feedType hoặc refreshKey đổi
@@ -224,6 +209,7 @@ const HomePage = () => {
                             {posts.map(post => (
                                 <Post
                                     key={post._id}
+                                    type={feedType}
                                     post={post}
                                     postedBy={post.postedBy}
                                     onPostUpdate={handlePostUpdate}

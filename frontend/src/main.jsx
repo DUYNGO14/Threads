@@ -4,9 +4,11 @@ import './index.css';
 import App from './App.jsx';
 import { ChakraProvider, extendTheme, ColorModeScript } from '@chakra-ui/react';
 import { mode } from '@chakra-ui/theme-tools';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, useNavigate } from 'react-router-dom';
 import { RecoilRoot } from 'recoil';
-import { SocketContextProvider } from './context/SocketContext';
+import { SocketContextProvider } from '@context/SocketContext';
+import { useEffect } from 'react';
+import { setupInterceptors } from '@services/api.js';
 
 const styles = {
   global: (props) => ({
@@ -31,7 +33,17 @@ const colors = {
   },
 };
 
+
 const theme = extendTheme({ styles, config, colors });
+
+const InterceptorInit = () => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    setupInterceptors(navigate); // Gọi sớm nhất
+  }, [navigate]);
+
+  return null;
+};
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -40,6 +52,7 @@ createRoot(document.getElementById('root')).render(
         <ChakraProvider theme={theme}>
           <ColorModeScript initialColorMode={theme.config.initialColorMode} />
           <SocketContextProvider>
+            <InterceptorInit />
             <App />
           </SocketContextProvider>
         </ChakraProvider>
