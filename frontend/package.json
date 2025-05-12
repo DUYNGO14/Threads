@@ -46,6 +46,7 @@
     "swiper": "^11.2.4",
     "use-debounce": "^10.0.4",
     "wavesurfer.js": "^6.6.4",
+    "workbox-build": "^7.3.0",
     "zxcvbn": "^4.4.2"
   },
   "devDependencies": {

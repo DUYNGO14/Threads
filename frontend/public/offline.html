@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Offline</title>
+    <style>
+      body {
+        background-color: #f9fafb;
+        color: #111827;
+        font-family: Arial, sans-serif;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        overflow: hidden;
+        transition: background-color 0.3s, color 0.3s;
+      }
+
+      body.dark {
+        background-color: #1f2937;
+        color: #ffffff;
+      }
+
+      .container {
+        text-align: center;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+
+      h1 {
+        margin-bottom: 1rem;
+        font-size: 2rem;
+        font-weight: bold;
+        line-height: 1.5;
+      }
+
+      p {
+        margin-bottom: 1.25rem;
+        font-size: 1rem;
+        color: #6b7280;
+      }
+
+      body.dark p {
+        color: #d1d5db;
+      }
+
+      .button {
+        background-color: #fbbf24;
+        color: white;
+        padding: 0.625rem 1.25rem;
+        border: none;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      .button:hover {
+        background-color: #f59e0b;
+      }
+
+      .button:focus {
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.5);
+      }
+
+      img {
+        max-width: 60%;
+        height: auto;
+      }
+    </style>
+  </head>
+
+  <body>
+    <main>
+      <div class="container">
+        <div>
+          <img src="/offline.svg" alt="Offline status" />
+        </div>
+        <div>
+          <h1 id="offline-title">You are offline</h1>
+          <p id="offline-desc">Please check your internet connection..</p>
+          <div>
+            <button class="button" onclick="retryConnection()">
+              <span id="retry-btn">Retry</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      // Apply dark mode if the user prefers a dark scheme
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+      }
+
+      // Simple multilingual support: auto-translate if the browser language is English
+      const lang = navigator.language || navigator.userLanguage;
+      if (lang.startsWith('en')) {
+        document.getElementById('offline-title').innerText = 'You are offline';
+        document.getElementById('offline-desc').innerText =
+          'Please check your internet connection.';
+        document.getElementById('retry-btn').innerText = 'Retry';
+      }
+
+      // Simple multilingual support: auto-translate if the browser language is Vietnamese
+      if (lang.startsWith('vi')) {
+        document.getElementById('offline-title').innerText = 'Bạn đang ngoại tuyến';
+        document.getElementById('offline-desc').innerText =
+          'Vui lòng kiểm tra lại đường truyền.';
+        document.getElementById('retry-btn').innerText = 'Thử lại';
+      }
+    </script>
+    <script>
+      function retryConnection() {
+        if (navigator.onLine) {
+          location.replace('/');
+        } else {
+          alert('Vẫn chưa có kết nối mạng. Vui lòng thử lại sau.');
+        }
+      }
+    </script>
+  </body>
+</html>
+

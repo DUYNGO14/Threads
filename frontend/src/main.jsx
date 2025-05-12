@@ -9,6 +9,8 @@ import { RecoilRoot } from 'recoil';
 import { SocketContextProvider } from '@context/SocketContext';
 import { useEffect } from 'react';
 import { setupInterceptors } from '@services/api.js';
+import NetworkDetector from './pages/NetworkDetector.jsx';
+import ServiceWorker from './config/ServiceWorker.js';
 
 const styles = {
   global: (props) => ({
@@ -44,7 +46,7 @@ const InterceptorInit = () => {
 
   return null;
 };
-
+ServiceWorker.register();
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <RecoilRoot>
@@ -53,6 +55,7 @@ createRoot(document.getElementById('root')).render(
           <ColorModeScript initialColorMode={theme.config.initialColorMode} />
           <SocketContextProvider>
             <InterceptorInit />
+            <NetworkDetector />
             <App />
           </SocketContextProvider>
         </ChakraProvider>

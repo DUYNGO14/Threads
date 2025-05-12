@@ -1,11 +1,58 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { generateSW } from "workbox-build";
 
 export default defineConfig(({ mode }) => {
   const isProduction = mode === "production";
 
   return {
-    plugins: [react()],
+    plugins: [
+      react(),
+      {
+        name: "vite-plugin-workbox",
+        closeBundle: async () => {
+          // T o file Service Worker
+          generateSW({
+            swDest: "dist/service-worker.js",
+            globDirectory: "dist",
+            globPatterns: [
+              "**/*.{html,js,css,png,jpg,svg,ico,webp}",
+              "offline.html",
+              "offline.svg",
+            ],
+            navigateFallback: "/offline.html", // 👈 fallback nếu offline
+            runtimeCaching: [
+              {
+                urlPattern: ({ request }) => request.destination === "document",
+                handler: "NetworkFirst",
+                options: {
+                  cacheName: "html-cache",
+                },
+              },
+              {
+                urlPattern: ({ request }) =>
+                  ["style", "script", "worker"].includes(request.destination),
+                handler: "StaleWhileRevalidate",
+                options: {
+                  cacheName: "asset-cache",
+                },
+              },
+              {
+                urlPattern: ({ request }) => request.destination === "image",
+                handler: "CacheFirst",
+                options: {
+                  cacheName: "image-cache",
+                  expiration: {
+                    maxEntries: 50,
+                    maxAgeSeconds: 30 * 24 * 60 * 60,
+                  },
+                },
+              },
+            ],
+          });
+        },
+      },
+    ],
     resolve: {
       alias: {
         "@": "/src",
