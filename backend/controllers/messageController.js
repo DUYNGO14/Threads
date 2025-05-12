@@ -92,20 +92,19 @@ async function sendMessage(req, res) {
 
 // Lấy tất cả tin nhắn giữa user và người còn lại
 async function getMessages(req, res) {
-  const { conversationId, otherUserId } = req.query; // hỗ trợ cả group và 1-1
+  const { conversationId, otherUserId, before } = req.query;
   const userId = req.user?._id;
+  const limit = 20;
 
   try {
     let conversation;
 
-    // Ưu tiên tìm theo conversationId (group hoặc 1-1 đều được)
     if (conversationId) {
       conversation = await Conversation.findOne({
         _id: conversationId,
         participants: userId,
       });
     } else if (otherUserId) {
-      // Nếu không có conversationId thì tìm theo 2 người
       conversation = await Conversation.findOne({
         isGroup: false,
         participants: { $all: [userId, otherUserId], $size: 2 },
@@ -120,70 +119,29 @@ async function getMessages(req, res) {
       return res.status(404).json({ error: "Conversation not found" });
     }
 
-    const messages = await Message.find({
+    const filter = {
       conversationId: conversation._id,
-    })
+    };
+
+    if (before) {
+      filter.createdAt = { $lt: new Date(before) };
+    }
+
+    const messages = await Message.find(filter)
       .populate("sender", "username profilePic")
-      .sort({ createdAt: 1 });
-    return res.status(200).json(messages);
+      .sort({ createdAt: -1 }) // lấy tin mới nhất trước
+      .limit(limit);
+
+    const reversed = messages.reverse(); // để hiển thị đúng thứ tự cũ → mới
+
+    return res.status(200).json({
+      messages: reversed,
+      hasMore: messages.length === limit,
+    });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
 }
-// async function getMessages(req, res) {
-//   const { conversationId, otherUserId, limit = 20, skip = 0 } = req.query; // Thêm limit và skip với giá trị mặc định
-//   const userId = req.user?._id;
-
-//   try {
-//     let conversation;
-
-//     // Ưu tiên tìm theo conversationId (group hoặc 1-1 đều được)
-//     if (conversationId) {
-//       conversation = await Conversation.findOne({
-//         _id: conversationId,
-//         participants: userId,
-//       });
-//     } else if (otherUserId) {
-//       // Nếu không có conversationId thì tìm theo 2 người
-//       conversation = await Conversation.findOne({
-//         isGroup: false,
-//         participants: { $all: [userId, otherUserId], $size: 2 },
-//       });
-//     } else {
-//       return res
-//         .status(400)
-//         .json({ error: "Missing conversationId or otherUserId" });
-//     }
-
-//     if (!conversation) {
-//       return res.status(404).json({ error: "Conversation not found" });
-//     }
-
-//     // Lấy tổng số tin nhắn để biết còn tin nhắn cũ hơn không
-//     const totalMessages = await Message.countDocuments({
-//       conversationId: conversation._id,
-//     });
-
-//     const messages = await Message.find({
-//       conversationId: conversation._id,
-//     })
-//       .populate("sender", "username profilePic")
-//       .sort({ createdAt: -1 }) // Sắp xếp giảm dần theo thời gian
-//       .skip(parseInt(skip))
-//       .limit(parseInt(limit));
-
-//     // Đảo ngược mảng để hiển thị tin nhắn cũ nhất lên trước
-//     const sortedMessages = messages.reverse();
-
-//     return res.status(200).json({
-//       messages: sortedMessages,
-//       hasMore: totalMessages > parseInt(skip) + parseInt(limit),
-//       totalMessages,
-//     });
-//   } catch (error) {
-//     return res.status(500).json({ error: error.message });
-//   }
-// }
 const deleteMessage = async (req, res) => {
   const { messageId } = req.params;
   const userId = req.user?._id;

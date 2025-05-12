@@ -13,13 +13,14 @@ import {
     Text,
     useColorModeValue,
     Link,
-} from '@chakra-ui/react';
-import { useState } from 'react';
-import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
-import { useSetRecoilState } from 'recoil';
-import { useDebouncedCallback } from 'use-debounce';
-import { authScreenAtom } from '../atoms/authAtom';
-import useShowToast from '@hooks/useShowToast';
+    FormErrorMessage,
+} from "@chakra-ui/react";
+import { useState } from "react";
+import { ViewIcon, ViewOffIcon } from "@chakra-ui/icons";
+import { useSetRecoilState } from "recoil";
+import { authScreenAtom } from "../atoms/authAtom";
+import useShowToast from "@hooks/useShowToast";
+import useEmojiValidator from "@hooks/useEmojiValidator";
 
 const SignupCard = () => {
     const [state, setState] = useState({
@@ -32,7 +33,11 @@ const SignupCard = () => {
         isLoading: false,
         passwordStrength: null,
     });
-    console.log(state);
+
+    const nameValidation = useEmojiValidator("name", state.name);
+    const usernameValidation = useEmojiValidator("username", state.username);
+    const passwordValidation = useEmojiValidator("password", state.password);
+
     const setAuthScreen = useSetRecoilState(authScreenAtom);
     const showToast = useShowToast();
 
@@ -43,10 +48,9 @@ const SignupCard = () => {
         const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
         const isLongEnough = password.length > 6;
 
-        if (hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar && isLongEnough) {
-            return 4; // Strong
-        }
-        return 0; // Weak
+        return hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar && isLongEnough
+            ? 4
+            : 0;
     };
 
     const handleChange = (e) => {
@@ -64,15 +68,21 @@ const SignupCard = () => {
     };
 
     const handleSignup = async () => {
+        if (nameValidation.isInvalid || usernameValidation.isInvalid || passwordValidation.isInvalid) {
+            return showToast("Error", "Please fix the form errors before submitting.", "error");
+        }
+
         if (!state.name || !state.username || !state.email || !state.password) {
-            console.log(state);
             return showToast("Error", "Please fill all the fields", "error");
         }
+
         if (state.passwordStrength < 4) {
             return showToast("Error", "Password is too weak. Please use a stronger password.", "error");
         }
+
         try {
             setState((prev) => ({ ...prev, isLoading: true }));
+
             const res = await fetch("/api/auth/signup", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -87,6 +97,7 @@ const SignupCard = () => {
 
             const data = await res.json();
             if (data.error) throw new Error(data.error);
+
             localStorage.setItem("email-for-verification", state.email.trim());
             showToast("Success", "Account created! Check your email for OTP.", "success");
             setAuthScreen("verifyOtp");
@@ -102,43 +113,39 @@ const SignupCard = () => {
     };
 
     return (
-        <Flex align={'center'} justify={'center'}>
-            <Stack spacing={8} mx={'auto'} maxW={'lg'} py={12} px={6}>
-                <Stack align={'center'}>
-                    <Heading fontSize={'4xl'}>Sign up</Heading>
+        <Flex align={"center"} justify={"center"}>
+            <Stack spacing={8} mx={"auto"} maxW={"lg"} py={12} px={6}>
+                <Stack align={"center"}>
+                    <Heading fontSize={"4xl"}>Sign up</Heading>
                 </Stack>
                 <Box
-                    rounded={'lg'}
-                    bg={useColorModeValue('white', 'gray.dark')}
-                    boxShadow={'lg'}
-                    width={{ base: 'full', md: 'md' }}
+                    rounded={"lg"}
+                    bg={useColorModeValue("white", "gray.dark")}
+                    boxShadow={"lg"}
+                    width={{ base: "full", md: "md" }}
                     p={8}
                 >
-                    <Stack spacing={4}>
-                        <HStack>
-                            <Box>
-                                <FormControl isRequired>
-                                    <FormLabel>Full Name</FormLabel>
-                                    <Input
-                                        type="text"
-                                        name="name"
-                                        value={state.name}
-                                        onChange={handleChange}
-                                    />
-                                </FormControl>
-                            </Box>
-                            <Box>
-                                <FormControl isRequired>
-                                    <FormLabel>Username</FormLabel>
-                                    <Input
-                                        type="text"
-                                        name="username"
-                                        value={state.username}
-                                        onChange={handleChange}
-                                    />
-                                </FormControl>
-                            </Box>
-                        </HStack>
+                    <Stack spacing={2}>
+                        <FormControl isRequired isInvalid={nameValidation.isInvalid}>
+                            <FormLabel>Full Name</FormLabel>
+                            <Input
+                                type="text"
+                                name="name"
+                                value={state.name}
+                                onChange={handleChange}
+                            />
+                            <FormErrorMessage fontSize={"xs"}>{nameValidation.error}</FormErrorMessage>
+                        </FormControl>
+                        <FormControl isRequired isInvalid={usernameValidation.isInvalid}>
+                            <FormLabel>Username</FormLabel>
+                            <Input
+                                type="text"
+                                name="username"
+                                value={state.username}
+                                onChange={handleChange}
+                            />
+                            <FormErrorMessage fontSize={"xs"}>{usernameValidation.error}</FormErrorMessage>
+                        </FormControl>
                         <FormControl isRequired>
                             <FormLabel>Email address</FormLabel>
                             <Input
@@ -148,21 +155,22 @@ const SignupCard = () => {
                                 onChange={handleChange}
                             />
                         </FormControl>
-                        <FormControl isRequired>
+                        <FormControl isRequired isInvalid={passwordValidation.isInvalid}>
                             <FormLabel>Password</FormLabel>
                             <InputGroup>
                                 <Input
-                                    type={state.showPassword ? 'text' : 'password'}
+                                    type={state.showPassword ? "text" : "password"}
                                     name="password"
                                     value={state.password}
                                     onChange={handleChange}
                                 />
-                                <InputRightElement h={'full'}>
-                                    <Button variant={'ghost'} onClick={toggleShowPassword}>
+                                <InputRightElement h={"full"}>
+                                    <Button variant={"ghost"} onClick={toggleShowPassword}>
                                         {state.showPassword ? <ViewIcon /> : <ViewOffIcon />}
                                     </Button>
                                 </InputRightElement>
                             </InputGroup>
+                            <FormErrorMessage fontSize={"xs"}>{passwordValidation.error}</FormErrorMessage>
                             {state.passwordStrength !== null && (
                                 <Box mt={2}>
                                     <Text
@@ -188,7 +196,7 @@ const SignupCard = () => {
                                 isLoading={state.isLoading}
                                 size="lg"
                                 bg={useColorModeValue("gray.600", "gray.700")}
-                                color={'white'}
+                                color={"white"}
                                 _hover={{ bg: useColorModeValue("gray.700", "gray.800") }}
                                 onClick={handleSignup}
                             >
@@ -196,9 +204,9 @@ const SignupCard = () => {
                             </Button>
                         </Stack>
                         <Stack pt={6}>
-                            <Text align={'center'}>
-                                Already a user?{' '}
-                                <Link color={'blue.400'} onClick={() => setAuthScreen("login")}>
+                            <Text align={"center"}>
+                                Already a user?{" "}
+                                <Link color={"blue.400"} onClick={() => setAuthScreen("login")}>
                                     Login
                                 </Link>
                             </Text>
@@ -211,4 +219,3 @@ const SignupCard = () => {
 };
 
 export default SignupCard;
-

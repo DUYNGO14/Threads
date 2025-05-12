@@ -5,8 +5,8 @@ import { useRecoilValue } from "recoil";
 import { selectedConversationAtom } from "@atoms/messagesAtom";
 import userAtom from "@atoms/userAtom";
 import PropTypes from "prop-types";
-import { RenderLinkUrl } from "./RenderLinkUrl";
-import MessageMenu from "./MessageMenu";
+import { RenderLinkUrl } from "../RenderLinkUrl";
+import MessageMenu from "../MessageMenu";
 import { useMessageActions } from "@hooks/useMessageActions";
 
 const Message = forwardRef(({ ownMessage, message }, ref) => {

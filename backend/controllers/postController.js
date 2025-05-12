@@ -765,6 +765,7 @@ const getRecommendedFeed = async (req, res) => {
       .json(formatResponse(500, "error", "Internal Server Error"));
   }
 };
+
 const getFeed = async (req, res) => {
   try {
     const userId = req.user?._id;
@@ -772,23 +773,68 @@ const getFeed = async (req, res) => {
 
     // Nếu người dùng chưa đăng nhập, chỉ trả về các bài viết trending
     if (!userId) {
-      const trendingRaw = await Post.find({
-        createdAt: { $gte: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2) },
-        status: "approved",
-      }).populate("postedBy", "_id username name profilePic");
-
-      const trendingSorted = trendingRaw.sort(
-        (a, b) =>
-          b.likes.length +
-          b.repostedBy.length -
-          (a.likes.length + a.repostedBy.length)
-      );
-
-      const paginated = trendingSorted.slice(skip, skip + limit);
+      const trendingPosts = await Post.aggregate([
+        {
+          $match: { status: "approved" },
+        },
+        {
+          $addFields: {
+            likeCount: { $size: "$likes" },
+            repostCount: { $size: "$repostedBy" },
+            replyCount: { $size: "$replies" },
+            score: {
+              $add: [
+                { $size: "$likes" }, // 1 like = 1 điểm
+                { $size: "$repostedBy" }, // 1 repost = 1 điểm
+                { $multiply: [{ $size: "$replies" }, 2] }, // 1 reply = 2 điểm
+              ],
+            },
+          },
+        },
+        {
+          $sort: { score: -1, createdAt: -1 },
+        },
+        {
+          $skip: skip,
+        },
+        {
+          $limit: limit,
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "postedBy",
+            foreignField: "_id",
+            as: "postedBy",
+          },
+        },
+        {
+          $unwind: "$postedBy",
+        },
+        {
+          $project: {
+            text: 1,
+            media: 1,
+            likes: 1,
+            repostedBy: 1,
+            replies: 1,
+            tags: 1,
+            status: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            postedBy: {
+              _id: 1,
+              username: 1,
+              name: 1,
+              profilePic: 1,
+            },
+          },
+        },
+      ]);
 
       return res.status(200).json({
-        posts: paginated,
-        hasMore: trendingSorted.length > skip + limit,
+        posts: trendingPosts,
+        hasMore: trendingPosts.length === limit,
       });
     }
 
