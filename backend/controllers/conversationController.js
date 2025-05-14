@@ -4,6 +4,7 @@ import { getUnreadCountsForUser } from "../utils/getUnreadCounts.js";
 import User from "../models/userModel.js";
 import { getRecipientSocketId, io } from "../setup/setupServer.js";
 import { deleteMediaFiles } from "../utils/uploadUtils.js";
+import mongoose from "mongoose";
 export const initiateConversation = async (req, res) => {
   const userId = req.user._id;
   const { receiverId } = req.body;
@@ -108,38 +109,53 @@ export const deleteConversation = async (req, res) => {
     if (!isParticipant)
       return res.status(403).json({ error: "Not authorized" });
 
-    const alreadyDeleted = conversation.deletedBy.some((id) =>
-      id.equals(userId)
+    const existingEntry = conversation.deletedBy.find((entry) =>
+      entry.userId.equals(userId)
     );
 
-    if (!alreadyDeleted) {
-      conversation.deletedBy.push(userId);
-    }
-
-    const allParticipantsDeleted = conversation.participants.every((id) =>
-      conversation.deletedBy.some((delId) => delId.equals(id))
-    );
-
-    if (allParticipantsDeleted) {
-      const messages = await Message.find({ conversationId: conversationId });
-      const allMedia = messages.flatMap((msg) => msg.media || []);
-      if (allMedia.length > 0) {
-        await deleteMediaFiles(allMedia);
-      }
-      // Xoá tất cả message liên quan
-      await Promise.all([
-        Message.deleteMany({ conversationId: conversation._id }),
-        conversation.deleteOne(),
-      ]);
-      return res
-        .status(200)
-        .json({ message: "Conversation and messages deleted permanently" });
+    if (!existingEntry) {
+      conversation.deletedBy.push({
+        userId: new mongoose.Types.ObjectId(userId),
+        deletedAt: new Date(),
+      });
     } else {
-      await conversation.save();
-      return res
-        .status(200)
-        .json({ message: "Conversation hidden successfully" });
+      existingEntry.deletedAt = new Date();
     }
+
+    await conversation.save();
+
+    // Kiểm tra nếu tất cả các user đã xóa, lấy ngày xóa sớm nhất
+    if (
+      conversation.participants.every((id) =>
+        conversation.deletedBy.some((entry) => entry.userId.equals(id))
+      )
+    ) {
+      const earliestDeletion = conversation.deletedBy
+        .map((entry) => entry.deletedAt)
+        .sort((a, b) => a - b)[0];
+
+      // Xóa tất cả tin nhắn trước ngày `earliestDeletion`
+      await Message.deleteMany({
+        conversationId: conversationId,
+        createdAt: { $lt: earliestDeletion },
+      });
+
+      // Xóa hội thoại nếu không còn tin nhắn
+      const remainingMessages = await Message.countDocuments({
+        conversationId: conversationId,
+      });
+
+      if (remainingMessages === 0) {
+        await conversation.deleteOne();
+        return res
+          .status(200)
+          .json({ message: "Conversation and messages deleted permanently" });
+      }
+    }
+
+    return res
+      .status(200)
+      .json({ message: "Conversation hidden successfully" });
   } catch (err) {
     console.error("Error deleting conversation:", err);
     return res.status(500).json({ error: "Internal server error" });

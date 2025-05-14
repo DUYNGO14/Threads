@@ -770,8 +770,13 @@ const getFeed = async (req, res) => {
   try {
     const userId = req.user?._id;
     const { page, limit, skip } = getPaginationParams(req); // skip = (page - 1) * limit
+    const frozenOrBlockedUsers = await User.find({
+      $or: [{ isFrozen: true }, { isBlocked: true }],
+    }).select("_id");
 
-    // Nếu người dùng chưa đăng nhập, chỉ trả về các bài viết trending
+    const blockedUserIds = frozenOrBlockedUsers.map((user) => user._id);
+    if (userId) blockedUserIds.push(userId);
+
     if (!userId) {
       const trendingPosts = await Post.aggregate([
         {
@@ -838,12 +843,13 @@ const getFeed = async (req, res) => {
       });
     }
 
+    // 📌 Lấy thông tin người dùng
     const user = await User.findById(userId).select(
       "following recentInteractions"
     );
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Lấy top tags từ tương tác gần đây
+    // 📌 Lấy top tags từ tương tác gần đây
     const tags = user.recentInteractions
       .flatMap((i) => i.postTags)
       .filter(Boolean);
@@ -855,52 +861,43 @@ const getFeed = async (req, res) => {
       .sort((a, b) => b[1] - a[1])
       .map(([tag]) => tag)
       .slice(0, 3);
-
-    // Fetch các bài viết liên quan
+    // 🔥 Fetch các bài viết liên quan
     const [followingPosts, tagBasedPosts, trendingRaw] = await Promise.all([
       Post.find({
-        postedBy: { $in: user.following },
+        postedBy: { $in: user.following, $nin: blockedUserIds },
         status: "approved",
       })
         .populate("postedBy", "_id username name profilePic")
-        .sort({ createdAt: -1 })
-        .limit(30),
+        .sort({ createdAt: -1 }),
 
       Post.find({
         tags: { $in: topTags },
-        postedBy: { $nin: user.following.concat(userId) },
+        postedBy: {
+          $nin: user.following.concat(blockedUserIds),
+        },
         status: "approved",
       })
         .populate("postedBy", "_id username name profilePic")
-        .sort({ createdAt: -1 })
-        .limit(30),
+        .sort({ createdAt: -1 }),
 
       Post.find({
-        createdAt: { $gte: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2) },
+        createdAt: { $gte: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7) },
+        postedBy: { $nin: blockedUserIds },
         status: "approved",
       }).populate("postedBy", "_id username name profilePic"),
     ]);
 
-    const trendingPosts = trendingRaw
-      .sort(
-        (a, b) =>
-          b.likes.length +
-          b.repostedBy.length -
-          (a.likes.length + a.repostedBy.length)
-      )
-      .slice(0, 30);
+    // 🔥 Gộp, loại trùng, shuffle
+    const allPosts = [...followingPosts, ...tagBasedPosts, ...trendingRaw];
 
-    // Gộp, loại trùng, shuffle
-    const allPosts = [...followingPosts, ...tagBasedPosts, ...trendingPosts];
     const uniquePosts = allPosts.filter(
       (post, index, self) =>
         index === self.findIndex((p) => p._id.equals(post._id))
     );
-    const shuffled = shuffleArray(uniquePosts);
 
-    const resultBatch = shuffled.slice(skip, skip + limit);
-    const hasMore = shuffled.length > skip + limit;
-
+    // 🔥 Thực hiện phân trang
+    const resultBatch = uniquePosts.slice(skip, skip + limit);
+    const hasMore = uniquePosts.length > skip + limit;
     return res.status(200).json({
       posts: resultBatch,
       hasMore,

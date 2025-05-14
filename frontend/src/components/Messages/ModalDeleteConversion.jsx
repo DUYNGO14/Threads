@@ -44,10 +44,9 @@ const ModalDeleteConversion = ({ isOpen, onClose, handleClose }) => {
             <Box>
                 <Text align="center">Are you sure you want to delete this conversation with </Text>
                 <Box display={"flex"} alignItems={"center"} justifyContent={"center"} gap={2} >
-                    <Avatar size="md" name={selectedConversation.username} src={selectedConversation.userProfilePic} />
-                    <Text align="center">{selectedConversation.username}</Text>
+                    <Avatar size="md" name={selectedConversation.username || selectedConversation.groupName} src={selectedConversation.userProfilePic} />
+                    <Text align="center">{selectedConversation.username || selectedConversation.groupName}</Text>
                 </Box>
-
             </Box>
 
         </BaseModal>

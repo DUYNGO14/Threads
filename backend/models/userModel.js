@@ -69,6 +69,10 @@ const userSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isBlocked: {
+      type: Boolean,
+      default: false,
+    },
     resetPasswordToken: String,
     resetPasswordExpiresAt: Date,
     verificationOTP: String,
@@ -79,10 +83,6 @@ const userSchema = mongoose.Schema(
       type: Map,
       of: String, // Lưu trữ liên kết dạng chuỗi (URL)
       default: {},
-    },
-    isBlocked: {
-      type: Boolean,
-      default: false,
     },
     recentInteractions: {
       type: [

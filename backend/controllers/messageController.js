@@ -118,13 +118,23 @@ async function getMessages(req, res) {
     if (!conversation) {
       return res.status(404).json({ error: "Conversation not found" });
     }
+    const userDeleteEntry = conversation.deletedBy.find((entry) =>
+      entry.userId.equals(userId)
+    );
 
     const filter = {
       conversationId: conversation._id,
     };
 
+    if (userDeleteEntry) {
+      filter.createdAt = { $gt: userDeleteEntry.deletedAt };
+    }
+
     if (before) {
-      filter.createdAt = { $lt: new Date(before) };
+      filter.createdAt = {
+        ...filter.createdAt,
+        $lt: new Date(before),
+      };
     }
 
     const messages = await Message.find(filter)

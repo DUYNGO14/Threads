@@ -31,7 +31,12 @@ const conversationSchema = new mongoose.Schema(
       ],
       createdAt: { type: Date, default: Date.now },
     },
-    deletedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    deletedBy: [
+      {
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        deletedAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );

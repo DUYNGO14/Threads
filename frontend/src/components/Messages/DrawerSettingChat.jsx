@@ -141,23 +141,43 @@ function DrawerExample({ isOpen, onClose }) {
 
                                 {selectedConversation.isGroup ? (
                                     currentUser._id === selectedConversation.groupAdmin ? (
-                                        <Button
-                                            colorScheme="red"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => setIsOpenDeleteGroupModal(true)}
-                                        >
-                                            Delete group chat
-                                        </Button>
+                                        <>
+                                            <Button
+                                                colorScheme="red"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setIsOpenDeleteGroupModal(true)}
+                                            >
+                                                Delete group chat
+                                            </Button>
+                                            <Button
+                                                colorScheme="red"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setIsOpenDeleteConversationModal(true)}
+                                            >
+                                                Delete conversation
+                                            </Button>
+                                        </>
                                     ) : (
-                                        <Button
-                                            colorScheme="red"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => setIsOpenLeaveGroupModal(true)}
-                                        >
-                                            Leave group chat
-                                        </Button>
+                                        <>
+                                            <Button
+                                                colorScheme="red"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setIsOpenLeaveGroupModal(true)}
+                                            >
+                                                Leave group chat
+                                            </Button>
+                                            <Button
+                                                colorScheme="red"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setIsOpenDeleteConversationModal(true)}
+                                            >
+                                                Delete conversation
+                                            </Button>
+                                        </>
                                     )
                                 ) : (
                                     <Button

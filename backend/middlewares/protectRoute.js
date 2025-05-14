@@ -11,50 +11,52 @@ const protectRoute = async (req, res, next) => {
     "/api/users/search/:query",
     "/api/posts/feed",
   ];
+
   const isAllowedRoute = allowedUrls.some((url) =>
     req.originalUrl.startsWith(url)
   );
 
-  // Kiểm tra nếu route cho phép không cần token
-  if (isAllowedRoute) {
-    const authHeader = req.headers.authorization;
-    if (authHeader?.startsWith("Bearer ")) {
-      const token = authHeader.split(" ")[1];
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = await User.findById(decoded.userId).select("-password");
-      } catch (err) {
-        console.error("Token decode error:", err.message);
+  // 🔍 Lấy JWT từ Header
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith("Bearer ")
+    ? authHeader.split(" ")[1]
+    : null;
+
+  // 🔄 Xử lý JWT
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded.userId).select("-password");
+
+      if (user) {
+        req.user = user;
+      } else {
+        console.warn("⚠️ User not found for decoded token.");
+        req.user = null;
       }
+    } catch (err) {
+      console.error("❌ JWT decode error:", err.message);
+      req.user = null;
     }
+  } else {
+    req.user = null; // Không có token hoặc không hợp lệ
+  }
+
+  // ✅ Nếu là route công khai, cho phép tiếp tục
+  if (isAllowedRoute) {
     return next();
   }
 
-  // Các route yêu cầu token
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  // 🔒 Nếu là route bảo mật, kiểm tra user
+  if (!req.user) {
+    console.error("🔒 Unauthorized access attempt:", req.originalUrl);
     return res
       .status(401)
-      .json({ error: "Unauthorized. No access token provided." });
+      .json({ error: "Unauthorized. Valid access token required." });
   }
 
-  const token = authHeader.split(" ")[1];
-  if (!token) {
-    return res.status(401).json({ error: "Unauthorized. Token missing." });
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.userId).select("-password");
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized. User not found." });
-    }
-    next();
-  } catch (err) {
-    return res
-      .status(401)
-      .json({ error: "Unauthorized. Invalid or expired access token." });
-  }
+  console.log("🔓 Authorized access for user:", req.user.username);
+  next();
 };
 
 export default protectRoute;
