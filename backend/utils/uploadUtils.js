@@ -52,6 +52,8 @@ const uploadFile = async (file, username, nameFolder) => {
       url: uploadedResponse.secure_url,
       public_id: uploadedResponse.public_id,
       type: fileType,
+      width: uploadedResponse.width,
+      height: uploadedResponse.height,
     };
   } catch (err) {
     console.error(`Upload error [${file.originalname}]:`, err.message);

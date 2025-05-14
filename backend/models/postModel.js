@@ -32,6 +32,8 @@ const postSchema = mongoose.Schema(
           required: true,
         }, // Kiểu file
         public_id: String, // ID của file trong Cloudinary
+        width: Number,
+        height: Number,
       },
     ],
     likes: {

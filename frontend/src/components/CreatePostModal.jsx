@@ -179,7 +179,7 @@ const CreatePostModal = ({ isOpen, onClose }) => {
                     hidden
                     ref={imageRef}
                     multiple
-                    accept="image/*,video/*,audio/*"
+                    accept="image/*,video/*"
                     onChange={handleFileChange}
                     disabled={mediaFiles.length >= MAX_FILES}
                 />

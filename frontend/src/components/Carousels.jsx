@@ -1,4 +1,8 @@
-import { Box, Image, useBreakpointValue } from "@chakra-ui/react";
+import {
+    Box,
+    Image as ChakraImage,
+    useBreakpointValue,
+} from "@chakra-ui/react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination } from "swiper/modules";
 import "swiper/css";
@@ -12,32 +16,38 @@ const Carousels = ({ medias }) => {
     const videoRefs = useRef([]);
     const swiperRef = useRef(null);
 
-    const maxHeight = useBreakpointValue({ base: "50vh", md: "60vh", lg: "70vh" });
+    const maxWidth = useBreakpointValue({
+        base: "90vw", // 90% width on mobile
+        md: "85vw", // 85% width on medium devices
+        lg: "65vw", // 65% width on large devices
+    });
 
-    // Xử lý logic IntersectionObserver khi video vào/ra khỏi vùng hiển thị
+    const maxHeight = useBreakpointValue({
+        base: "50vh", // 50% height on mobile
+        md: "60vh", // 60% height on medium devices
+        lg: "70vh", // 70% height on large devices
+    });
+
+    const getAspectRatio = (media) => {
+        if (media.type === "audio") return 5; // fixed ratio for audio
+        if (media.width && media.height) return media.width / media.height;
+        return 1;
+    };
+
     const handleVideoPlayPause = useCallback(() => {
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {
                     const video = entry.target;
                     if (entry.isIntersecting) {
-                        videoRefs.current.forEach((otherVideo) => {
-                            if (otherVideo !== video) otherVideo.pause();
-                        });
-
-                        setTimeout(() => {
-                            if (video.readyState >= 2) {
-                                video.play().catch((error) => {
-                                    console.error("Video play failed:", error);
-                                });
-                            }
-                        }, 0);
+                        videoRefs.current.forEach((v) => v !== video && v?.pause());
+                        video.play().catch((err) => console.error("Video play failed:", err));
                     } else {
                         video.pause();
                     }
                 });
             },
-            { threshold: 0.8 }
+            { threshold: 0.75 }
         );
 
         videoRefs.current.forEach((video) => video && observer.observe(video));
@@ -53,7 +63,6 @@ const Carousels = ({ medias }) => {
     }, [handleVideoPlayPause]);
 
     const handleSwiperSlideChange = useCallback(() => {
-        // Dừng tất cả audio khi chuyển slide
         document.querySelectorAll("audio").forEach((audio) => audio.pause());
     }, []);
 
@@ -61,25 +70,21 @@ const Carousels = ({ medias }) => {
         <Box position="relative" overflow="hidden" w="100%">
             <Swiper
                 modules={[Pagination]}
-                pagination={medias.length > 1 ? { clickable: true, dynamicBullets: true } : false}
+                pagination={
+                    medias.length > 1 ? { clickable: true, dynamicBullets: true } : false
+                }
                 spaceBetween={10}
-                slidesPerView={"auto"}
-                centeredSlides={false}
+                slidesPerView={1}
                 onSwiper={(swiper) => (swiperRef.current = swiper)}
                 onSlideChange={handleSwiperSlideChange}
-                style={{
-                    width: "100%",
-                    paddingBottom: medias.length > 1 ? "8px" : "0",
-                    display: "flex",
-                    justifyContent: "flex-start",
-                }}
+                style={{ width: "100%" }}
             >
                 {medias.map((media, index) => (
-                    <SwiperSlide key={index} style={{ width: "auto", maxWidth: "100%" }}>
+                    <SwiperSlide key={index} style={{ width: "100%" }}>
                         <Box
                             cursor="pointer"
-                            maxW="100%"
-                            maxH="90vh"
+                            maxW={maxWidth}
+                            maxH={maxHeight}
                             overflow="hidden"
                             display="flex"
                             justifyContent="center"
@@ -89,15 +94,24 @@ const Carousels = ({ medias }) => {
                                 e.stopPropagation();
                                 setSelectedMedia({ medias, initialIndex: index });
                             }}
+                            sx={{
+                                aspectRatio: getAspectRatio(media),
+                                position: "relative",
+                                backgroundColor: "#f0f0f0",
+                            }}
                         >
                             {media.type === "image" ? (
-                                <Image
+                                <ChakraImage
                                     src={media.url}
                                     alt="Post Image"
-                                    maxW="100%"
-                                    maxH={maxHeight}
-                                    objectFit="contain"
+                                    position="absolute"
+                                    top="0"
+                                    left="0"
+                                    width="100%"
+                                    height="100%"
+                                    objectFit="cover"
                                     borderRadius="12px"
+                                    loading="lazy"
                                 />
                             ) : media.type === "video" ? (
                                 <Box
@@ -107,18 +121,21 @@ const Carousels = ({ medias }) => {
                                     loop
                                     playsInline
                                     controls
+                                    preload="metadata"
                                     sx={{
                                         borderRadius: "12px",
+                                        position: "absolute",
+                                        top: "0",
+                                        left: "0",
                                         width: "100%",
-                                        maxH: maxHeight,
-                                        objectFit: "contain",
-                                        bg: "black",
+                                        height: "100%",
+                                        objectFit: "cover",
                                     }}
                                 >
                                     <source src={media.url} type="video/mp4" />
                                 </Box>
                             ) : (
-                                <AudioPlayer url={media.url} onModalClick={() => setSelectedMedia({ medias, initialIndex: index })} />
+                                <AudioPlayer url={media.url} />
                             )}
                         </Box>
                     </SwiperSlide>

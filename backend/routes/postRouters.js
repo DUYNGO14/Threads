@@ -21,8 +21,6 @@ import { uploadMedia } from "../middlewares/multer.js";
 
 const router = express.Router();
 
-const upload = multer({ dest: "uploads/" });
-
 router.get("/followed", protectRoute, getFollowingPosts);
 router.get("/propose", protectRoute, getAllPosts);
 router.get("/tags", protectRoute, getTags);

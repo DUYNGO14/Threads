@@ -31,11 +31,8 @@ const shuffleArray = (arr) => {
 };
 const createPost = async (req, res) => {
   try {
-    const { userId } = req.user._id;
-
     const { postedBy, text, tags, notification } = req.body;
     const user = await User.findById(postedBy);
-    console.log("user", user);
     if (!user)
       return res.status(404).json(formatResponse("error", "User not found"));
 
@@ -80,7 +77,14 @@ const createPost = async (req, res) => {
       }
 
       for (const file of mediaFiles) {
+        if (
+          file.type === "audio" ||
+          file.type === "gif" ||
+          file.type === "video"
+        )
+          continue;
         const moderation = await moderateMedia(file.url, file.type);
+
         if (!moderation.ok) {
           await deleteMediaFiles(mediaFiles);
           return res
@@ -296,8 +300,6 @@ const deletePost = async (req, res) => {
       await removePostFromCache(keyRedis, post._id);
       await session.commitTransaction();
       if (req.user.role === "admin") {
-        console.log(req.user.role);
-        console.log(post.postedBy);
         await sendNotification({
           sender: req.user,
           receivers: [post.postedBy._id],

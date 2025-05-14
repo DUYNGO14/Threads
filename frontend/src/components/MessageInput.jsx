@@ -236,7 +236,7 @@ const MessageInput = ({ setMessages }) => {
                         resize: "none",
                         outline: "none",
                     }}
-                    placeholder="Nhắn tin..."
+                    placeholder="Send a message..."
                 />
 
                 {/* Icon bên phải */}

@@ -73,7 +73,7 @@ const Post = ({ post, postedBy, onPostUpdate, type }) => {
 
     return (
         <>
-            <Box w="full" id={`post-${post._id}`} borderRadius="md" boxShadow="sm" mb={2} p={4}>
+            <Box w="full" id={`post-${post._id}`} borderRadius="md" boxShadow="sm" mb={1} p={2}>
                 {type === "followed" && post.repostedBy?.length > 0 && (
                     <Flex fontSize="xs" color="gray.500" wrap="wrap" align="center" mb={2}>
                         <Text mr={1} fontWeight="medium">Reposted by:</Text>
@@ -154,7 +154,7 @@ const Post = ({ post, postedBy, onPostUpdate, type }) => {
                         </Link>
 
                         {post.media?.length > 0 && (
-                            <Box mt={2} borderRadius="md" overflow="hidden" maxW="600px">
+                            <Box mt={1} borderRadius="md" overflow="hidden" maxW="600px" >
                                 <Carousels medias={post.media} />
                             </Box>
                         )}

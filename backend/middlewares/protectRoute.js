@@ -55,7 +55,6 @@ const protectRoute = async (req, res, next) => {
       .json({ error: "Unauthorized. Valid access token required." });
   }
 
-  console.log("🔓 Authorized access for user:", req.user.username);
   next();
 };
 

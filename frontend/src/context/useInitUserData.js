@@ -18,7 +18,8 @@ const useInitUserData = (user) => {
   );
 
   useEffect(() => {
-    if (!user?._id) return;
+    const accessToken = localStorage.getItem("access-token");
+    if (!user?._id || !accessToken) return; // Không fetch nếu chưa có token
 
     const fetchInitData = async () => {
       try {
