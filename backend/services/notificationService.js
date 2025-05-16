@@ -42,7 +42,7 @@ export const sendNotification = async ({
           { _id: existing._id },
           {
             isValid: true,
-            createdAt: now, // cập nhật lại thời gian
+            createdAt: Date.now(), // cập nhật lại thời gian
           }
         );
         // Nếu đã tồn tại rồi -> bỏ qua
