@@ -30,7 +30,7 @@ router.get("/recommended", protectRoute, getRecommendedFeed);
 router.get("/feed", protectRoute, getFeed);
 router.get("/:id", getPost);
 
-router.post("/create", protectRoute, uploadMedia, createPost);
+router.post("/create", protectRoute, upload.array("media", 10), createPost);
 router.delete("/:id", protectRoute, deletePost);
 router.put("/like/:id", protectRoute, likeUnlikePost);
 router.put("/reply/:id", protectRoute, replyToPost);
