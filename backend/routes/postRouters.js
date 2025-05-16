@@ -20,7 +20,7 @@ import multer from "multer";
 import { uploadMedia } from "../middlewares/multer.js";
 
 const router = express.Router();
-
+const upload = multer({ dest: "uploads/" });
 router.get("/followed", protectRoute, getFollowingPosts);
 router.get("/propose", protectRoute, getAllPosts);
 router.get("/tags", protectRoute, getTags);
@@ -30,7 +30,7 @@ router.get("/recommended", protectRoute, getRecommendedFeed);
 router.get("/feed", protectRoute, getFeed);
 router.get("/:id", getPost);
 
-router.post("/create", protectRoute, upload.array("media", 10), createPost);
+router.post("/create", protectRoute, uploadMedia, createPost);
 router.delete("/:id", protectRoute, deletePost);
 router.put("/like/:id", protectRoute, likeUnlikePost);
 router.put("/reply/:id", protectRoute, replyToPost);

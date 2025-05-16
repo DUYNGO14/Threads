@@ -1,23 +1,24 @@
 import { v2 as cloudinary } from "cloudinary";
-import fs from "fs/promises";
+import streamifier from "streamifier";
 import pLimit from "p-limit";
 import sanitizeUsername from "./helpers/sanitizeUsername.js";
 // Constants
 import { MAX_FILE_SIZE_MB } from "../constants/upload.js";
 
 // Upload một file đơn lẻ
-const uploadFile = async (file, username, nameFolder) => {
-  try {
-    const { mimetype, originalname, size, path } = file;
+const uploadFile = (file, username, nameFolder) => {
+  return new Promise((resolve, reject) => {
+    const { buffer, originalname, mimetype, size } = file;
 
     if (size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      throw new Error(
-        `File ${originalname} exceeds size limit (${MAX_FILE_SIZE_MB}MB)`
+      return reject(
+        new Error(
+          `File ${originalname} exceeds size limit (${MAX_FILE_SIZE_MB}MB)`
+        )
       );
     }
 
     const [type] = mimetype.split("/");
-
     let resourceType = "raw";
     let fileType = "file";
 
@@ -35,30 +36,34 @@ const uploadFile = async (file, username, nameFolder) => {
       fileType = "gif";
     }
 
-    const safeUsername = sanitizeUsername(username); // 💡 dùng hàm mới
+    const safeUsername = sanitizeUsername(username);
     const folder = `${safeUsername}/${nameFolder}`;
 
-    const uploadedResponse = await cloudinary.uploader.upload(path, {
-      resource_type: resourceType,
-      folder: folder,
-    });
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        resource_type: resourceType,
+        folder,
+      },
+      (error, result) => {
+        if (error) {
+          console.error(`Upload error [${originalname}]:`, error.message);
+          return resolve(null);
+        }
 
-    if (!uploadedResponse?.secure_url) {
-      throw new Error("Upload failed (no secure_url)");
-    }
+        if (!result?.secure_url) return resolve(null);
 
-    await fs.unlink(path); // Xoá file tạm
-    return {
-      url: uploadedResponse.secure_url,
-      public_id: uploadedResponse.public_id,
-      type: fileType,
-      width: uploadedResponse.width,
-      height: uploadedResponse.height,
-    };
-  } catch (err) {
-    console.error(`Upload error [${file.originalname}]:`, err.message);
-    return null;
-  }
+        resolve({
+          url: result.secure_url,
+          public_id: result.public_id,
+          type: fileType,
+          width: result.width || null,
+          height: result.height || null,
+        });
+      }
+    );
+
+    streamifier.createReadStream(buffer).pipe(uploadStream);
+  });
 };
 
 // Upload nhiều file (có giới hạn song song)
