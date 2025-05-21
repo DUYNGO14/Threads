@@ -65,13 +65,13 @@ const NotificationPage = () => {
             const data = await res.data;
 
             if (data.error) {
-                return showToast("Lỗi", data.error, "error");
+                return showToast("Error", "Something went wrong", "error");
             }
 
             setNotifications((prev) => prev.filter((n) => n._id !== id));
             // showToast("Thành công", "Đã xóa thông báo", "success");
         } catch (err) {
-            showToast("Lỗi", "Không thể xóa thông báo", "error");
+            showToast("Error", "Something went wrong", "error");
         }
     };
 
@@ -102,7 +102,7 @@ const NotificationPage = () => {
         }
     }
     const renderNotifications = (notis) => (
-        <VStack align="stretch" spacing={4} mt={2}>
+        <VStack align="stretch" spacing={4} mt={2} maxH={"70vh"} overflowY={"auto"}>
             {notis.length === 0 ? (
                 <Text fontStyle="italic" color="gray.500" textAlign="center">
                     No notifications

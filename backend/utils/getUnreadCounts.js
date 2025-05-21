@@ -1,7 +1,8 @@
-import mongoose from "mongoose"; // nhớ import nếu chưa có
+import mongoose from "mongoose";
 import Message from "../models/messageModel.js";
+
 export async function getUnreadCountsForUser(userId) {
-  const objectUserId = new mongoose.Types.ObjectId(userId); // chuyển đổi
+  const objectUserId = new mongoose.Types.ObjectId(userId);
 
   const unreadCounts = await Message.aggregate([
     {
@@ -18,12 +19,10 @@ export async function getUnreadCountsForUser(userId) {
         as: "conversation",
       },
     },
-    {
-      $unwind: "$conversation",
-    },
+    { $unwind: "$conversation" },
     {
       $match: {
-        "conversation.participants": objectUserId, // dùng ObjectId
+        "conversation.participants": objectUserId,
       },
     },
     {
@@ -34,10 +33,8 @@ export async function getUnreadCountsForUser(userId) {
     },
   ]);
 
-  const unreadCountMap = {};
-  unreadCounts.forEach((item) => {
-    unreadCountMap[item._id.toString()] = item.count;
-  });
-
-  return unreadCountMap;
+  // Chuyển mảng thành map { conversationId: count }
+  return Object.fromEntries(
+    unreadCounts.map(({ _id, count }) => [_id.toString(), count])
+  );
 }

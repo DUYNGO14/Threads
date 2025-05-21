@@ -22,8 +22,7 @@ import useShowToast from "@hooks/useShowToast";
 import { PropTypes } from "prop-types";
 import { BsHeart, BsHeartFill, BsChat, BsShare, BsRepeat } from "react-icons/bs";
 import { FaRepeat } from "react-icons/fa6";
-import { useSocket } from "@context/SocketContext";
-import api from "../services/api.js"; // <-- import axios client của bạn
+import api from "../services/api.js";
 
 const Actions = ({ post, onPostUpdate }) => {
     const user = useRecoilValue(userAtom);
@@ -47,7 +46,7 @@ const Actions = ({ post, onPostUpdate }) => {
 
     const handleLikeAndUnlike = async () => {
         if (!user) {
-            showToast("Error", "You must be logged in to like posts", "error");
+            showToast("", "You must be logged in to like posts", "warning");
             return;
         }
 
@@ -75,7 +74,7 @@ const Actions = ({ post, onPostUpdate }) => {
 
     const handleReply = () => {
         if (!user) {
-            showToast("Error", "You must be logged in to reply", "error");
+            showToast("", "You must be logged in to reply", "warning");
             return;
         }
         onOpen();
@@ -129,7 +128,7 @@ const Actions = ({ post, onPostUpdate }) => {
 
     const handleRepost = async () => {
         if (!user) {
-            showToast("Error", "You must be logged in to repost", "error");
+            showToast("", "You must be logged in to repost", "warning");
             return;
         }
 

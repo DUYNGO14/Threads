@@ -13,8 +13,8 @@ import {
   getRedis,
   removePostFromCache,
   appendToCache,
-  deleteRedis,
 } from "../utils/redisCache.js";
+import _ from "lodash";
 import { moderateMedia } from "../utils/moderate/moderateMediaWithSightengine.js";
 import { moderateTextWithSightengine } from "../utils/moderate/moderateTextWithSightengine.js";
 import { sendNotification } from "../services/notificationService.js";
@@ -22,13 +22,10 @@ import { formatResponse } from "../utils/formatResponse.js";
 import { isMutualOrOneWayFollow } from "./userController.js";
 import { getRecommendedPosts } from "../services/recommendationService.js";
 import { updateRecentInteractions } from "../utils/recentInteraction.js";
-const shuffleArray = (arr) => {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-};
+import { getTrendingPosts } from "../services/feedService.js";
+import shuffleArray from "../utils/helpers/shuffleArray.js";
+import { generateFeedForUser } from "../services/feedService.js";
+
 const createPost = async (req, res) => {
   try {
     const { postedBy, text, tags, notification } = req.body;
@@ -771,141 +768,39 @@ const getRecommendedFeed = async (req, res) => {
 const getFeed = async (req, res) => {
   try {
     const userId = req.user?._id;
-    const { page, limit, skip } = getPaginationParams(req); // skip = (page - 1) * limit
-    const frozenOrBlockedUsers = await User.find({
+    const { page, limit, skip } = getPaginationParams(req);
+
+    const blockedUsers = await User.find({
       $or: [{ isFrozen: true }, { isBlocked: true }],
     }).select("_id");
-
-    const blockedUserIds = frozenOrBlockedUsers.map((user) => user._id);
-    if (userId) blockedUserIds.push(userId);
+    const blockedIds = blockedUsers.map((u) => u._id.toString());
+    if (userId) blockedIds.push(userId.toString());
 
     if (!userId) {
-      const trendingPosts = await Post.aggregate([
-        {
-          $match: { status: "approved" },
-        },
-        {
-          $addFields: {
-            likeCount: { $size: "$likes" },
-            repostCount: { $size: "$repostedBy" },
-            replyCount: { $size: "$replies" },
-            score: {
-              $add: [
-                { $size: "$likes" }, // 1 like = 1 điểm
-                { $size: "$repostedBy" }, // 1 repost = 1 điểm
-                { $multiply: [{ $size: "$replies" }, 2] }, // 1 reply = 2 điểm
-              ],
-            },
-          },
-        },
-        {
-          $sort: { score: -1, createdAt: -1 },
-        },
-        {
-          $skip: skip,
-        },
-        {
-          $limit: limit,
-        },
-        {
-          $lookup: {
-            from: "users",
-            localField: "postedBy",
-            foreignField: "_id",
-            as: "postedBy",
-          },
-        },
-        {
-          $unwind: "$postedBy",
-        },
-        {
-          $project: {
-            text: 1,
-            media: 1,
-            likes: 1,
-            repostedBy: 1,
-            replies: 1,
-            tags: 1,
-            status: 1,
-            createdAt: 1,
-            updatedAt: 1,
-            postedBy: {
-              _id: 1,
-              username: 1,
-              name: 1,
-              profilePic: 1,
-            },
-          },
-        },
-      ]);
-
-      return res.status(200).json({
+      const trendingPosts = await getTrendingPosts(skip, limit);
+      return res.json({
         posts: trendingPosts,
         hasMore: trendingPosts.length === limit,
       });
     }
 
-    // 📌 Lấy thông tin người dùng
-    const user = await User.findById(userId).select(
-      "following recentInteractions"
-    );
-    if (!user) return res.status(404).json({ message: "User not found" });
+    let cachedIds = await getRedis(`feed:user:${userId}:recommended`);
+    if (!cachedIds) {
+      await generateFeedForUser(userId);
+      cachedIds = await getRedis(`feed:user:${userId}:recommended`);
+    }
 
-    // 📌 Lấy top tags từ tương tác gần đây
-    const tags = user.recentInteractions
-      .flatMap((i) => i.postTags)
-      .filter(Boolean);
-    const tagCount = tags.reduce((acc, tag) => {
-      acc[tag] = (acc[tag] || 0) + 1;
-      return acc;
-    }, {});
-    const topTags = Object.entries(tagCount)
-      .sort((a, b) => b[1] - a[1])
-      .map(([tag]) => tag)
-      .slice(0, 3);
-    // 🔥 Fetch các bài viết liên quan
-    const [followingPosts, tagBasedPosts, trendingRaw] = await Promise.all([
-      Post.find({
-        postedBy: { $in: user.following, $nin: blockedUserIds },
-        status: "approved",
-      })
-        .populate("postedBy", "_id username name profilePic")
-        .sort({ createdAt: -1 }),
+    let postIds = cachedIds || "[]";
+    postIds = shuffleArray(postIds);
+    const paginatedIds = postIds.slice(skip, skip + parseInt(limit));
 
-      Post.find({
-        tags: { $in: topTags },
-        postedBy: {
-          $nin: user.following.concat(blockedUserIds),
-        },
-        status: "approved",
-      })
-        .populate("postedBy", "_id username name profilePic")
-        .sort({ createdAt: -1 }),
+    const posts = await Post.find({ _id: { $in: paginatedIds } })
+      .populate("postedBy", "_id username name profilePic")
+      .lean();
 
-      Post.find({
-        createdAt: { $gte: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7) },
-        postedBy: { $nin: blockedUserIds },
-        status: "approved",
-      }).populate("postedBy", "_id username name profilePic"),
-    ]);
-
-    // 🔥 Gộp, loại trùng, shuffle
-    const allPosts = [...followingPosts, ...tagBasedPosts, ...trendingRaw];
-
-    const uniquePosts = allPosts.filter(
-      (post, index, self) =>
-        index === self.findIndex((p) => p._id.equals(post._id))
-    );
-
-    // 🔥 Thực hiện phân trang
-    const resultBatch = uniquePosts.slice(skip, skip + limit);
-    const hasMore = uniquePosts.length > skip + limit;
-    return res.status(200).json({
-      posts: resultBatch,
-      hasMore,
-    });
+    return res.json({ posts, hasMore: postIds.length > skip + limit });
   } catch (err) {
-    console.error("Error generating feed:", err);
+    console.error("❌ Error in getFeed:", err);
     res.status(500).json({ message: "Server error" });
   }
 };

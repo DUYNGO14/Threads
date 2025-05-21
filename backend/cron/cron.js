@@ -25,7 +25,20 @@ const deleteUnverifiedUsers = async () => {
     console.error("❌ Lỗi khi xoá người dùng chưa xác thực:", error);
   }
 };
-
+const refreshAllFeeds = async () => {
+  try {
+    console.log("🔁 Refreshing feeds...");
+    const users = await User.find({ isFrozen: false, isBlocked: false }).select(
+      "_id"
+    );
+    for (const user of users) {
+      await generateFeedForUser(user._id);
+      console.log(`✅ Feed refreshed for ${user._id}`);
+    }
+  } catch (err) {
+    console.error("❌ Error refreshing feeds:", err);
+  }
+};
 // 🔹 Cron job ping server mỗi 14 phút (để Render không sleep)
 const job = new cron.CronJob("*/14 * * * *", function () {
   https
@@ -40,15 +53,18 @@ const job = new cron.CronJob("*/14 * * * *", function () {
       console.error("❌ Error while sending request", e);
     });
 });
-
+const feedRefreshJob = new cron.CronJob("*/30 * * * *", refreshAllFeeds);
 // 🔹 Cron job xoá user chưa xác thực mỗi ngày lúc 00:00
 const deleteUsersJob = new cron.CronJob("0 0 * * *", deleteUnverifiedUsers);
 
 // 🔥 **BẮT ĐẦU CRON JOBS**
 job.start();
 deleteUsersJob.start();
+feedRefreshJob.start();
 
 console.log("🚀 Cron jobs đã khởi động!");
+console.log("🚀 Delete unverified users cron job started");
+console.log("🚀 Feed cron job started");
 
 // Xuất cron jobs để có thể sử dụng ở nơi khác
-export { job, deleteUsersJob };
+export { job, deleteUsersJob, feedRefreshJob };

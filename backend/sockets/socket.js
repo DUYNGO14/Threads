@@ -7,6 +7,7 @@ import {
   removeUserSocket,
   getOnlineUsers,
 } from "../utils/socketUsers.js";
+import { generateFeedForUser } from "../services/feedService.js";
 
 export const socketHandler = (io) => {
   io.on("connection", async (socket) => {
@@ -18,6 +19,14 @@ export const socketHandler = (io) => {
     }
 
     console.log(`🔌 User connected: ${userId}`);
+    try {
+      await generateFeedForUser(userId);
+    } catch (error) {
+      console.error(
+        `Failed to refresh feed for user ${userId} on socket connect:`,
+        error
+      );
+    }
     setUserSocket(userId, socket.id);
 
     // ✅ Join phòng theo userId
