@@ -188,7 +188,7 @@ const UserPage = () => {
                             postedBy={post.postedBy}
                             onPostUpdate={updatePost}
                             referrer={{
-                                url: `/${username}`,
+                                url: `/user/${username}`,
                                 page: "user",
                             }}
                         />

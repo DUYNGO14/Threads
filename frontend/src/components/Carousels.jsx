@@ -1,6 +1,6 @@
 import {
     Box,
-    Image as ChakraImage,
+    Image,
     useBreakpointValue,
 } from "@chakra-ui/react";
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -17,15 +17,15 @@ const Carousels = ({ medias }) => {
     const swiperRef = useRef(null);
 
     const maxWidth = useBreakpointValue({
-        base: "90vw", // 90% width on mobile
-        md: "85vw", // 85% width on medium devices
-        lg: "65vw", // 65% width on large devices
+        base: "90vw",
+        md: "85vw",
+        lg: "65vw",
     });
 
     const maxHeight = useBreakpointValue({
-        base: "50vh", // 50% height on mobile
-        md: "60vh", // 60% height on medium devices
-        lg: "70vh", // 70% height on large devices
+        base: "50vh",
+        md: "60vh",
+        lg: "70vh",
     });
 
     const getAspectRatio = (media) => {
@@ -101,7 +101,7 @@ const Carousels = ({ medias }) => {
                             }}
                         >
                             {media.type === "image" ? (
-                                <ChakraImage
+                                <Image
                                     src={media.url}
                                     alt="Post Image"
                                     position="absolute"
@@ -135,7 +135,9 @@ const Carousels = ({ medias }) => {
                                     <source src={media.url} type="video/mp4" />
                                 </Box>
                             ) : (
-                                <AudioPlayer url={media.url} />
+                                <Box>
+                                    <AudioPlayer url={media.url} />
+                                </Box>
                             )}
                         </Box>
                     </SwiperSlide>

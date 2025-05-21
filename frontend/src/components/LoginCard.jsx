@@ -64,10 +64,8 @@ const LoginCard = () => {
             setUser(data.user);
             await Promise.resolve();
             if (data.user.role === "admin") {
-                console.log("Navigating to /admin");
                 navigate("/admin");
             } else {
-                console.log("Navigating to home");
                 navigate("/");
             }
         } catch (error) {

@@ -22,7 +22,7 @@ const AdminPostManagement = props => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await api.get(`/api/admin/posts?status=${status}&page=${page}`);
+            const res = await api.get(`/api/admin/posts?status=${status}&page=${page}&limit=10`);
             setPosts(res.data.data.posts);
             setTotalPages(res.data.data.totalPages);
         } catch (err) {
@@ -34,7 +34,6 @@ const AdminPostManagement = props => {
     useEffect(() => {
         fetchData();
     }, [page, status]);
-    console.log(posts[0]);
     const handleView = (post) => {
         setSelectedPost(post);
         onOpen();
@@ -174,27 +173,8 @@ const AdminPostManagement = props => {
                     Next
                 </Button>
             </Flex>
-            <AlertDialog
-                isOpen={isOpen}
-                leastDestructiveRef={cancelRef}
-                onClose={onClose}
-            >
-                <AlertDialogOverlay>
-                    <AlertDialogContent bg={useColorModeValue('gray.100', 'gray.dark')}>
-                        <AlertDialogHeader fontSize="lg" fontWeight="bold" textAlign={"center"}>
-                            Preview Post
-                        </AlertDialogHeader>
-                        <AlertDialogBody >
-                            <UserPost post={selectedPost} />
-                        </AlertDialogBody>
-                        <AlertDialogFooter>
-                            <Button ref={cancelRef} onClick={onClose}>
-                                Cancel
-                            </Button>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialogOverlay>
-            </AlertDialog>
+            {isOpen && (
+                <UserPost isOpen={isOpen} onClose={onClose} post={selectedPost} />)}
         </Box>
     )
 }

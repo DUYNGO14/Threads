@@ -166,7 +166,7 @@ const Actions = ({ post, onPostUpdate }) => {
                         colorScheme="red"
                         variant={"ghost"}
                         onClick={handleLikeAndUnlike}
-                        isLoading={isLiking}
+                    // isLoading={isLiking}
                     />
                     <Text fontSize="sm" color={liked ? "red.500" : "gray.light"}>
                         {post?.likes?.length || 0}

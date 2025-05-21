@@ -73,7 +73,7 @@ const PostPage = () => {
                 const data = await res.data;
 
                 if (data.error) {
-                    showToast("Error", data.error, "error");
+                    // showToast("Error", data.error, "error");
                     return;
                 }
 
@@ -96,7 +96,8 @@ const PostPage = () => {
                 });
 
             } catch (error) {
-                showToast("Error", error.message, "error");
+                const msgError = error.response.data.error;
+                showToast("Error", msgError ? msgError : error.message, "error");
             }
         };
 
@@ -157,14 +158,24 @@ const PostPage = () => {
             </Flex>
         );
     }
-
-    if (!currentPost) return null;
-
     const handleLoadMoreReplies = () => {
         if (page < totalPages) {
             setPage(prevPage => prevPage + 1);
         }
     };
+    if (!currentPost) return (
+        <Box textAlign="center" mt={10}>
+            <Text fontSize="lg" fontWeight="bold" color="gray.600">
+                No Post Found
+            </Text>
+            <Button mt={4} colorScheme="teal" onClick={() => navigate("/")}>
+                Go to Home
+            </Button>
+        </Box>
+
+    );
+
+
 
     return (
         <>

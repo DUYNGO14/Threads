@@ -236,10 +236,13 @@ const getSuggestedUsers = async (req, res) => {
 
     let cachedIds = await redis.get(cacheKey);
     if (cachedIds) {
+      cachedIds = cachedIds;
       const paginatedIds = cachedIds.slice(start, end);
       const users = await User.find({
         _id: { $in: paginatedIds },
         role: "user",
+        isBlocked: { $ne: true },
+        isFrozen: { $ne: true },
       })
         .select("name username profilePic bio")
         .lean();
@@ -258,7 +261,14 @@ const getSuggestedUsers = async (req, res) => {
       );
 
       const mutuals = await User.aggregate([
-        { $match: { _id: { $in: followingIds }, role: "user" } },
+        {
+          $match: {
+            _id: { $in: followingIds },
+            role: "user",
+            isBlocked: { $ne: true },
+            isFrozen: { $ne: true },
+          },
+        },
         { $unwind: "$following" },
         { $group: { _id: "$following", count: { $sum: 1 } } },
         { $sort: { count: -1 } },
@@ -311,6 +321,8 @@ const getSuggestedUsers = async (req, res) => {
                 $nin: excludeIds.map((id) => new mongoose.Types.ObjectId(id)),
               },
               role: "user",
+              isBlocked: { $ne: true },
+              isFrozen: { $ne: true },
             },
           },
           {
@@ -328,11 +340,17 @@ const getSuggestedUsers = async (req, res) => {
     } else {
       const topUsers = await User.aggregate([
         {
+          $match: {
+            role: "user",
+            isBlocked: { $ne: true },
+            isFrozen: { $ne: true },
+          },
+        },
+        {
           $addFields: {
             followersCount: { $size: { $ifNull: ["$followers", []] } },
           },
         },
-        { $match: { role: "user" } },
         { $sort: { followersCount: -1 } },
         { $limit: 100 },
       ]);
@@ -343,7 +361,12 @@ const getSuggestedUsers = async (req, res) => {
     await redis.set(cacheKey, JSON.stringify(allSuggested), { ex: 900 });
 
     const paginatedIds = allSuggested.slice(start, end);
-    const users = await User.find({ _id: { $in: paginatedIds }, role: "user" })
+    const users = await User.find({
+      _id: { $in: paginatedIds },
+      role: "user",
+      isBlocked: { $ne: true },
+      isFrozen: { $ne: true },
+    })
       .select("name username profilePic bio")
       .lean();
 

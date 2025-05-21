@@ -77,18 +77,18 @@ export const socketHandler = (io) => {
       if (!conversationId) return;
 
       socket.join(conversationId);
-      console.log(`Socket ${socket.id} joined room ${conversationId}`);
+      // console.log(`Socket ${socket.id} joined room ${conversationId}`);
     });
 
     socket.on("leaveRoom", (conversationId) => {
       if (!conversationId) return;
 
       socket.leave(conversationId);
-      console.log(`Socket ${socket.id} left room ${conversationId}`);
+      // console.log(`Socket ${socket.id} left room ${conversationId}`);
     });
     socket.on("disconnect", () => {
       const userId = socket.handshake.query.userId;
-      console.log(`🔌 User disconnected: ${userId}`);
+      // console.log(`🔌 User disconnected: ${userId}`);
 
       if (userId) {
         removeUserSocket(userId);

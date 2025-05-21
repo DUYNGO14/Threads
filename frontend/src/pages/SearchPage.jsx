@@ -112,9 +112,6 @@ const SearchPage = () => {
                             fontSize={{ base: "sm", md: "md" }}
                             py={{ base: 2, md: 3 }}
                         />
-                        <Box ml={2} mt={1}>
-                            <Icon as={SettingsIcon} color="gray.400" />
-                        </Box>
                     </InputGroup>
                 </Box>
 

@@ -35,7 +35,7 @@ const protectRoute = async (req, res, next) => {
         req.user = null;
       }
     } catch (err) {
-      console.error("❌ JWT decode error:", err.message);
+      // console.error("❌ JWT decode error:", err.message);
       req.user = null;
     }
   } else {
@@ -49,7 +49,7 @@ const protectRoute = async (req, res, next) => {
 
   // 🔒 Nếu là route bảo mật, kiểm tra user
   if (!req.user) {
-    console.error("🔒 Unauthorized access attempt:", req.originalUrl);
+    //console.error("🔒 Unauthorized access attempt:", req.originalUrl);
     return res
       .status(401)
       .json({ error: "Unauthorized. Valid access token required." });

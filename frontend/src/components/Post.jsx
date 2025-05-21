@@ -21,7 +21,7 @@ import UpdatePostModal from "./UpdatePostModal";
 import CountdownUpdatePost from "./CountdownUpdatePost";
 import { renderMentionText } from "./renderMentionText.jsx";
 
-const Post = ({ post, postedBy, onPostUpdate, type }) => {
+const Post = ({ post, postedBy, onPostUpdate, type, referrer }) => {
     const showToast = useShowToast();
     const currentUser = useRecoilValue(userAtom);
     const navigate = useNavigate();
@@ -65,6 +65,14 @@ const Post = ({ post, postedBy, onPostUpdate, type }) => {
             navigate(`/user/${postedBy.username}`);
         }
     };
+
+    const handleNavidatePostPage = (e) => {
+        e.preventDefault();
+        localStorage.setItem("referrer", JSON.stringify(referrer));
+        localStorage.setItem("scrollToPostId", post._id);
+        navigate(`/${postedBy.username}/post/${post._id}`);
+    };
+
 
     const openUpdateModal = () => setIsUpdatePostOpen(true);
     const closeUpdateModal = () => setIsUpdatePostOpen(false);
@@ -147,11 +155,10 @@ const Post = ({ post, postedBy, onPostUpdate, type }) => {
                             </Menu>
                         </Flex>
 
-                        <Link to={`/${postedBy.username}/post/${post._id}`}>
-                            <Text fontSize="sm" whiteSpace="pre-wrap" wordBreak="break-word">
-                                {renderMentionText(post.text)}
-                            </Text>
-                        </Link>
+
+                        <Box fontSize="sm" whiteSpace="pre-wrap" wordBreak="break-word" onClick={handleNavidatePostPage} cursor={"pointer"}>
+                            {renderMentionText(post.text)}
+                        </Box>
 
                         {post.media?.length > 0 && (
                             <Box mt={1} borderRadius="md" overflow="hidden" maxW="600px" >
