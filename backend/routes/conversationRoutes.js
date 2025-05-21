@@ -9,6 +9,7 @@ import {
   removeUserFromGroup,
   deleteGroupConversation,
   leaveGroupConversation,
+  updateNameGroup,
 } from "../controllers/conversationController.js";
 import protectRoute from "../middlewares/protectRoute.js";
 
@@ -34,4 +35,6 @@ router.put(
   protectRoute,
   leaveGroupConversation
 );
+router.put("/:conversationId/rename", protectRoute, updateNameGroup);
+
 export default router;

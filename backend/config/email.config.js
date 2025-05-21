@@ -10,7 +10,7 @@ async function emailService(to, templateId, dynamicTemplateData) {
     to,
     from: {
       email: process.env.FROM_EMAIL,
-      name: "Website Threads",
+      name: "Website DThreads",
     },
     templateId: templateId,
     dynamicTemplateData: dynamicTemplateData,

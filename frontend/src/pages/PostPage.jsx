@@ -67,42 +67,43 @@ const PostPage = () => {
 
     // Hàm tải bài viết và bình luận với phân trang
     useEffect(() => {
+        const controller = new AbortController();
+
         const getPost = async () => {
             try {
-                const res = await api.get(`/api/posts/${pid}?page=${page}`);
-                const data = await res.data;
+                const res = await api.get(`/api/posts/${pid}?page=${page}`, {
+                    signal: controller.signal,
+                });
 
-                if (data.error) {
-                    // showToast("Error", data.error, "error");
-                    return;
-                }
+                const { post, replies, totalReplies, totalPages } = res.data;
 
-                setTotalReplies(data.totalReplies);
-                setTotalPages(data.totalPages);
+                setTotalReplies(totalReplies);
+                setTotalPages(totalPages);
 
-                setPosts(prevPosts => {
-                    if (page === 1 || prevPosts.length === 0) {
-                        return [{ ...data.post, replies: data.replies }];
-                    } else {
-                        const existingPost = prevPosts[0];
-                        const updatedReplies = [...existingPost.replies, ...data.replies];
-
-                        const uniqueReplies = Array.from(
-                            new Map(updatedReplies.map(reply => [reply._id, reply])).values()
-                        );
-
-                        return [{ ...existingPost, replies: uniqueReplies }];
+                setPosts(prev => {
+                    if (page === 1 || prev.length === 0) {
+                        return [{ ...post, replies }];
                     }
+
+                    const existingPost = prev[0];
+                    const mergedReplies = [...existingPost.replies, ...replies];
+                    const uniqueReplies = Array.from(new Map(mergedReplies.map(r => [r._id, r])).values());
+
+                    return [{ ...existingPost, replies: uniqueReplies }];
                 });
 
             } catch (error) {
-                const msgError = error.response.data.error;
-                showToast("Error", msgError ? msgError : error.message, "error");
+                if (error.name !== "CanceledError") {
+                    const msg = error.response?.data?.error || error.message;
+                    showToast("Error", msg, "error");
+                }
             }
         };
 
         getPost();
-    }, [showToast, pid, page, setPosts]);
+
+        return () => controller.abort();
+    }, [pid, page, showToast]);
 
 
     const handleDeletePost = async () => {
@@ -122,29 +123,36 @@ const PostPage = () => {
         }
     };
     useEffect(() => {
-        return () => setPosts([]); // Clear posts khi rời trang
-    }, [setPosts]);
+        return () => {
+            // Chỉ clear nếu đang ở trang post chi tiết (tránh clear lỡ khi quay về từ home)
+            if (window.location.pathname.includes("/post")) {
+                setPosts([]);
+            }
+        };
+    }, []);
     const handleBack = useCallback(async () => {
         try {
-            const referrerData = localStorage.getItem("referrer");
-            const postId = localStorage.getItem("scrollToPostId");
+            const referrerData = sessionStorage.getItem("referrer");
+            const postId = sessionStorage.getItem("scrollToPostId");
 
             if (referrerData) {
                 const referrer = JSON.parse(referrerData);
-                console.log(referrer);
+                const options = { state: { fromPostPage: true, postId } };
 
-                if (referrer.page === "home") {
-                    navigate(referrer.url, { state: { fromPostPage: true, postId } });
-                } else if (referrer.page === "user") {
-                    navigate(referrer.url, { state: { fromPostPage: true, postId } });
-                }
+                navigate(referrer.url, options);
+
+                // Delay cleanup để đảm bảo router tiếp nhận được state
+                setTimeout(() => {
+                    sessionStorage.removeItem("referrer");
+                    sessionStorage.removeItem("scrollToPostId");
+                }, 100);
             } else {
                 navigate(-1);
             }
 
             // Remove items after processing
-            localStorage.removeItem("referrer");
-            localStorage.removeItem("scrollToPostId");
+            sessionStorage.removeItem("referrer");
+            sessionStorage.removeItem("scrollToPostId");
 
         } catch (error) {
             console.error("Error parsing referrer data from localStorage:", error);
@@ -163,17 +171,18 @@ const PostPage = () => {
             setPage(prevPage => prevPage + 1);
         }
     };
-    if (!currentPost) return (
-        <Box textAlign="center" mt={10}>
-            <Text fontSize="lg" fontWeight="bold" color="gray.600">
-                No Post Found
-            </Text>
-            <Button mt={4} colorScheme="teal" onClick={() => navigate("/")}>
-                Go to Home
-            </Button>
-        </Box>
-
-    );
+    if (!currentPost && !loading) {
+        return (
+            <Box textAlign="center" mt={10}>
+                <Text fontSize="lg" fontWeight="bold" color="gray.600">
+                    No Post Found
+                </Text>
+                <Button mt={4} colorScheme="teal" onClick={() => navigate("/")}>
+                    Go to Home
+                </Button>
+            </Box>
+        );
+    }
 
 
 

@@ -21,7 +21,7 @@ import UpdatePostModal from "./UpdatePostModal";
 import CountdownUpdatePost from "./CountdownUpdatePost";
 import { renderMentionText } from "./renderMentionText.jsx";
 
-const Post = ({ post, postedBy, onPostUpdate, type, referrer }) => {
+const Post = ({ post, postedBy, onPostUpdate, type, referrer, }) => {
     const showToast = useShowToast();
     const currentUser = useRecoilValue(userAtom);
     const navigate = useNavigate();
@@ -68,8 +68,8 @@ const Post = ({ post, postedBy, onPostUpdate, type, referrer }) => {
 
     const handleNavidatePostPage = (e) => {
         e.preventDefault();
-        localStorage.setItem("referrer", JSON.stringify(referrer));
-        localStorage.setItem("scrollToPostId", post._id);
+        sessionStorage.setItem("referrer", JSON.stringify(referrer));
+        sessionStorage.setItem("scrollToPostId", post._id);
         navigate(`/${postedBy.username}/post/${post._id}`);
     };
 

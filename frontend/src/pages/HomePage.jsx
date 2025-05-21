@@ -74,12 +74,34 @@ const HomePage = () => {
 
     // Load khi feedType hoặc refreshKey đổi
     useEffect(() => {
+        const cached = sessionStorage.getItem("feed_cache");
+        console.log(cached);
+        if (cached) {
+            const { posts: cachedPosts, page: cachedPage, scrollY, feedType: cachedFeedType } = JSON.parse(cached);
+
+            if (cachedFeedType === feedType && cachedPosts?.length) {
+                setPosts(cachedPosts);
+                setPage(cachedPage);
+                setHasMore(cachedPosts.length >= INITIAL_POSTS_LIMIT);
+                setInitialLoadDone(true);
+
+                setTimeout(() => {
+                    window.scrollTo({ top: scrollY || 0, behavior: "instant" });
+                }, 50);
+
+                sessionStorage.removeItem("feed_cache");
+                return;
+            }
+        }
+
+        // Nếu không có cache, fetch như bình thường
         setPosts([]);
         setPage(1);
         setHasMore(true);
         setInitialLoadDone(false);
         fetchPosts(1, true);
     }, [feedType, refreshKey]);
+
 
     // Infinite scroll
     useEffect(() => {

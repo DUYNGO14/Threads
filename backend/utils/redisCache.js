@@ -1,8 +1,8 @@
 import redisClient from "../config/redis.config.js";
 // Lưu danh sách post (dạng JSON)
 export const setRedis = async (key, data, ttl = 1800) => {
-  // console.log("Setting Redis cache:", data);
-  await redisClient.set(key, JSON.stringify(data), { ex: ttl });
+  const limitedData = Array.isArray(data) ? data.slice(0, 100) : data;
+  await redisClient.set(key, JSON.stringify(limitedData), { ex: ttl });
 };
 
 // Lấy danh sách post từ cache

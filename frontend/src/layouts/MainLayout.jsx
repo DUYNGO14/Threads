@@ -58,7 +58,7 @@ const MainLayout = () => {
                             p={6}
                         >
                             <Text fontSize="2xl" fontWeight="bold" mb={4}>
-                                Log in or sign up to Threads
+                                Log in or sign up to DThreads
                             </Text>
                             <Text fontSize="lg" mb={6}>
                                 See what people are talking about and join the conversation.
