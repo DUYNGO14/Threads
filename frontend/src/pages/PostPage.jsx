@@ -1,4 +1,14 @@
-import { Avatar, Box, Button, Divider, Flex, IconButton, Image, Spinner, Text, useColorMode, useColorModeValue } from "@chakra-ui/react";
+import {
+    Avatar,
+    Box,
+    Button,
+    Divider,
+    Flex,
+    IconButton,
+    Spinner,
+    Text,
+    useColorMode
+} from "@chakra-ui/react";
 import Actions from "@components/Actions";
 import { useEffect, useState, useCallback } from "react";
 import { IoArrowBackOutline } from "react-icons/io5";
@@ -7,171 +17,118 @@ import useGetUserProfile from "@hooks/useGetUserProfile";
 import useShowToast from "@hooks/useShowToast";
 import { useNavigate, useParams } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
-import { useRecoilState, useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
 import { DeleteIcon } from "@chakra-ui/icons";
-import postsAtom from "../atoms/postsAtom";
 import Carousels from "@components/Carousels";
 import api from "../services/api.js";
 import { renderMentionText } from "../components/renderMentionText.jsx";
+import { useRecoilValue } from "recoil";
+
 const PostPage = () => {
-    const { user, loading } = useGetUserProfile();
-    const [posts, setPosts] = useRecoilState(postsAtom);
+    const { user } = useGetUserProfile();
     const showToast = useShowToast();
-    const { username, pid } = useParams();
+    const { pid } = useParams();
     const currentUser = useRecoilValue(userAtom);
-    const postId = pid;
     const navigate = useNavigate();
-    const currentPost = posts.find(post => post._id === pid);
-    const { colorMode } = useColorMode();
+
+    const [post, setPost] = useState(null);
+    const [replies, setReplies] = useState([]);
     const [page, setPage] = useState(1);
-    const [totalReplies, setTotalReplies] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
+    const [isPostLoading, setIsPostLoading] = useState(true);
+    const { colorMode } = useColorMode();
 
-    const handlePostUpdate = useCallback((updatedPost) => {
-        if (!updatedPost) return;
-        setPosts([updatedPost]);
-    }, [setPosts]);
-    const handleReplyUpdate = useCallback((data) => {
-        const updatedComment = data.comment; // Lấy thông tin bình luận mới từ dữ liệu trả về
+    const fetchPost = useCallback(async () => {
+        setIsPostLoading(true);
+        try {
+            const res = await api.get(`/api/posts/${pid}?page=${page}&limit=5`);
+            const { post, replies: newReplies, totalPages } = res.data;
 
-        setPosts(prevPosts => {
-            // Cập nhật lại bài viết với bình luận mới
-            return prevPosts.map(post => {
-                if (post._id === updatedComment.postId) {
-                    const updatedReplies = post.replies.map(reply =>
-                        reply._id === updatedComment._id
-                            ? { ...reply, ...updatedComment } // Thay thế bình luận cũ bằng bình luận mới
-                            : reply
-                    );
+            setPost(post);
+            setTotalPages(totalPages);
 
-                    return { ...post, replies: updatedReplies }; // Trả về bài viết mới với replies đã được cập nhật
-                }
-                return post; // Nếu không phải bài viết cần cập nhật, trả về bài viết cũ
+            setReplies(prev => {
+                if (page === 1) return newReplies;
+
+                const replyMap = new Map([...prev, ...newReplies].map(r => [r._id, r]));
+                return Array.from(replyMap.values());
             });
-        });
-    }, [setPosts]);
-
-
-    const handleDeleteReply = useCallback((replyId) => {
-        setPosts(prevPosts =>
-            prevPosts.map(post => {
-                if (!post.replies) return post;
-
-                const updatedReplies = post.replies.filter(reply => reply._id !== replyId);
-
-                return { ...post, replies: updatedReplies };
-            })
-        );
-    }, [setPosts]);
-
-    // Hàm tải bài viết và bình luận với phân trang
-    useEffect(() => {
-        const controller = new AbortController();
-
-        const getPost = async () => {
-            try {
-                const res = await api.get(`/api/posts/${pid}?page=${page}`, {
-                    signal: controller.signal,
-                });
-
-                const { post, replies, totalReplies, totalPages } = res.data;
-
-                setTotalReplies(totalReplies);
-                setTotalPages(totalPages);
-
-                setPosts(prev => {
-                    if (page === 1 || prev.length === 0) {
-                        return [{ ...post, replies }];
-                    }
-
-                    const existingPost = prev[0];
-                    const mergedReplies = [...existingPost.replies, ...replies];
-                    const uniqueReplies = Array.from(new Map(mergedReplies.map(r => [r._id, r])).values());
-
-                    return [{ ...existingPost, replies: uniqueReplies }];
-                });
-
-            } catch (error) {
-                if (error.name !== "CanceledError") {
-                    const msg = error.response?.data?.error || error.message;
-                    showToast("Error", msg, "error");
-                }
-            }
-        };
-
-        getPost();
-
-        return () => controller.abort();
+        } catch (err) {
+            const msg = err.response?.data?.error || err.message;
+            showToast("Error", msg, "error");
+        } finally {
+            setIsPostLoading(false);
+        }
     }, [pid, page, showToast]);
 
 
-    const handleDeletePost = async () => {
-        try {
-            if (!window.confirm("Are you sure you want to delete this post?")) return;
+    useEffect(() => {
+        fetchPost();
+    }, [fetchPost]);
 
-            const res = await api.delete(`/api/posts/${currentPost._id}`);
-            const data = await res.data;
-            if (data.error) {
-                showToast("Error", data.error, "error");
+
+    const handleBack = useCallback(() => {
+        const referrerData = sessionStorage.getItem("referrer");
+        const scrollToPostId = sessionStorage.getItem("scrollToPostId");
+
+        if (referrerData) {
+            const referrer = JSON.parse(referrerData);
+            navigate(referrer.url, {
+                state: { fromPostPage: true, postId: scrollToPostId },
+            });
+
+            setTimeout(() => {
+                sessionStorage.removeItem("referrer");
+                sessionStorage.removeItem("scrollToPostId");
+            }, 100);
+        } else {
+            navigate(-1);
+        }
+    }, [navigate]);
+
+    const handleDeletePost = async () => {
+        if (!window.confirm("Are you sure you want to delete this post?")) return;
+
+        try {
+            const res = await api.delete(`/api/posts/${post._id}`);
+            if (res.data?.error) {
+                showToast("Error", res.data.error, "error");
                 return;
             }
             showToast("Success", "Post deleted", "success");
             navigate(`/${user.username}`);
-        } catch (error) {
-            showToast("Error", error.message, "error");
+        } catch (err) {
+            showToast("Error", err.message, "error");
         }
     };
-    useEffect(() => {
-        return () => {
-            // Chỉ clear nếu đang ở trang post chi tiết (tránh clear lỡ khi quay về từ home)
-            if (window.location.pathname.includes("/post")) {
-                setPosts([]);
-            }
-        };
-    }, []);
-    const handleBack = useCallback(async () => {
-        try {
-            const referrerData = sessionStorage.getItem("referrer");
-            const postId = sessionStorage.getItem("scrollToPostId");
 
-            if (referrerData) {
-                const referrer = JSON.parse(referrerData);
-                const options = { state: { fromPostPage: true, postId } };
+    const handleReplyUpdate = updatedReply => {
+        setReplies(prev =>
+            prev.map(reply =>
+                reply._id === updatedReply._id ? { ...reply, ...updatedReply } : reply
+            )
+        );
+    };
 
-                navigate(referrer.url, options);
+    const handleDeleteReply = replyId => {
+        setReplies(prev => prev.filter(reply => reply._id !== replyId));
+    };
 
-                // Delay cleanup để đảm bảo router tiếp nhận được state
-                setTimeout(() => {
-                    sessionStorage.removeItem("referrer");
-                    sessionStorage.removeItem("scrollToPostId");
-                }, 100);
-            } else {
-                navigate(-1);
-            }
-
-            // Remove items after processing
-            sessionStorage.removeItem("referrer");
-            sessionStorage.removeItem("scrollToPostId");
-
-        } catch (error) {
-            console.error("Error parsing referrer data from localStorage:", error);
+    const handleLoadMoreReplies = () => {
+        if (page < totalPages) {
+            setPage(prev => prev + 1);
         }
-    }, [navigate]);
+    };
 
-    if (!user && loading) {
+    if (isPostLoading) {
         return (
-            <Flex justifyContent={"center"}>
-                <Spinner size={"xl"} />
+            <Flex justifyContent="center" mt={10}>
+                <Spinner size="xl" />
             </Flex>
         );
     }
-    const handleLoadMoreReplies = () => {
-        if (page < totalPages) {
-            setPage(prevPage => prevPage + 1);
-        }
-    };
-    if (!currentPost && !loading) {
+
+    if (!post) {
         return (
             <Box textAlign="center" mt={10}>
                 <Text fontSize="lg" fontWeight="bold" color="gray.600">
@@ -183,8 +140,6 @@ const PostPage = () => {
             </Box>
         );
     }
-
-
 
     return (
         <>
@@ -209,71 +164,65 @@ const PostPage = () => {
                         aria-label="Back"
                         color={colorMode === "dark" ? "whiteAlpha.900" : "gray.800"}
                         _hover={{ bg: colorMode === "dark" ? "whiteAlpha.200" : "gray.100" }}
-                        fontWeight={"bold"}
-                        fontSize={"20px"}
+                        fontWeight="bold"
+                        fontSize="20px"
                         onClick={handleBack}
                     />
 
                     <Box textAlign="center" flex="1" ml="-40px">
-                        <Text
-                            fontSize="md"
-                            fontWeight="bold"
-                            color={colorMode === "dark" ? "whiteAlpha.900" : "gray.800"}
-                        >
+                        <Text fontSize="md" fontWeight="bold" color={colorMode === "dark" ? "whiteAlpha.900" : "gray.800"}>
                             Thread
                         </Text>
-                        <Text fontSize="xs" color="gray.500">{user.username}</Text>
+                        <Text fontSize="xs" color="gray.500">{post.postedBy?.username}</Text>
                     </Box>
-
                 </Flex>
             </Box>
-            {/* Nội dung bài viết */}
+
             <Box height="60px" />
             <Flex mt={5}>
-                <Flex w={"full"} alignItems={"center"} gap={3} onClick={() => navigate(`/user/${user.username}`)} cursor={"pointer"}>
-                    <Avatar src={user.profilePic} size={"md"} name={user.username} />
+                <Flex w="full" alignItems="center" gap={3} onClick={() => navigate(`/user/${post.postedBy.username}`)} cursor="pointer">
+                    <Avatar src={post.postedBy.profilePic} size="md" name={post.postedBy.username} />
                     <Flex>
-                        <Text fontSize={"sm"} fontWeight={"bold"}>
-                            {user.username}
+                        <Text fontSize="sm" fontWeight="bold">
+                            {post.postedBy.username}
                         </Text>
-                        {/* <Image src='/verified.png' w='4' h={4} ml={4} /> */}
                     </Flex>
                 </Flex>
-                <Flex gap={4} alignItems={"center"}>
-                    <Text fontSize={"xs"} width={36} textAlign={"right"} color={"gray.light"}>
-                        {formatDistanceToNow(new Date(currentPost.createdAt))} ago
+                <Flex gap={4} alignItems="center">
+                    <Text fontSize="xs" width={36} textAlign="right" color="gray.light">
+                        {formatDistanceToNow(new Date(post.createdAt))} ago
                     </Text>
-
-                    {currentUser?._id === user._id && (
-                        <DeleteIcon size={20} cursor={"pointer"} onClick={handleDeletePost} color={"red.300"} _hover={{ color: "red.500" }} />
+                    {currentUser?._id === post.postedBy._id && (
+                        <DeleteIcon size={20} cursor="pointer" onClick={handleDeletePost} color="red.300" _hover={{ color: "red.500" }} />
                     )}
                 </Flex>
             </Flex>
 
-            <Text whiteSpace="pre-line" my={3}>{renderMentionText(currentPost.text)}</Text>
+            <Text whiteSpace="pre-line" my={3}>
+                {renderMentionText(post.text)}
+            </Text>
 
-            {currentPost.media?.length > 0 && (
-                <Carousels medias={currentPost.media} />
+            {post.media?.length > 0 && (
+                <Carousels medias={post.media} />
             )}
 
             <Flex gap={3} my={3}>
-                <Actions post={currentPost} onPostUpdate={handlePostUpdate} />
+                <Actions post={post} onPostUpdate={setPost} />
             </Flex>
 
             <Divider my={4} />
-            {currentPost.replies.map((reply) => (
+            {replies.map(reply => (
                 <Comment
                     key={reply._id}
-                    postId={currentPost._id}
+                    postId={post._id}
                     reply={reply}
-                    lastReply={reply._id === currentPost.replies[currentPost.replies.length - 1]._id}
+                    lastReply={reply._id === replies[replies.length - 1]._id}
                     currentUser={currentUser}
                     onReplyUpdate={handleReplyUpdate}
                     onReplyDelete={handleDeleteReply}
                 />
             ))}
 
-            {/* Hiển thị nút "Xem thêm bình luận" */}
             {page < totalPages && (
                 <Button onClick={handleLoadMoreReplies} mt={4}>
                     Xem thêm bình luận

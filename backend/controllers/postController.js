@@ -212,7 +212,7 @@ const updatePost = async (req, res) => {
 const getPost = async (req, res) => {
   try {
     const id = req.params.id;
-    const { page = 1, limit = LIMIT_PAGINATION_REPLY } = req.query;
+    const { page, limit, skip } = getPaginationParams(req);
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ error: "Invalid post ID" });
@@ -232,8 +232,7 @@ const getPost = async (req, res) => {
     // Lấy tổng số replies
     const totalRepliesCount = post.replies.length;
 
-    // Lấy replies với phân trang, sắp xếp theo createdAt giảm dần
-    const replyIds = post.replies.slice().reverse(); // đảo mảng để lấy từ mới nhất
+    const replyIds = post.replies.slice().reverse();
 
     const startIndex = (page - 1) * limit;
     const endIndex = startIndex + parseInt(limit);

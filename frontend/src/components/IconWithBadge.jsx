@@ -7,7 +7,6 @@ import { unreadNotificationCountAtom } from "../atoms/notificationAtom";
 import { IoMdNotificationsOutline } from "react-icons/io";
 export const ChatIconWithBadge = () => {
   const unreadCount = useRecoilValue(unreadConversationsCountAtom);
-  console.log(unreadCount);
   const MotionBox = motion(Box);
   return (
     <Box position="relative">

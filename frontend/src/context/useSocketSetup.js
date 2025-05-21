@@ -44,7 +44,6 @@ const useSocketSetup = (user, socketRef, setOnlineUsers) => {
     });
 
     socket.on("updateUnreadCounts", (unreadMap) => {
-      console.log("updateUnreadCounts", unreadMap);
       // Đếm tổng số cuộc trò chuyện có tin nhắn chưa đọc
       const count = Object.values(unreadMap).filter((c) => c > 0).length;
       setUnreadCount(count); // cập nhật tổng số vào UI (thường để gắn vào icon badge)
