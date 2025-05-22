@@ -1,7 +1,7 @@
 import { Queue } from "bullmq";
 import { redisConnection } from "../config/redis.config.js";
 
-const notificationQueue = new Queue("notifications", {
+export const notificationQueue = new Queue("notifications", {
   connection: redisConnection,
 });
 
@@ -12,7 +12,7 @@ export const addNotificationJob = async (notificationData) => {
       type: "exponential",
       delay: 5000,
     },
-    removeOnComplete: { age: 20 },
+    removeOnComplete: true,
     removeOnFail: { count: 3 },
   });
 };

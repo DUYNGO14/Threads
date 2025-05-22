@@ -1,25 +1,31 @@
-import emailService from "../../config/email.config.js";
+import { addEmailJob } from "../../queues/email.producer.js";
 
-const sendVerificationEmail = async (email, name, verificationOTP) => {
+export const sendVerificationEmail = async (email, name, verificationOTP) => {
   try {
-    await emailService(email, process.env.VERIFICATION_EMAIL_TEMPLATE_ID, {
-      name: name,
-      verificationOtp: verificationOTP,
+    await addEmailJob({
+      to: email,
+      templateId: process.env.VERIFICATION_EMAIL_TEMPLATE_ID,
+      data: {
+        name,
+        verificationOtp: verificationOTP,
+      },
     });
   } catch (error) {
-    console.error("Error sending verification email:", error.message);
+    console.error("Error queueing verification email:", error.message);
   }
 };
 
-const sendPasswordResetEmail = async (email, name, resetURL) => {
+export const sendPasswordResetEmail = async (email, name, resetURL) => {
   try {
-    await emailService(email, process.env.PASSWORD_RESET_REQUEST_TEMPLATE_ID, {
-      name: name,
-      resetURL: resetURL,
+    await addEmailJob({
+      to: email,
+      templateId: process.env.PASSWORD_RESET_REQUEST_TEMPLATE_ID,
+      data: {
+        name,
+        resetURL,
+      },
     });
   } catch (error) {
-    console.error("Error sending password reset email:", error.message);
+    console.error("Error queueing password reset email:", error.message);
   }
 };
-
-export { sendVerificationEmail, sendPasswordResetEmail };

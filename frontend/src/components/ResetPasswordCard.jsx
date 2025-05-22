@@ -42,9 +42,9 @@ const ResetPasswordCard = () => {
             });
 
             const data = res.data;
-            if (!res.ok) throw new Error(data.error || "Failed to reset password");
+            if (!data.success) throw new Error(data.error || "Failed to reset password");
 
-            showToast("Success", "Password reset successful! Please login.", "success");
+            showToast("Success", `${data.message}! Please login.`, "success");
             navigate("/auth");
         } catch (error) {
             showToast("Error", error.message, "error");

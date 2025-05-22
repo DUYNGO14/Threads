@@ -75,7 +75,6 @@ const HomePage = () => {
     // Load khi feedType hoặc refreshKey đổi
     useEffect(() => {
         const cached = sessionStorage.getItem("feed_cache");
-        console.log(cached);
         if (cached) {
             const { posts: cachedPosts, page: cachedPage, scrollY, feedType: cachedFeedType } = JSON.parse(cached);
 

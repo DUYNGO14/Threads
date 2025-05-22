@@ -205,6 +205,7 @@ const forgotPassword = async (req, res) => {
     if (!user) {
       return res.status(400).json({ success: false, error: "User not found" });
     }
+
     if (!user.password) {
       return res.status(400).json({
         success: false,
@@ -212,14 +213,18 @@ const forgotPassword = async (req, res) => {
       });
     }
 
-    // Tạo token gốc và token hash
-    const resetToken = crypto.randomBytes(20).toString("hex");
-    const hashedToken = await bcrypt.hash(resetToken, 10); // Mã hóa token trước khi lưu
+    // Tạo token gốc và mã hóa
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(resetToken)
+      .digest("hex");
 
+    // Lưu token mã hóa và thời gian hết hạn
     user.resetPasswordToken = hashedToken;
     user.resetPasswordExpiresAt = Date.now() + 5 * 60 * 1000; // 5 phút
-
     await user.save();
+
     // Gửi email chứa token gốc
     await sendPasswordResetEmail(
       user.email,
@@ -232,8 +237,10 @@ const forgotPassword = async (req, res) => {
       message: "Password reset link sent to your email",
     });
   } catch (error) {
-    console.log("Error in forgotPassword ", error);
-    return res.status(400).json({ success: false, message: error.message });
+    console.log("Error in forgotPassword:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal Server Error" });
   }
 };
 //reset password
@@ -249,32 +256,34 @@ const resetPassword = async (req, res) => {
       });
     }
 
+    // Hash lại token nhận được từ URL
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(resetToken)
+      .digest("hex");
+    // Tìm user dựa trên token mã hóa và thời gian còn hạn
     const user = await User.findOne({
+      resetPasswordToken: hashedToken,
       resetPasswordExpiresAt: { $gt: Date.now() },
     });
 
-    if (!user) {
-      return res
-        .status(400)
-        .json({ success: false, error: "Invalid or expired reset token" });
+    if (user === null) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid or expired reset token",
+      });
     }
 
-    // Kiểm tra token bằng cách hash lại và so sánh với DB
-    const isMatch = await bcrypt.compare(resetToken, user.resetPasswordToken);
-    if (!isMatch) {
-      return res
-        .status(400)
-        .json({ success: false, error: "Invalid reset token" });
-    }
-
-    // Hash mật khẩu mới và cập nhật DB
+    // Cập nhật mật khẩu và xoá token cũ
     user.password = await bcrypt.hash(newPassword, 10);
     user.resetPasswordToken = undefined;
     user.resetPasswordExpiresAt = undefined;
     await user.save();
-    return res
-      .status(200)
-      .json({ success: true, message: "Password reset successful" });
+
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successful",
+    });
   } catch (error) {
     console.error("Error in resetPassword:", error);
     return res

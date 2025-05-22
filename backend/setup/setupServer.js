@@ -10,6 +10,8 @@ import { getRecipientSocketId } from "../utils/socketUsers.js";
 import { socketHandler } from "../sockets/socket.js";
 import createDefaultAdmin from "../utils/createDefaultAdmin.js";
 import "../workers/notificationWorker.js";
+import "../workers/emailWorker.js";
+import "../workers/userInteractionWorker.js";
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
