@@ -84,7 +84,8 @@ export default function SocialLinksInput({ value, onChange }) {
 
     return (
         <Box>
-            <FormLabel>Liên kết mạng xã hội</FormLabel>
+            <FormLabel>
+                Other social network links</FormLabel>
             <Stack spacing={3}>
                 {links.map((item, index) => {
                     const platformMeta = platforms.find((p) => p.value === item.platform) || platforms[0];
@@ -112,18 +113,18 @@ export default function SocialLinksInput({ value, onChange }) {
                             </FormControl>
                             <Icon alignSelf={"center"} as={platformMeta.icon} boxSize={6} color="gray.500" />
                             <Button alignSelf={"center"} onClick={() => handleRemove(index)} colorScheme="red" size="sm">
-                                Xoá
+                                Delete
                             </Button>
                         </HStack>
                     );
                 })}
                 {links.length < MAX_LINKS && (
                     <Button onClick={handleAdd} colorScheme="blue" size="sm" mt={2}>
-                        + Thêm liên kết
+                        + Add Link Profile.
                     </Button>
                 )}
                 <Text fontSize="sm" color="gray.500">
-                    Tối đa {MAX_LINKS} liên kết.
+                    Maximum {MAX_LINKS} links profile.
                 </Text>
             </Stack>
         </Box>

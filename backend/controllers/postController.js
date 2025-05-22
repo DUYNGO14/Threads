@@ -6,7 +6,6 @@ import { MAX_FILES, MAX_CHAR } from "../constants/upload.js";
 import { moderateTextSmart } from "../utils/moderateText.js";
 import Reply from "../models/replyModel.js";
 import Notification from "../models/notificationModel.js";
-import { LIMIT_PAGINATION_REPLY } from "../constants/pagination.js";
 import getPaginationParams from "../utils/helpers/getPaginationParams.js";
 import {
   setRedis,
@@ -17,7 +16,6 @@ import {
 import _ from "lodash";
 import { moderateMedia } from "../utils/moderate/moderateMediaWithSightengine.js";
 import { moderateTextWithSightengine } from "../utils/moderate/moderateTextWithSightengine.js";
-import { sendNotification } from "../services/notificationService.js";
 import { formatResponse } from "../utils/formatResponse.js";
 import { isMutualOrOneWayFollow } from "./userController.js";
 import { getRecommendedPosts } from "../services/recommendationService.js";
@@ -25,11 +23,13 @@ import { updateRecentInteractions } from "../utils/recentInteraction.js";
 import { getTrendingPosts } from "../services/feedService.js";
 import shuffleArray from "../utils/helpers/shuffleArray.js";
 import { generateFeedForUser } from "../services/feedService.js";
+import { addNotificationJob } from "../queues/notification.producer.js";
 
 const createPost = async (req, res) => {
   try {
     const { postedBy, text, tags, notification } = req.body;
     const user = await User.findById(postedBy);
+    const redisKey = `posts:${user.username}`;
     if (!user)
       return res.status(404).json(formatResponse("error", "User not found"));
 
@@ -122,15 +122,16 @@ const createPost = async (req, res) => {
       }
 
       if (receivers.length > 0) {
-        await sendNotification({
-          sender: req.user,
-          receivers: receivers,
+        await addNotificationJob({
+          sender: req.user._id,
+          receivers,
           type: "post",
           content: `Just posted a new post`,
           post: populatedPost._id,
         });
       }
     }
+    await appendToCache(redisKey, populatedPost._id);
     return res
       .status(201)
       .json(
@@ -296,8 +297,8 @@ const deletePost = async (req, res) => {
       await removePostFromCache(keyRedis, post._id);
       await session.commitTransaction();
       if (req.user.role === "admin") {
-        await sendNotification({
-          sender: req.user,
+        await addNotificationJob({
+          sender: req.user._id,
           receivers: [post.postedBy._id],
           type: "report",
           content: `Your post has been deleted for violating community standards.`,
@@ -352,8 +353,8 @@ const likeUnlikePost = async (req, res) => {
 
     // Không tự gửi thông báo cho mình
     if (post.postedBy.toString() !== userId.toString() && isMutualFollow) {
-      await sendNotification({
-        sender: req.user,
+      await addNotificationJob({
+        sender: req.user._id,
         receivers: post.postedBy,
         type: "like",
         content: "Liked your post ❤️",
@@ -404,8 +405,8 @@ const replyToPost = async (req, res) => {
     const truncatedText = cleanReply.cleanedText.slice(0, 20) + "...";
     const isMutualFollow = await isMutualOrOneWayFollow(userId, post.postedBy);
     if (post.postedBy.toString() !== userId.toString() && isMutualFollow) {
-      await sendNotification({
-        sender: req.user,
+      await addNotificationJob({
+        sender: req.user._id,
         receivers: post.postedBy,
         type: "reply",
         content: `Replied to your post ✍: "${truncatedText}."`,
@@ -688,8 +689,8 @@ const repost = async (req, res) => {
     // ⚠️ Các thao tác sau khi transaction đã kết thúc
     const isFollowed = await isMutualOrOneWayFollow(userId, post.postedBy);
     if (isFollowed) {
-      await sendNotification({
-        sender: req.user,
+      await addNotificationJob({
+        sender: req.user._id,
         receivers: post.postedBy,
         type: "repost",
         content: `${req.user.username} just reposted your post.`,

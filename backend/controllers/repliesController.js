@@ -1,7 +1,7 @@
 import Reply from "../models/replyModel.js";
 import Post from "../models/postModel.js";
 import { moderateTextSmart } from "../utils/moderateText.js";
-import { sendNotification } from "../services/notificationService.js";
+import { addNotificationJob } from "../queues/notification.producer.js";
 const getComment = async (req, res) => {
   try {
     const { id } = req.params; // Lấy ID của reply từ params
@@ -80,8 +80,8 @@ const deleteComment = async (req, res) => {
     // Xóa reply
     await reply.deleteOne();
     if (req.user.role === "admin") {
-      await sendNotification({
-        sender: req.user,
+      await addNotificationJob({
+        sender: req.user._id,
         receivers: [reply.userId],
         type: "report",
         content: `Your comment has been deleted for violating community standards.`,

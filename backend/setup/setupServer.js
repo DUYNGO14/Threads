@@ -9,12 +9,16 @@ import { setupErrorHandler } from "./setupErrorHandler.js";
 import { getRecipientSocketId } from "../utils/socketUsers.js";
 import { socketHandler } from "../sockets/socket.js";
 import createDefaultAdmin from "../utils/createDefaultAdmin.js";
-
+import "../workers/notificationWorker.js";
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // 👈 Render sẽ gọi từ tên miền khác
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:5000",
+      process.env.CLIENT_URL,
+    ], // 👈 Render sẽ gọi từ tên miền khác
     methods: ["GET", "POST"],
     credentials: true,
   },

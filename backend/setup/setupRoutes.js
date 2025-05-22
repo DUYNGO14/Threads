@@ -7,12 +7,14 @@ import conversationRoutes from "../routes/conversationRoutes.js";
 import notificationRoutes from "../routes/notificationRouters.js";
 import adminRoutes from "../routes/adminRouter.js";
 import reportRoutes from "../routes/reportRouters.js";
+import { serverAdapter } from "../queues/bullBoard.js";
 import path from "path";
 import express from "express";
 
 const __dirname = path.resolve();
 
 export default function setupRoutes(app) {
+  app.use("/admin/queues", serverAdapter.getRouter());
   app.use("/api/auth", authRoutes);
   app.use("/api/users", userRoutes);
   app.use("/api/posts", postRoutes);

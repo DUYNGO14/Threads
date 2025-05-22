@@ -6,8 +6,8 @@ import detectAndFormatLinks from "../utils/helpers/detectAndFormatLinks.js";
 import redis from "../config/redis.config.js";
 import Post from "../models/postModel.js";
 import { uploadProfilePic } from "../utils/uploadUtils.js";
-import { sendNotification } from "../services/notificationService.js";
 import Notification from "../models/notificationModel.js";
+import { addNotificationJob } from "../queues/notification.producer.js";
 // Hàm upload ảnh đại diện
 
 const followUnFollowUser = async (req, res) => {
@@ -54,8 +54,8 @@ const followUnFollowUser = async (req, res) => {
 
     // Nếu là follow thì tạo thông báo + socket
     if (!isFollowing) {
-      await sendNotification({
-        sender: currentUser,
+      await addNotificationJob({
+        sender: currentUser._id,
         receivers: id,
         type: "follow",
         content: "Started following you.",

@@ -4,7 +4,7 @@ import Post from "../models/postModel.js";
 import getPaginationParams from "../utils/helpers/getPaginationParams.js";
 import dayjs from "dayjs";
 import Report from "../models/reportModel.js";
-import { sendNotification } from "../services/notificationService.js";
+import { addNotificationJob } from "../queues/notification.producer.js";
 export const getRegisteredUsersByWeek = async (req, res) => {
   try {
     const month = parseInt(req.query.month) || dayjs().month() + 1;
@@ -339,8 +339,8 @@ export const updatePostStatus = async (req, res) => {
       return res.status(404).json(formatResponse(404, "Post not found"));
     }
     if (status === "rejected" || status === "approved") {
-      await sendNotification({
-        sender: req.user,
+      await addNotificationJob({
+        sender: req.user._id,
         receivers: post.postedBy,
         type: "post",
         content:
