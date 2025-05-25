@@ -9,7 +9,6 @@ export const getRecommendedPosts = async (
 ) => {
   const skip = (page - 1) * limit;
 
-  // 🧑‍💻 Khách vãng lai
   if (!userId) {
     const redisKey = `guestFeed:page:${page}`;
     const cached = await getRedis(redisKey);
@@ -30,7 +29,6 @@ export const getRecommendedPosts = async (
     return response;
   }
 
-  // 👤 Người dùng đã đăng nhập
   const redisKey = `recommendedFeed:user:${userId}:page:${page}`;
   const cached = await getRedis(redisKey);
   if (cached) return cached;

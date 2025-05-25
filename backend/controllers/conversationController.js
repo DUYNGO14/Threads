@@ -50,13 +50,10 @@ export const createGroupConversation = async (req, res) => {
   }
 
   try {
-    // Thêm người tạo nhóm (admin) vào danh sách participants
     const allParticipants = [...new Set([...participants, userId.toString()])];
 
-    // Nếu không có groupName thì tạo theo tên 2 người đầu tiên
     let finalGroupName = groupName;
     if (!finalGroupName) {
-      // Lấy thông tin hai thành viên đầu tiên
       const users = await User.find({ _id: { $in: allParticipants } }).select(
         "username"
       );
@@ -124,7 +121,6 @@ export const deleteConversation = async (req, res) => {
 
     await conversation.save();
 
-    // Kiểm tra nếu tất cả các user đã xóa, lấy ngày xóa sớm nhất
     if (
       conversation.participants.every((id) =>
         conversation.deletedBy.some((entry) => entry.userId.equals(id))
@@ -134,13 +130,11 @@ export const deleteConversation = async (req, res) => {
         .map((entry) => entry.deletedAt)
         .sort((a, b) => a - b)[0];
 
-      // Xóa tất cả tin nhắn trước ngày `earliestDeletion`
       await Message.deleteMany({
         conversationId: conversationId,
         createdAt: { $lt: earliestDeletion },
       });
 
-      // Xóa hội thoại nếu không còn tin nhắn
       const remainingMessages = await Message.countDocuments({
         conversationId: conversationId,
       });
@@ -190,12 +184,10 @@ export const getConversations = async (req, res) => {
       };
 
       if (conv.isGroup) {
-        // Group: trả về toàn bộ thành viên + thông tin nhóm
         result.participants = conv.participants;
         result.groupName = conv.groupName;
         result.groupAdmin = conv.groupAdmin;
       } else {
-        // 1-1: chỉ trả về người còn lại
         const otherParticipant = conv.participants.find(
           (p) => p._id.toString() !== userId.toString()
         );
@@ -286,13 +278,12 @@ export const addMembersToGroup = async (req, res) => {
     await conversation.save();
     const systemMessage = await Message.create({
       conversationId: conversation._id,
-      sender: null, // System
+      sender: null,
       text: `${newMembers.length} member(s) have joined the group.`,
       isSystem: true,
       systemType: "join",
     });
     io.to(conversationId).emit("newMessage", systemMessage);
-    // 🔥 Populate thông tin user sau khi thêm
     const updatedConversation = await Conversation.findById(conversation._id)
       .populate({
         path: "participants",

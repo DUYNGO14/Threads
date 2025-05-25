@@ -20,30 +20,28 @@ const postSchema = mongoose.Schema(
     taggedFriends: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User", // ID của những người bạn được gắn thẻ
+        ref: "User",
       },
     ],
     media: [
       {
-        url: { type: String, required: true }, // URL của file
+        url: { type: String, required: true },
         type: {
           type: String,
           enum: ["image", "video", "audio"],
           required: true,
         }, // Kiểu file
-        public_id: String, // ID của file trong Cloudinary
+        public_id: String,
         width: Number,
         height: Number,
       },
     ],
     likes: {
-      // array of user ids
       type: [mongoose.Schema.Types.ObjectId],
       ref: "User",
       default: [],
     },
     repostedBy: {
-      // array of user ids who reposted this post
       type: [mongoose.Schema.Types.ObjectId],
       ref: "User",
       default: [],
@@ -51,7 +49,7 @@ const postSchema = mongoose.Schema(
     replies: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Reply", // Tham chiếu tới model Reply
+        ref: "Reply",
       },
     ],
     tags: {

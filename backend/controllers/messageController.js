@@ -5,7 +5,7 @@ import { getRecipientSocketId } from "../utils/socketUsers.js";
 import { getUnreadCountsForUser } from "../utils/getUnreadCounts.js";
 import { uploadFiles } from "../utils/uploadUtils.js";
 import removeFromDeletedBy from "../utils/helpers/removeFromDeletedBy.js";
-// Gửi tin nhắn mới
+
 async function sendMessage(req, res) {
   try {
     const { conversationId, message } = req.body;
@@ -26,21 +26,17 @@ async function sendMessage(req, res) {
       return res.status(404).json({ error: "Conversation not found" });
     }
 
-    // Kiểm tra nếu người dùng không nằm trong đoạn chat
     if (!conversation.participants.includes(senderId)) {
       return res.status(403).json({ error: "You are not a participant" });
     }
-    // Nếu người dùng đã xóa cuộc trò chuyện, gỡ khỏi deletedBy
     const updated = removeFromDeletedBy(conversation, [senderId]);
     if (updated) await conversation.save();
 
-    // Upload media nếu có
     let media = [];
     if (files && files.length > 0) {
       media = await uploadFiles(files, req.user.username, "message");
     }
 
-    // Tạo tin nhắn mới
     const newMessage = new Message({
       conversationId: conversation._id,
       sender: senderId,
@@ -49,7 +45,6 @@ async function sendMessage(req, res) {
       seen: false,
     });
 
-    // Cập nhật lastMessage cho conversation
     const resultMessage = await newMessage.save();
     await conversation.updateOne({
       $set: {
@@ -68,7 +63,6 @@ async function sendMessage(req, res) {
       "sender",
       "_id username name profilePic"
     );
-    // Gửi socket đến các thành viên trong cuộc trò chuyện (trừ người gửi)
     const recipientIds = conversation.participants.filter(
       (id) => id.toString() !== senderId.toString()
     );
@@ -90,7 +84,6 @@ async function sendMessage(req, res) {
   }
 }
 
-// Lấy tất cả tin nhắn giữa user và người còn lại
 async function getMessages(req, res) {
   const { conversationId, otherUserId, before } = req.query;
   const userId = req.user?._id;
@@ -139,10 +132,10 @@ async function getMessages(req, res) {
 
     const messages = await Message.find(filter)
       .populate("sender", "username profilePic")
-      .sort({ createdAt: -1 }) // lấy tin mới nhất trước
+      .sort({ createdAt: -1 })
       .limit(limit);
 
-    const reversed = messages.reverse(); // để hiển thị đúng thứ tự cũ → mới
+    const reversed = messages.reverse();
 
     return res.status(200).json({
       messages: reversed,
@@ -184,7 +177,6 @@ const deleteMessage = async (req, res) => {
         .sort({ createdAt: -1 })
         .exec();
 
-      // Nếu không còn tin nhắn nào trong cuộc trò chuyện, không cập nhật lastMessage
       if (newLastMessage) {
         await Conversation.findByIdAndUpdate(
           message.conversationId,
@@ -204,7 +196,6 @@ const deleteMessage = async (req, res) => {
           { new: true }
         );
       } else {
-        // Nếu không còn tin nhắn nào, có thể set lastMessage về null hoặc một giá trị mặc định
         await Conversation.findByIdAndUpdate(
           message.conversationId,
           {
@@ -248,7 +239,6 @@ const updatedMessage = async (req, res) => {
     }
 
     message.text = text;
-    // message.editedAt = new Date();
     await message.save();
     await Conversation.findOneAndUpdate(
       { _id: message.conversationId },

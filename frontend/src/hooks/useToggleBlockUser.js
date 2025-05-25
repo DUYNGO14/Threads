@@ -18,7 +18,6 @@ const useToggleBlockUser = () => {
           : "User unblocked successfully";
         showToast(message, "", "success");
 
-        // Cập nhật danh sách listUserAtom
         setListUser((prevUsers) =>
           prevUsers.map((user) =>
             user._id === updatedUser._id ? updatedUser : user

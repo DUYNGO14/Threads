@@ -14,7 +14,7 @@ const conversationSchema = new mongoose.Schema(
       maxlength: 50,
     },
     groupAdmin: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    isGroup: { type: Boolean, default: false }, // Đánh dấu đây là nhóm chat hay không
+    isGroup: { type: Boolean, default: false },
     lastMessage: {
       _id: { type: mongoose.Schema.Types.ObjectId, ref: "Message" },
       text: String,

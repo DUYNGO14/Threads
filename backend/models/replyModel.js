@@ -4,12 +4,12 @@ const replySchema = mongoose.Schema(
   {
     postId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Post", // Liên kết với bài đăng
+      ref: "Post",
       required: true,
     },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // Liên kết với người dùng
+      ref: "User",
       required: true,
     },
     text: {

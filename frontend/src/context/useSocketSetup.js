@@ -44,17 +44,15 @@ const useSocketSetup = (user, socketRef, setOnlineUsers) => {
     });
 
     socket.on("updateUnreadCounts", (unreadMap) => {
-      // Đếm tổng số cuộc trò chuyện có tin nhắn chưa đọc
       const count = Object.values(unreadMap).filter((c) => c > 0).length;
-      setUnreadCount(count); // cập nhật tổng số vào UI (thường để gắn vào icon badge)
+      setUnreadCount(count);
 
-      // Cập nhật từng conversation với số lượng tin chưa đọc mới
       setConversations((prev) =>
         prev.map((c) => {
           const newUnread = unreadMap[c._id] || 0;
           return c.unreadCount !== newUnread
             ? { ...c, unreadCount: newUnread }
-            : c; // nếu không thay đổi thì giữ nguyên object để tránh re-render không cần thiết
+            : c;
         })
       );
     });

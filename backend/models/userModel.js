@@ -104,7 +104,6 @@ const userSchema = mongoose.Schema(
     timestamps: true,
   }
 );
-// Thêm chỉ mục văn bản cho các trường 'username' và 'name' để hỗ trợ tìm kiếm
 userSchema.index({ username: "text", name: "text" });
 
 const User = mongoose.model("User", userSchema);

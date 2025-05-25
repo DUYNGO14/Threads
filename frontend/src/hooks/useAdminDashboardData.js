@@ -11,29 +11,24 @@ export default function useAdminDashboardData(
   const [postsData, setPostsData] = useState([]);
   const [postStatusData, setPostStatusData] = useState([]);
   const [growthStats, setGrowthStats] = useState([]);
-  const [reportsData, setReportsData] = useState([]); // Dữ liệu báo cáo
+  const [reportsData, setReportsData] = useState([]);
   const [loading, setLoading] = useState(false);
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [
-          usersRes,
-          postsRes,
-          postStatus,
-          growthRes,
-          reportsRes, // Dữ liệu báo cáo
-        ] = await Promise.all([
-          api.get(
-            `/api/admin/statistics/users/registered?month=${monthUser}&year=${yearUser}`
-          ),
-          api.get(
-            `/api/admin/statistics/posts/created?month=${monthPost}&year=${yearPost}`
-          ),
-          api.get("/api/admin/statistics/posts/status"),
-          api.get("/api/admin/growth"),
-          api.get("/api/admin/report/statistics"), // Gọi API báo cáo
-        ]);
+        const [usersRes, postsRes, postStatus, growthRes, reportsRes] =
+          await Promise.all([
+            api.get(
+              `/api/admin/statistics/users/registered?month=${monthUser}&year=${yearUser}`
+            ),
+            api.get(
+              `/api/admin/statistics/posts/created?month=${monthPost}&year=${yearPost}`
+            ),
+            api.get("/api/admin/statistics/posts/status"),
+            api.get("/api/admin/growth"),
+            api.get("/api/admin/report/statistics"), // Gọi API báo cáo
+          ]);
 
         setRegisteredData(usersRes.data.data);
         setPostsData(postsRes.data.data);
@@ -54,7 +49,7 @@ export default function useAdminDashboardData(
     postsData,
     postStatusData,
     growthStats,
-    reportsData, // Trả về dữ liệu báo cáo
+    reportsData,
     loading,
   };
 }

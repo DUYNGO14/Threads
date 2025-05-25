@@ -1,4 +1,3 @@
-// src/utils/api.js
 import axios from "axios";
 
 const api = axios.create({ withCredentials: true });
@@ -33,7 +32,7 @@ export const setupInterceptors = (navigate) => {
             return api(originalRequest);
           } catch (refreshError) {
             console.error("Cannot refresh token", refreshError);
-            navigate("/auth"); // Redirect đến trang login nếu hết hạn luôn cả refresh token
+            navigate("/auth");
           }
         }
 

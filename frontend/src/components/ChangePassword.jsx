@@ -203,11 +203,18 @@ const ChangePassword = () => {
 
                 <Button
                     colorScheme="blue"
-                    size="lg"
+                    size="md"
                     onClick={handleSubmit}
                     isLoading={isLoading}
                 >
                     Change Password
+                </Button>
+                <Button
+                    colorScheme="green"
+                    size="md"
+                    onClick={() => navigate('/settings')}
+                >
+                    Back to Settings
                 </Button>
             </Stack>
         </Box>

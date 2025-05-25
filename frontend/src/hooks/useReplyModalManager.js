@@ -1,8 +1,5 @@
 import { useState } from "react";
 
-/**
- * Hook để quản lý trạng thái modal của Reply (Edit / Delete)
- */
 const useReplyModalManager = () => {
   const [modalState, setModalState] = useState({ type: "", isOpen: false });
 

@@ -13,7 +13,6 @@ const signupUser = async (req, res) => {
   try {
     const { name, username, email, dob, password } = req.body;
 
-    // Kiểm tra xem username hoặc email đã tồn tại chưa
     const userExist = await User.findOne({ $or: [{ username }, { email }] });
     if (userExist && !userExist.facebookId && !userExist.googleId)
       return res
@@ -24,10 +23,8 @@ const signupUser = async (req, res) => {
         error: "This account was registered with Google or Facebook. ",
       });
     }
-    // Băm mật khẩu
     const hashedPassword = await bcrypt.hash(password, 10);
     const verificationOTP = generateOTP();
-    // Tạo user mới
     const newUser = await User.create({
       name,
       username,
@@ -37,17 +34,11 @@ const signupUser = async (req, res) => {
       verificationOTP,
       verificationOTPExpiresAt: Date.now() + 60 * 1000, // 1 minutes
     });
-
-    // Tạo token và gửi cookie
-
-    //send email verification
     await sendVerificationEmail(
       email,
       newUser.name || newUser.username,
       verificationOTP
     );
-
-    // Trả về thông tin user (loại bỏ mật khẩu)
     return res.status(201).json({
       success: true,
       message: "Email verified successfully",
@@ -66,12 +57,10 @@ const signupUser = async (req, res) => {
   }
 };
 
-//login
 const loginUser = async (req, res) => {
   try {
     const { emailOrUsername, password } = req.body;
 
-    // Kiểm tra xem user có tồn tại không
     const user = await User.findOne({
       $or: [{ email: emailOrUsername }, { username: emailOrUsername }],
     })
@@ -91,19 +80,15 @@ const loginUser = async (req, res) => {
     if (user.isBlocked === true) {
       return res.status(400).json({ error: "Account is blocked." });
     }
-    // Kiểm tra mật khẩu có đúng không
     const isPasswordMatch = await bcrypt.compare(password, user.password);
     if (!isPasswordMatch) {
       return res.status(400).json({ error: "Invalid email or password" });
     }
 
-    // Tạo token và gửi cookie
     const accessToken = generateTokenAndSetCookie(user._id, res);
 
-    // Cập nhật trạng thái user (nếu cần)
     await User.findByIdAndUpdate(user._id, { isFrozen: false });
 
-    // Trả về dữ liệu user (trừ password)
     return res.status(200).json({
       accessToken,
       user: {
@@ -139,13 +124,12 @@ const resendOTP = async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ error: "User not found" });
-    // Tạo OTP mới
+
     const newOTP = generateOTP();
     user.verificationOTP = newOTP;
     user.verificationOTPExpiresAt = Date.now() + 60 * 1000; // 1 phút
 
     await user.save();
-    //send email verification
     await sendVerificationEmail(email, user.name || user.username, newOTP);
 
     return res.json({ success: true, message: "OTP has been resent" });
@@ -176,9 +160,6 @@ const verifyEmail = async (req, res) => {
     user.verificationOTPExpiresAt = undefined;
     await user.save();
 
-    // Gửi email chào mừng (nếu cần)
-    // await sendWelcomeEmail(user.email, user.name);
-
     return res.status(200).json({
       success: true,
       message: "Email verified successfully",
@@ -196,7 +177,6 @@ const verifyEmail = async (req, res) => {
   }
 };
 
-//forgot password
 const forgotPassword = async (req, res) => {
   const { email } = req.body;
   try {
@@ -213,19 +193,16 @@ const forgotPassword = async (req, res) => {
       });
     }
 
-    // Tạo token gốc và mã hóa
     const resetToken = crypto.randomBytes(32).toString("hex");
     const hashedToken = crypto
       .createHash("sha256")
       .update(resetToken)
       .digest("hex");
 
-    // Lưu token mã hóa và thời gian hết hạn
     user.resetPasswordToken = hashedToken;
     user.resetPasswordExpiresAt = Date.now() + 5 * 60 * 1000; // 5 phút
     await user.save();
 
-    // Gửi email chứa token gốc
     await sendPasswordResetEmail(
       user.email,
       user.name || user.username,
@@ -243,7 +220,6 @@ const forgotPassword = async (req, res) => {
       .json({ success: false, message: "Internal Server Error" });
   }
 };
-//reset password
 const resetPassword = async (req, res) => {
   try {
     const { resetToken } = req.params;
@@ -256,12 +232,10 @@ const resetPassword = async (req, res) => {
       });
     }
 
-    // Hash lại token nhận được từ URL
     const hashedToken = crypto
       .createHash("sha256")
       .update(resetToken)
       .digest("hex");
-    // Tìm user dựa trên token mã hóa và thời gian còn hạn
     const user = await User.findOne({
       resetPasswordToken: hashedToken,
       resetPasswordExpiresAt: { $gt: Date.now() },
@@ -274,7 +248,6 @@ const resetPassword = async (req, res) => {
       });
     }
 
-    // Cập nhật mật khẩu và xoá token cũ
     user.password = await bcrypt.hash(newPassword, 10);
     user.resetPasswordToken = undefined;
     user.resetPasswordExpiresAt = undefined;
@@ -354,13 +327,13 @@ const refreshToken = async (req, res) => {
 };
 
 const checkToken = async (req, res) => {
-  const accessToken = req.headers.authorization?.split(" ")[1]; // Lấy access token từ header
+  const accessToken = req.headers.authorization?.split(" ")[1];
   if (!accessToken) {
     return res.status(200).json({ success: false });
   }
 
   try {
-    jwt.verify(accessToken, process.env.JWT_SECRET); // Kiểm tra token
+    jwt.verify(accessToken, process.env.JWT_SECRET);
     return res.status(200).json({ success: true });
   } catch (error) {
     return res.status(401).json({ success: false });

@@ -31,7 +31,6 @@ const notificationSchema = new mongoose.Schema(
       required: true,
     },
 
-    // Optional references depending on type
     post: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Post",
@@ -48,13 +47,10 @@ const notificationSchema = new mongoose.Schema(
       default: null,
     },
 
-    // Status flags
     isRead: {
       type: Boolean,
       default: false,
     },
-
-    // Future-proofing: moderation, link, or other metadata
     metadata: {
       type: mongoose.Schema.Types.Mixed,
       default: {},

@@ -2,7 +2,6 @@ import sgMail from "@sendgrid/mail";
 import dotenv from "dotenv";
 
 dotenv.config();
-// Cấu hình API Key
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 async function emailService(to, templateId, dynamicTemplateData) {

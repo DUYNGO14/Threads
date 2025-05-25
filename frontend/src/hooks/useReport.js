@@ -45,7 +45,7 @@ export default function useReport(initialState = []) {
     } catch (error) {
       const errorData = error.response?.data?.message || error.message;
       setError(errorData);
-      throw new Error(errorData); // Ném lỗi ra ngoài
+      throw new Error(errorData);
     }
   };
 
@@ -56,7 +56,7 @@ export default function useReport(initialState = []) {
     } catch (error) {
       const errorData = error.response?.data?.message || error.message;
       setError(errorData);
-      throw new Error(errorData); // Ném lỗi ra ngoài
+      throw new Error(errorData);
     }
   };
 

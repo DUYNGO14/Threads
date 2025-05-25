@@ -67,8 +67,6 @@ export const getRegisteredUsersByWeek = async (req, res) => {
 };
 export const getReportStatisticsByMonthOrYear = async (req, res) => {
   try {
-    // const month = parseInt(req.query.month) || dayjs().month() + 1;
-    // const year = parseInt(req.query.year) || dayjs().year();
     const month = parseInt(req.query.month);
     const year = parseInt(req.query.year);
     const matchStage = {};
@@ -190,13 +188,11 @@ export const getPostByStatus = async (req, res) => {
       "pending_review",
     ];
 
-    // Map kết quả từ DB ra dạng object để dễ xử lý
     const resultMap = {};
     postByStatus.forEach((item) => {
       resultMap[item._id] = item.count;
     });
 
-    // Tạo mảng đầy đủ 4 trạng thái, nếu không có thì count = 0
     const finalResult = defaultStatuses.map((status) => ({
       _id: status,
       count: resultMap[status] || 0,
@@ -246,7 +242,6 @@ export const getGrowthStats = async (req, res) => {
       createdAt: { $gte: startOfLastMonth, $lt: startOfThisMonth },
     });
 
-    // Hàm tính phần trăm thay đổi
     const calculateChange = (current, previous) => {
       if (previous === 0 && current === 0) return 0;
       if (previous === 0) return 100; // Nếu tháng trước là 0, coi như tăng 100%

@@ -4,7 +4,7 @@ import { moderateTextSmart } from "../utils/moderateText.js";
 import { addNotificationJob } from "../queues/notification.producer.js";
 const getComment = async (req, res) => {
   try {
-    const { id } = req.params; // Lấy ID của reply từ params
+    const { id } = req.params;
     const reply = await Reply.findById(id).populate(
       "userId",
       "_id username name profilePic"
@@ -22,8 +22,8 @@ const getComment = async (req, res) => {
 };
 const updateComment = async (req, res) => {
   try {
-    const { id } = req.params; // ID của comment cần cập nhật
-    const { text } = req.body; // Trường cần cập nhật (text của comment)
+    const { id } = req.params;
+    const { text } = req.body;
     console.log(text);
     if (!text || text.trim() === "") {
       return res.status(400).json({ error: "Text field is required" });
@@ -57,14 +57,12 @@ const updateComment = async (req, res) => {
 
 const deleteComment = async (req, res) => {
   try {
-    const { repliesId } = req.params; // Lấy postId và replyId từ URL
-    // Tìm bài viết chứa reply
+    const { repliesId } = req.params;
     const reply = await Reply.findById(repliesId);
     if (!reply) {
       return res.status(404).json({ error: "Reply not found" });
     }
 
-    // Kiểm tra quyền: chủ sở hữu hoặc admin
     if (
       reply.userId.toString() !== req.user._id.toString() &&
       req.user.role !== "admin"
@@ -72,12 +70,10 @@ const deleteComment = async (req, res) => {
       return res.status(403).json({ error: "Unauthorized to delete reply" });
     }
 
-    // Xóa ID của reply khỏi mảng replies trong Post liên quan
     await Post.findByIdAndUpdate(reply.postId, {
       $pull: { replies: reply._id },
     });
 
-    // Xóa reply
     await reply.deleteOne();
     if (req.user.role === "admin") {
       await addNotificationJob({
@@ -98,12 +94,11 @@ const deleteComment = async (req, res) => {
 
 const getUserComments = async (req, res) => {
   try {
-    const { userId } = req.params; // Lấy userId từ params (người dùng cần lấy comment)
+    const { userId } = req.params;
 
-    // Tìm tất cả các comment mà người dùng đã đăng
     const comments = await Reply.find({ repliedBy: userId })
-      .populate("repliedBy", "_id username name profilePic") // Lấy thông tin người dùng (repliedBy)
-      .sort({ createdAt: -1 }); // Sắp xếp theo thời gian tạo comment (mới nhất trước)
+      .populate("repliedBy", "_id username name profilePic")
+      .sort({ createdAt: -1 });
 
     if (!comments || comments.length === 0) {
       return res.status(404).json({ error: "No comments found for this user" });

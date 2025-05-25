@@ -1,4 +1,4 @@
-import { useToast } from "@chakra-ui/react"; // Đảm bảo import từ đúng package
+import { useToast } from "@chakra-ui/react";
 import { useCallback } from "react";
 
 const useShowToast = () => {
@@ -12,7 +12,7 @@ const useShowToast = () => {
         status,
         duration: 3000,
         isClosable: true,
-        position: "top", // Đặt vị trí hiển thị
+        position: "top",
       });
     },
     [toast]

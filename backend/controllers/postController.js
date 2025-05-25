@@ -158,7 +158,6 @@ const updatePost = async (req, res) => {
         .status(400)
         .json(formatResponse("error", "Post is too old to edit"));
     }
-    // Check quyền: chỉ chủ post hoặc admin được sửa
     if (post.postedBy.toString() !== postedBy) {
       const user = await User.findById(postedBy);
       if (!user || user.role !== "admin") {
@@ -166,7 +165,6 @@ const updatePost = async (req, res) => {
       }
     }
 
-    // Kiểm tra text length
     if (text && text.length > MAX_CHAR) {
       return res
         .status(400)
@@ -178,7 +176,6 @@ const updatePost = async (req, res) => {
         );
     }
 
-    // Kiểm duyệt text
     const moderationResult = await moderateTextWithSightengine(text || "");
     if (!moderationResult.ok) {
       return res
@@ -187,7 +184,6 @@ const updatePost = async (req, res) => {
     }
 
     const cleanedText = moderationResult.cleanedText || text || "";
-    // Cập nhật post
     post.text = cleanedText;
     post.tags = tags || "";
     await post.save();
@@ -219,10 +215,9 @@ const getPost = async (req, res) => {
       return res.status(400).json({ error: "Invalid post ID" });
     }
 
-    // Lấy bài viết nhưng KHÔNG populate replies
     const post = await Post.findById(id)
       .populate("postedBy", "_id username name profilePic")
-      .lean(); // dùng .lean() để hiệu suất tốt hơn
+      .lean();
 
     if (!post) {
       return res
@@ -230,7 +225,6 @@ const getPost = async (req, res) => {
         .json({ error: "Post with the specified ID not found" });
     }
 
-    // Lấy tổng số replies
     const totalRepliesCount = post.replies.length;
 
     const replyIds = post.replies.slice().reverse();
@@ -244,8 +238,6 @@ const getPost = async (req, res) => {
       .populate("userId", "username profilePic")
       .sort({ createdAt: -1 })
       .lean();
-
-    // Trả post + replies phân trang riêng
     return res.status(200).json({
       post: { ...post, replies: undefined }, // loại bỏ replies trong post gốc
       replies,
@@ -282,7 +274,6 @@ const deletePost = async (req, res) => {
 
       await deleteMediaFiles(post.media);
 
-      // Xóa post ID khỏi mảng reposts của tất cả users đã repost
       if (post.repostedBy && post.repostedBy.length > 0) {
         await User.updateMany(
           { _id: { $in: post.repostedBy } },
@@ -290,8 +281,6 @@ const deletePost = async (req, res) => {
           { session }
         );
       }
-
-      // Xóa bài viết
       await Post.findByIdAndDelete(post._id, { session });
 
       await removePostFromCache(keyRedis, post._id);
@@ -333,10 +322,8 @@ const likeUnlikePost = async (req, res) => {
     const userLikedPost = post.likes.includes(userId);
 
     if (userLikedPost) {
-      // Unlike
       await Post.updateOne({ _id: postId }, { $pull: { likes: userId } });
 
-      // Không xóa, chỉ đánh dấu isValid: false
       await Notification.findOneAndUpdate(
         { sender: userId, receiver: post.postedBy, type: "like", post: postId },
         { isValid: false }
@@ -345,13 +332,11 @@ const likeUnlikePost = async (req, res) => {
       return res.status(200).json({ message: "Post unliked successfully" });
     }
 
-    // Like
     post.likes.push(userId);
     await post.save();
     await updateRecentInteractions(userId, postId, "like");
     const isMutualFollow = await isMutualOrOneWayFollow(userId, post.postedBy);
 
-    // Không tự gửi thông báo cho mình
     if (post.postedBy.toString() !== userId.toString() && isMutualFollow) {
       await addNotificationJob({
         sender: req.user._id,
@@ -423,7 +408,6 @@ const replyToPost = async (req, res) => {
   }
 };
 
-// Lấy reposts của user
 const getReposts = async (req, res) => {
   try {
     const { username } = req.params;
@@ -478,8 +462,6 @@ const getReposts = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
-
-// Lấy bài viết từ người dùng đang theo dõi
 const getFollowingPosts = async (req, res) => {
   try {
     const userId = req.user?._id;
@@ -540,7 +522,6 @@ const getFollowingPosts = async (req, res) => {
   }
 };
 
-// Lấy tất cả bài đăng (trừ bài của bản thân nếu đã đăng nhập)
 const getAllPosts = async (req, res) => {
   try {
     const { page, limit, skip } = getPaginationParams(req);
@@ -571,7 +552,6 @@ const getAllPosts = async (req, res) => {
   }
 };
 
-// Lấy bài viết của 1 người dùng cụ thể theo username
 const getUserPosts = async (req, res) => {
   try {
     const { username } = req.params;
@@ -586,25 +566,19 @@ const getUserPosts = async (req, res) => {
     if (cachedIds) {
       postIds = cachedIds;
     } else {
-      // Find user
       const user = await User.findOne({ username }).select("_id");
       if (!user) return res.status(404).json({ error: "User not found" });
 
-      // Get post IDs sorted by date
       const posts = await Post.find({ postedBy: user._id })
         .sort({ createdAt: -1 })
         .select("_id");
 
       postIds = posts.map((p) => p._id.toString());
 
-      // Cache post IDs for 30 min
       await setRedis(redisKey, postIds, 1800);
     }
-
-    // Paginate IDs
     const paginatedIds = postIds.slice(skip, skip + limit);
 
-    // Query posts and map by ID
     const posts = await Post.find({ _id: { $in: paginatedIds } }).populate(
       "postedBy",
       "_id username name profilePic"
@@ -615,7 +589,6 @@ const getUserPosts = async (req, res) => {
       return acc;
     }, {});
 
-    // Ensure order matches paginatedIds
     const orderedPosts = paginatedIds.map((id) => postsMap[id]).filter(Boolean);
 
     return res.status(200).json({
@@ -648,7 +621,6 @@ const repost = async (req, res) => {
       const hasReposted = post.repostedBy.includes(userId);
 
       if (hasReposted) {
-        // Unrepost
         await Post.findByIdAndUpdate(
           postId,
           { $pull: { repostedBy: userId } },
@@ -665,7 +637,6 @@ const repost = async (req, res) => {
           .status(200)
           .json({ message: "Post unreposted successfully" });
       } else {
-        // Repost
         await Post.findByIdAndUpdate(
           postId,
           { $push: { repostedBy: userId } },
@@ -677,7 +648,7 @@ const repost = async (req, res) => {
           { session }
         );
 
-        await session.commitTransaction(); // ✅ Chỉ commit rồi mới làm tiếp các việc sau
+        await session.commitTransaction();
       }
     } catch (error) {
       await session.abortTransaction();
@@ -686,7 +657,6 @@ const repost = async (req, res) => {
       session.endSession();
     }
     await updateRecentInteractions(userId, postId, "repost");
-    // ⚠️ Các thao tác sau khi transaction đã kết thúc
     const isFollowed = await isMutualOrOneWayFollow(userId, post.postedBy);
     if (isFollowed) {
       await addNotificationJob({
@@ -698,7 +668,7 @@ const repost = async (req, res) => {
       });
     }
 
-    await appendToCache(redisKey, post._id); // Cache lại danh sách reposts của user
+    await appendToCache(redisKey, post._id);
     return res.status(200).json({ message: "Post reposted successfully" });
   } catch (err) {
     console.error("Error in repost:", err);
@@ -710,7 +680,6 @@ const getTags = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // Lấy danh sách tag mà user đã từng dùng (loại trùng, bỏ rỗng)
     const userTags = await Post.aggregate([
       {
         $match: {
@@ -721,22 +690,18 @@ const getTags = async (req, res) => {
       { $unwind: "$tags" },
       { $group: { _id: "$tags", count: { $sum: 1 } } },
     ]);
-
-    // Lấy top 10 tags phổ biến toàn hệ thống (loại trùng, bỏ rỗng)
     const popularTags = await Post.aggregate([
       { $unwind: "$tags" },
-      { $match: { tags: { $ne: "" } } }, // Bổ sung lọc rỗng ở đây
+      { $match: { tags: { $ne: "" } } },
       { $group: { _id: "$tags", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 10 },
     ]);
 
-    // Loại bỏ các tag trùng lặp giữa userTags và popularTags
     const uniquePopularTags = popularTags.filter(
       (tag) => !userTags.some((userTag) => userTag._id === tag._id)
     );
 
-    // Sắp xếp tags của user lên đầu rồi đến gợi ý sắp xếp theo độ phổ biến
     const tags = [...userTags, ...uniquePopularTags];
     const tagNames = tags.map((tag) => tag._id);
     return res.status(200).json(tagNames);
@@ -749,7 +714,7 @@ const getTags = async (req, res) => {
 const getRecommendedFeed = async (req, res) => {
   try {
     const { page, limit, skip } = getPaginationParams(req);
-    const userId = req.user?._id ?? null; // nếu chưa đăng nhập
+    const userId = req.user?._id ?? null;
 
     const posts = await getRecommendedPosts(userId, {
       limit: parseInt(limit),

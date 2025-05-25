@@ -3,9 +3,6 @@ import { io } from "../setup/setupServer.js";
 import { getRecipientSocketId } from "../utils/socketUsers.js";
 import { populateNotification } from "../utils/populateNotification.js";
 
-/**
- * Gửi thông báo đến một hoặc nhiều người dùng, tránh spam
- */
 export const sendNotification = async ({
   sender,
   receivers,

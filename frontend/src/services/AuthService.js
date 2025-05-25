@@ -1,13 +1,11 @@
-// src/services/AuthService.js
-import api from "./api"; // Giả sử bạn đã có axios api setup
+import api from "./api";
 
 export const useAuthService = () => {
   const initAuth = async () => {
     try {
-      // Kiểm tra token còn hợp lệ không
-      const res = await api.get("/api/auth/check"); // API kiểm tra token
+      const res = await api.get("/api/auth/check");
       if (!res.data.success) {
-        await refreshAuthToken(); // Nếu token hết hạn, refresh token
+        await refreshAuthToken();
       }
     } catch (error) {
       console.error("Error checking auth", error.response.data.error);
@@ -22,7 +20,6 @@ export const useAuthService = () => {
       }
     } catch (error) {
       console.error("Error refreshing token", error);
-      // Nếu không thể refresh token, có thể redirect về login
     }
   };
 

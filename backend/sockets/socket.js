@@ -29,7 +29,6 @@ export const socketHandler = (io) => {
     }
     setUserSocket(userId, socket.id);
 
-    // ✅ Join phòng theo userId
     socket.join(userId);
 
     io.emit("getOnlineUsers", getOnlineUsers());
@@ -39,7 +38,7 @@ export const socketHandler = (io) => {
     } catch (err) {
       console.error("❌ Lỗi khi lấy số lượng chưa đọc lúc kết nối:", err);
     }
-    // 📩 Đánh dấu tin nhắn đã xem
+
     socket.on("markMessagesAsSeen", async ({ conversationId, userId }) => {
       if (!conversationId || !userId) return;
       try {
@@ -53,7 +52,6 @@ export const socketHandler = (io) => {
             { $set: { "lastMessage.seen": true } }
           );
 
-          // ✅ emit theo userId (room), không cần socketId
           io.to(userId).emit("messagesSeen", { conversationId });
 
           const unreadCountMap = await getUnreadCountsForUser(userId);
@@ -73,7 +71,6 @@ export const socketHandler = (io) => {
           { new: true }
         ).populate("sender", "username profilePic");
         if (updated) {
-          // Gửi lại notification đã cập nhật về client để đồng bộ UI
           io.to(socket.id).emit("markNotificationsAsSeen", updated);
         } else {
           console.log("❌ Notification không tồn tại");
@@ -86,19 +83,15 @@ export const socketHandler = (io) => {
       if (!conversationId) return;
 
       socket.join(conversationId);
-      // console.log(`Socket ${socket.id} joined room ${conversationId}`);
     });
 
     socket.on("leaveRoom", (conversationId) => {
       if (!conversationId) return;
 
       socket.leave(conversationId);
-      // console.log(`Socket ${socket.id} left room ${conversationId}`);
     });
     socket.on("disconnect", () => {
       const userId = socket.handshake.query.userId;
-      // console.log(`🔌 User disconnected: ${userId}`);
-
       if (userId) {
         removeUserSocket(userId);
         io.emit("getOnlineUsers", getOnlineUsers());

@@ -1,4 +1,3 @@
-// routes/conversationRoutes.js
 import express from "express";
 import {
   deleteConversation,

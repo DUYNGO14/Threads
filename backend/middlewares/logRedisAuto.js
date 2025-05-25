@@ -1,4 +1,3 @@
-// middlewares/logRedisAuto.js
 const logRedisAuto = (redis) => async (req, res, next) => {
   const userId = req.user?._id || req.params.userId || req.body.userId;
   if (!userId) return next();

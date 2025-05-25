@@ -33,7 +33,7 @@ const OAuthSuccess = () => {
                     navigate("/auth");
                 }
             } catch (error) {
-                showToast("Error", "Đăng nhập thất bại", "error");
+                showToast("Error", "Login failed", "error");
                 navigate("/auth");
             }
         };

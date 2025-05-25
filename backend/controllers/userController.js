@@ -8,14 +8,12 @@ import Post from "../models/postModel.js";
 import { uploadProfilePic } from "../utils/uploadUtils.js";
 import Notification from "../models/notificationModel.js";
 import { addNotificationJob } from "../queues/notification.producer.js";
-// Hàm upload ảnh đại diện
 
 const followUnFollowUser = async (req, res) => {
   try {
-    const { id } = req.params; // id của người bị follow / unfollow
-    const userId = req.user._id; // id của người đang thực hiện hành động follow / unfollow
+    const { id } = req.params;
+    const userId = req.user._id;
 
-    // Kiểm tra xem id và userId có hợp lệ không
     if (!id || !userId) {
       return res.status(400).json({ error: "Invalid user ID" });
     }
@@ -33,15 +31,14 @@ const followUnFollowUser = async (req, res) => {
     if (!userToModify || !currentUser) {
       return res.status(404).json({ error: "User not found" });
     }
-    // Chuyển sang ObjectId để so sánh chính xác
-    const targetIdStr = id.toString(); // id phải là chuỗi
+    const targetIdStr = id.toString();
     const isFollowing = currentUser.following.some(
       (followedId) => followedId.toString() === targetIdStr
     );
 
     const updateCurrentUser = isFollowing
       ? { $pull: { following: userToModify._id } }
-      : { $addToSet: { following: userToModify._id } }; // Dùng addToSet để tránh trùng
+      : { $addToSet: { following: userToModify._id } };
 
     const updateUserToModify = isFollowing
       ? { $pull: { followers: currentUser._id } }
@@ -52,7 +49,6 @@ const followUnFollowUser = async (req, res) => {
       User.findByIdAndUpdate(id, updateUserToModify),
     ]);
 
-    // Nếu là follow thì tạo thông báo + socket
     if (!isFollowing) {
       await addNotificationJob({
         sender: currentUser._id,
@@ -61,13 +57,11 @@ const followUnFollowUser = async (req, res) => {
         content: "Started following you.",
       });
     } else {
-      // Nếu unfollow thì đánh dấu thông báo không hợp lệ
       await Notification.findOneAndUpdate(
         { sender: userId, receiver: id, type: "follow" },
         { isValid: false }
       );
     }
-    // await debounceFollow.saveAction(userId, id, now);
     await redis.del(`suggestions:${userId}`);
 
     return res.status(200).json({
@@ -101,7 +95,7 @@ const getUserProfile = async (req, res) => {
     if (mongoose.Types.ObjectId.isValid(query)) {
       searchCondition = { _id: query };
     } else {
-      searchCondition = { username: { $regex: query, $options: "i" } }; // 🔥 Tìm username gần đúng, không phân biệt hoa thường
+      searchCondition = { username: { $regex: query, $options: "i" } };
     }
 
     const user = await User.findOne(searchCondition).select(
@@ -132,7 +126,6 @@ const searchUsers = async (req, res) => {
       return res.status(400).json({ error: "Search query is required" });
     }
 
-    // Lấy ID của người dùng hiện tại từ req.user
     const currentUserId = req.user._id;
 
     const searchCondition = {
@@ -142,7 +135,7 @@ const searchUsers = async (req, res) => {
       ],
       isBlocked: false,
       isFrozen: false,
-      _id: { $ne: currentUserId }, // Loại bỏ người dùng hiện tại khỏi kết quả
+      _id: { $ne: currentUserId },
     };
 
     const users = await User.find(searchCondition)
@@ -157,7 +150,6 @@ const searchUsers = async (req, res) => {
   }
 };
 
-// Cập nhật thông tin người dùng
 const updateUser = async (req, res) => {
   try {
     const { name, username, bio, profilePic, socialLinks } = req.body;
@@ -405,13 +397,11 @@ const deleteAccount = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // For social login accounts, just delete without password verification
     if (isSocialLogin) {
       await User.findByIdAndDelete(req.user._id);
       return res.status(200).json({ success: true });
     }
 
-    // For regular accounts, verify password
     if (!password) {
       return res
         .status(400)
@@ -423,7 +413,6 @@ const deleteAccount = async (req, res) => {
       return res.status(400).json({ error: "Incorrect password" });
     }
 
-    // Delete user account
     await User.findByIdAndDelete(req.user._id);
 
     return res.status(200).json({ success: true });
@@ -433,7 +422,6 @@ const deleteAccount = async (req, res) => {
   }
 };
 
-// Get current user's profile
 const getCurrentUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select(
@@ -499,7 +487,6 @@ const searchSuggestedUsers = async (req, res) => {
       isFrozen: false,
     };
 
-    // Nếu đã đăng nhập, loại trừ bản thân và những người đã follow
     if (req.user) {
       const currentUser = await User.findById(req.user._id).select("following");
       const excludedUserIds = [
@@ -510,7 +497,7 @@ const searchSuggestedUsers = async (req, res) => {
     }
 
     const users = await User.find(searchCondition)
-      .collation({ locale: "vi", strength: 1 }) // Hỗ trợ tìm tiếng Việt không dấu
+      .collation({ locale: "vi", strength: 1 })
       .select("username name profilePic bio")
       .limit(10);
 

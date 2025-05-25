@@ -11,21 +11,18 @@ export const updateRecentInteractions = async (userId, postId, type) => {
 
     if (!user || !post) return;
 
-    // Xoá entry cũ (nếu có)
     user.recentInteractions = user.recentInteractions.filter(
       (entry) => entry.postId.toString() !== postId.toString()
     );
 
-    // Thêm mới lên đầu danh sách
     user.recentInteractions.unshift({
       postId,
-      type, // 'like', 'reply', 'repost'
+      type,
       interactedAt: new Date(),
       postOwner: post.postedBy,
       postTags: post.tags || [],
     });
 
-    // Giới hạn 100 entry gần nhất
     if (user.recentInteractions.length > 100) {
       user.recentInteractions = user.recentInteractions.slice(0, 100);
     }

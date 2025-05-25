@@ -1,4 +1,3 @@
-// middlewares/errorHandler.js
 import multer from "multer";
 import { MAX_FILE_SIZE_MB, MAX_FILES } from "../constants/upload.js";
 
@@ -9,9 +8,7 @@ export const notFound = (req, res, next) => {
   next(error);
 };
 
-// Middleware xử lý lỗi tổng quát
 export const errorHandler = (err, req, res, next) => {
-  // Nếu là lỗi từ Multer (upload)
   if (err instanceof multer.MulterError) {
     let message = "Upload error";
 
@@ -32,7 +29,6 @@ export const errorHandler = (err, req, res, next) => {
     return res.status(400).json({ error: message });
   }
 
-  // Lỗi thường
   const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
   res.status(statusCode).json({
     error: err.message,

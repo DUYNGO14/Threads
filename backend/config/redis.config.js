@@ -13,7 +13,7 @@ export const redisConnection = new IORedis({
   port: process.env.UPSTASH_REDIS_PORT,
   password: process.env.UPSTASH_REDIS_PASSWORD,
   maxRetriesPerRequest: null,
-  tls: {}, // dùng TLS vì Upstash dùng HTTPS
+  tls: {},
 });
 
 export default redis;

@@ -4,7 +4,7 @@ import { formatResponse } from "../utils/formatResponse.js";
 export const createReport = async (req, res) => {
   try {
     const { postId, commentId, userId, reason, type } = req.body;
-    const reportedBy = req.user._id; // Giả sử đã dùng middleware auth
+    const reportedBy = req.user._id;
 
     if (!postId && !commentId && !userId) {
       return res.status(400).json({
@@ -15,7 +15,6 @@ export const createReport = async (req, res) => {
       return res.status(400).json({ message: "Reason is required" });
     }
 
-    // Kiểm tra xem đã report chưa
     const existingReport = await Report.findOne({
       reportedBy,
       ...(postId && { postId }),

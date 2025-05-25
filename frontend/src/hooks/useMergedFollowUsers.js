@@ -1,4 +1,3 @@
-// hooks/useMergedFollowUsers.ts
 import { useEffect, useState } from "react";
 import api from "@/services/api";
 import { useToast } from "@chakra-ui/react";
@@ -38,7 +37,6 @@ const useMergedFollowUsers = (username) => {
     fetchData();
   }, [username, toast]);
 
-  // Merge + loại trùng theo username
   const mergedUsers = [...followers, ...following];
   const uniqueUsers = Array.from(
     new Set(mergedUsers.map((u) => u.username))

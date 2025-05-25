@@ -1,16 +1,11 @@
 import { useState } from "react";
 import useShowToast from "@hooks/useShowToast";
 import api from "../services/api.js";
-/**
- * Custom hook để xử lý logic thêm / sửa / xoá reply trong một bài post.
- * @param {string} postId - ID của bài viết.
- * @param {(data: any) => void} onSuccess - Callback sau khi thao tác thành công (API trả về dữ liệu mới).
- */
+
 const useReply = (postId, onSuccess) => {
   const [loading, setLoading] = useState(false);
   const showToast = useShowToast();
 
-  // Gửi một reply mới
   const submitReply = async (text) => {
     setLoading(true);
     try {
@@ -24,7 +19,7 @@ const useReply = (postId, onSuccess) => {
       const data = await res.data;
       if (data.error) throw new Error(data.error);
 
-      onSuccess(data); // Gọi callback với dữ liệu mới
+      onSuccess(data);
       showToast("Success", "Reply added successfully", "success");
     } catch (err) {
       showToast("Error", err.message, "error");

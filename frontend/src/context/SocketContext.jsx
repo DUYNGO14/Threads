@@ -22,7 +22,7 @@ export const SocketContextProvider = ({ children }) => {
 
   useInitUserData(user);
   useSocketSetup(user, socketRef, setOnlineUsers);
-  // 🚀 Gọi xin quyền notification khi app load
+
   useEffect(() => {
     requestNotificationPermission();
   }, []);

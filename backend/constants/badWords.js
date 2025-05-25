@@ -1,4 +1,3 @@
-// constants/badWords.js
 const badWordsVietnameseStrict = [
   "lồn",
   "địt",

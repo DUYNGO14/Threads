@@ -1,20 +1,14 @@
 import Notification from "../models/notificationModel.js";
 
-// Map từng loại notification với các field cần populate
 const populateMap = {
   like: ["post"],
   repost: ["post"],
   comment: ["post"],
   reply: ["post", "reply"],
   message: ["message"],
-  follow: [], // follow chỉ cần sender
+  follow: [],
 };
 
-/**
- * Lấy notification đã populate tùy theo type
- * @param {String} notificationId
- * @returns {Object|null}
- */
 export const populateNotification = async (notificationId) => {
   const notification = await Notification.findById(notificationId);
   if (!notification) return null;

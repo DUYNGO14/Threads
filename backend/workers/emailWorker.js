@@ -1,4 +1,3 @@
-// workers/emailWorker.js
 import { Worker } from "bullmq";
 import { redisConnection } from "../config/redis.config.js";
 import emailService from "../config/email.config.js";

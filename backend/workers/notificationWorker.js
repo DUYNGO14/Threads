@@ -1,4 +1,3 @@
-// queues/notificationWorker.js
 import { Worker } from "bullmq";
 import { redisConnection } from "../config/redis.config.js";
 import Notification from "../models/notificationModel.js";
