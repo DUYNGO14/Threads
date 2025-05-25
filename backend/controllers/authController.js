@@ -146,7 +146,6 @@ const verifyEmail = async (req, res) => {
       verificationOTP: code,
       verificationOTPExpiresAt: { $gt: Date.now() },
     });
-    console.log(user);
     if (!user) {
       return res.status(400).json({
         success: false,
@@ -340,6 +339,26 @@ const checkToken = async (req, res) => {
   }
 };
 
+const getUserFromToken = async (req, res) => {
+  const token = req.cookies.refreshToken;
+  if (!token) {
+    return res.status(401).json({ error: "No refresh token provided" });
+  }
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET_REFRESH);
+    const user = await User.findById(decoded.userId).select("-password");
+    if (!user) {
+      return res.status(401).json({ error: "User not found" });
+    }
+    return res.status(200).json(user);
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return res.status(403).json({ error: "Refresh token expired" });
+    }
+    return res.status(403).json({ error: "Invalid refresh token" });
+  }
+};
+
 export {
   loginUser,
   signupUser,
@@ -352,4 +371,5 @@ export {
   getMe,
   refreshToken,
   checkToken,
+  getUserFromToken,
 };

@@ -9,6 +9,7 @@ import {
     useColorModeValue,
     Avatar,
     Center,
+    Divider,
 } from "@chakra-ui/react";
 import { useRef, useState, useEffect } from "react";
 import { useRecoilState } from "recoil";
@@ -35,34 +36,25 @@ export default function UpdateProfilePage() {
     const fileRef = useRef(null);
     const [updating, setUpdating] = useState(false);
     const showToast = useShowToast();
-    const { handleImageChange, imgUrl } = usePreviewImg();
+    const { handleImageChange, setImgUrl, imgUrl } = usePreviewImg();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (updating) return;
-        if (isEqual(inputs, {
-            name: user.name,
-            username: user.username,
-            email: user.email,
-            bio: user.bio,
-            socialLinks: user.socialLinks || {},
-            password: "",
-        })) {
-            showToast("Nothing changed", "No changes detected", "info");
-            return;
-        }
+
         const updatedUser = {
             ...inputs,
-            profilePic: imgUrl || user.profilePic,
             socialLinks: inputs.socialLinks,
         };
+        if (imgUrl) {
+            updatedUser.profilePic = imgUrl;
+        }
 
         const originalUser = {
             name: user.name,
             username: user.username,
             email: user.email,
             bio: user.bio,
-            profilePic: user.profilePic,
             socialLinks: user.socialLinks || {},
             password: "",
         };
@@ -71,7 +63,8 @@ export default function UpdateProfilePage() {
             ([key, value]) => !isEqual(originalUser[key], value)
         );
 
-        if (!hasChanged) {
+        if (!hasChanged && !imgUrl) {
+            showToast("Nothing changed", "No changes detected", "info");
             return;
         }
 
@@ -81,6 +74,17 @@ export default function UpdateProfilePage() {
             const data = await res.data;
             showToast("Success", "Profile updated successfully", "success");
             setUser(data);
+            setInputs({
+                name: data.name,
+                username: data.username,
+                email: data.email,
+                bio: data.bio,
+                socialLinks: data.socialLinks || {},
+                password: "",
+            });
+
+            // ✅ Clear ảnh đã chọn
+            setImgUrl(null);
         } catch (error) {
             showToast("Error", error.response?.data?.error || error.message || "Something went wrong", "error");
         } finally {
@@ -101,7 +105,7 @@ export default function UpdateProfilePage() {
 
     return (
         <form onSubmit={handleSubmit}>
-            <Flex align={"center"} justify={"center"} my={6}>
+            <Flex align={"center"} justify={"center"} my={6} >
                 <Stack
                     spacing={4}
                     w={"full"}
@@ -111,9 +115,10 @@ export default function UpdateProfilePage() {
                     boxShadow={"lg"}
                     p={6}
                 >
-                    <Heading lineHeight={1.1} fontSize={{ base: "2xl", sm: "3xl" }}>
+                    <Heading lineHeight={1.1} fontSize={{ base: "2xl", sm: "3xl" }} textAlign={"center"}>
                         User Profile Edit
                     </Heading>
+                    <Divider />
                     <FormControl>
                         <Stack direction={["column", "row"]} spacing={6}>
                             <Center>

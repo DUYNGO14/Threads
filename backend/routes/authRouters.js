@@ -6,6 +6,7 @@ import {
   checkToken,
   forgotPassword,
   getMe,
+  getUserFromToken,
   loginUser,
   logoutUser,
   refreshToken,
@@ -27,13 +28,14 @@ router.get(
 
 router.get("/google/callback", (req, res, next) => {
   passport.authenticate("google", (err, user, info) => {
+    const clientUrl =
+      process.env.NODE_ENV === "production"
+        ? "https://threads-0m08.onrender.com"
+        : process.env.CLIENT_URL;
+
     if (err) {
       return res.redirect(
-        `${
-          process.env.NODE_ENV === "production"
-            ? "https://threads-0m08.onrender.com"
-            : process.env.CLIENT_URL
-        }/oauth-failure?error=${encodeURIComponent(
+        `${clientUrl}/oauth-failure?error=${encodeURIComponent(
           "Đăng nhập thất bại. Vui lòng thử lại."
         )}`
       );
@@ -41,11 +43,7 @@ router.get("/google/callback", (req, res, next) => {
 
     if (!user) {
       return res.redirect(
-        `${
-          process.env.NODE_ENV === "production"
-            ? "https://threads-0m08.onrender.com"
-            : process.env.CLIENT_URL
-        }/oauth-failure?error=${encodeURIComponent(
+        `${clientUrl}/oauth-failure?error=${encodeURIComponent(
           info?.message || "Đăng nhập thất bại."
         )}`
       );
@@ -54,28 +52,13 @@ router.get("/google/callback", (req, res, next) => {
     req.logIn(user, (loginErr) => {
       if (loginErr) {
         return res.redirect(
-          `${
-            process.env.NODE_ENV === "production"
-              ? "https://threads-0m08.onrender.com"
-              : process.env.CLIENT_URL
-          }/oauth-failure?error=${encodeURIComponent("Đăng nhập thất bại.")}`
+          `${clientUrl}/oauth-failure?error=${encodeURIComponent(
+            "Login failed."
+          )}`
         );
       }
       const accessToken = generateTokenAndSetCookie(user._id, res);
-      // localStorage.setItem("access-token", accessToken); // Lưu access token vào localStorage
-      res.cookie("userData", JSON.stringify(user), {
-        httpOnly: false,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "Lax",
-      });
-
-      res.redirect(
-        `${
-          process.env.NODE_ENV === "production"
-            ? "https://threads-0m08.onrender.com"
-            : process.env.CLIENT_URL
-        }/oauth-success?accessToken=${accessToken}`
-      );
+      res.redirect(`${clientUrl}/oauth-success?accessToken=${accessToken}`);
     });
   })(req, res, next);
 });
@@ -89,15 +72,15 @@ router.get(
 );
 
 router.get("/facebook/callback", (req, res, next) => {
+  const clientUrl =
+    process.env.NODE_ENV === "production"
+      ? "https://threads-0m08.onrender.com"
+      : process.env.CLIENT_URL;
   passport.authenticate("facebook", (err, user, info) => {
     if (err) {
       console.error("🔥 Lỗi OAuth Facebook:", err.message || err);
       return res.redirect(
-        `${
-          process.env.NODE_ENV === "production"
-            ? "https://threads-0m08.onrender.com"
-            : process.env.CLIENT_URL
-        }/oauth-failure?error=${encodeURIComponent(
+        `${clientUrl}/oauth-failure?error=${encodeURIComponent(
           err.message || "Đăng nhập thất bại."
         )}`
       );
@@ -106,11 +89,7 @@ router.get("/facebook/callback", (req, res, next) => {
     if (!user) {
       console.warn("⚠ OAuth Facebook thất bại:", info?.message);
       return res.redirect(
-        `${
-          process.env.NODE_ENV === "production"
-            ? "https://threads-0m08.onrender.com"
-            : process.env.CLIENT_URL
-        }/oauth-failure?error=${encodeURIComponent(
+        `${clientUrl}/oauth-failure?error=${encodeURIComponent(
           info?.message || "Đăng nhập thất bại."
         )}`
       );
@@ -120,38 +99,20 @@ router.get("/facebook/callback", (req, res, next) => {
       if (loginErr) {
         console.error("🔥 Lỗi đăng nhập:", loginErr);
         return res.redirect(
-          `${
-            process.env.NODE_ENV === "production"
-              ? "https://threads-0m08.onrender.com"
-              : process.env.CLIENT_URL
-          }/oauth-failure?error=${encodeURIComponent("Đăng nhập thất bại.")}`
+          `${clientUrl}/oauth-failure?error=${encodeURIComponent(
+            "Đăng nhập thất bại."
+          )}`
         );
       }
 
       const accessToken = generateTokenAndSetCookie(user._id, res);
-      res.cookie("userData", JSON.stringify(user), {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "Lax",
-      });
 
-      res.redirect(
-        `${
-          process.env.NODE_ENV === "production"
-            ? "https://threads-0m08.onrender.com"
-            : process.env.CLIENT_URL
-        }/oauth-success?accessToken=${accessToken}`
-      );
+      res.redirect(`${clientUrl}/oauth-success?accessToken=${accessToken}`);
     });
   })(req, res, next);
 });
 
-router.get("/me", (req, res) => {
-  const userData = req.cookies.userData;
-  if (!userData) return res.status(401).json({ message: "Not authenticated" });
-  res.clearCookie("userData");
-  res.json(JSON.parse(userData));
-});
+router.get("/me", getUserFromToken);
 
 router.post("/signup", signupUser);
 router.post("/login", loginUser);
