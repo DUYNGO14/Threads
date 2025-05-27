@@ -187,7 +187,7 @@ const ChatPage = () => {
                             ))}
                         </Box>
                     )}
-                    {searchResults.length > 0 ? (
+                    {searchResults.length > 0 && (
                         <Box mt={2} borderRadius="md" p={2} bg={backgroundColor}>
                             <Text fontWeight="bold">Result for {searchText}</Text>
                             {searchResults.map((user) => (
@@ -209,20 +209,6 @@ const ChatPage = () => {
                                     <Button size="sm" onClick={() => handleSelectUser(user)}>Message</Button>
                                 </Flex>
                             ))}
-                        </Box>
-                    ) : (
-                        <Box mt={2}>
-                            <Select
-                                value={filter}
-                                onChange={(e) => setFilter(e.target.value)}
-                                size="sm"
-                                variant="filled"
-                                borderRadius="md"
-                                focusBorderColor="blue.400"
-                            >
-                                <option value="visible">Message is showing</option>
-                                <option value="hidden">Message is hidden</option>
-                            </Select>
                         </Box>
                     )}
 

@@ -177,8 +177,6 @@ const HomePage = () => {
                         right="0"
                         zIndex="100"
                         bg={colorMode === "dark" ? "#101010" : "gray.50"}
-                        // borderBottom="1px"
-                        // borderColor={colorMode === "dark" ? "whiteAlpha.100" : "gray.200"}
                         pt={3}
                         pb={2}
                         w="full"  // Ensure full width

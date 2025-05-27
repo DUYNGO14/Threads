@@ -6,7 +6,6 @@ import {
 } from "@chakra-ui/react";
 import MessageInput from "./MessageInput";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import useShowToast from "@hooks/useShowToast";
 import {
     messagesAtom,
     selectedConversationAtom,

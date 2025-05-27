@@ -1,5 +1,5 @@
 import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, FormControl, Input, ModalCloseButton, useColorModeValue, Divider } from "@chakra-ui/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import useReply from "@hooks/useReply";
 import useShowToast from "@hooks/useShowToast";
@@ -7,6 +7,13 @@ import useShowToast from "@hooks/useShowToast";
 const EditReplyModal = ({ isOpen, onClose, postId, replyId, initialText, onSuccess, isSaving }) => {
     const showToast = useShowToast();
     const [reply, setReply] = useState(initialText);
+    const inputRef = useRef(null);
+
+    useEffect(() => {
+        if (inputRef.current) {
+            inputRef.current.focus();
+        }
+    }, [isOpen])
     const { loading, editReply } = useReply(postId, (updatedReply) => {
         onSuccess(updatedReply); // Gọi hàm callback sau khi chỉnh sửa thành công
         setReply(""); // Xóa dữ liệu trong modal
@@ -36,6 +43,9 @@ const EditReplyModal = ({ isOpen, onClose, postId, replyId, initialText, onSucce
                 <ModalBody>
                     <FormControl>
                         <Input
+                            ref={inputRef}
+                            type="text"
+                            variant="filled"
                             placeholder="Edit your reply..."
                             value={reply}
                             onChange={(e) => setReply(e.target.value)}

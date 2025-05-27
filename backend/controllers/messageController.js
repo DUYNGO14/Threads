@@ -3,7 +3,7 @@ import Message from "../models/messageModel.js";
 import { io } from "../setup/setupServer.js";
 import { getRecipientSocketId } from "../utils/socketUsers.js";
 import { getUnreadCountsForUser } from "../utils/getUnreadCounts.js";
-import { uploadFiles } from "../utils/uploadUtils.js";
+import { deleteMediaFiles, uploadFiles } from "../utils/uploadUtils.js";
 import removeFromDeletedBy from "../utils/helpers/removeFromDeletedBy.js";
 
 async function sendMessage(req, res) {
@@ -247,7 +247,7 @@ const updatedMessage = async (req, res) => {
           lastMessage: {
             _id: message._id,
             text: message.text,
-            sender: senderId,
+            sender: userId,
             seen: false,
             media: message.media,
             createdAt: new Date(),

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     Box, Button, FormControl, FormLabel, Input, Stack, Text, useColorModeValue
 } from "@chakra-ui/react";
@@ -12,7 +12,13 @@ const EnterOtpCard = () => {
     const [resendLoading, setResendLoading] = useState(false);
     const setAuthScreen = useSetRecoilState(authScreenAtom);
     const showToast = useShowToast();
+    const inputRef = useRef(null);
 
+    useEffect(() => {
+        if (inputRef.current) {
+            inputRef.current.focus();
+        }
+    }, []);
     // Lấy email từ localStorage
     const email = localStorage.getItem("email-for-verification");
     const handleResendOTP = async () => {
@@ -64,6 +70,7 @@ const EnterOtpCard = () => {
                 <FormControl isRequired>
                     <FormLabel>OTP Code</FormLabel>
                     <Input
+                        ref={inputRef}
                         type="text"
                         placeholder="Enter OTP"
                         value={otp}

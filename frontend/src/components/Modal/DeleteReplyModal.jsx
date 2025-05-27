@@ -11,7 +11,6 @@ import useReply from "@hooks/useReply";
 
 const DeleteReplyModal = ({ isOpen, onClose, replyId, onSuccess, postId }) => {
     const [isDeleting, setIsDeleting] = useState(false);
-    const showToast = useShowToast();
 
     // Lấy hàm deleteReply từ hook useReply
     const { loading, deleteReply } = useReply(postId, (deletedReply) => {

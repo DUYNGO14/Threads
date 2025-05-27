@@ -49,28 +49,33 @@ const Actions = ({ post, onPostUpdate }) => {
             showToast("", "You must be logged in to like posts", "warning");
             return;
         }
-
+        if (isLiking) return;
         setIsLiking(true);
+        // ✅ Cập nhật UI ngay
+        const wasLiked = liked;
+        setLiked(!wasLiked);
+        const updatedLikes = wasLiked
+            ? post.likes.filter(id => id !== user._id)
+            : [...(post.likes || []), user._id];
+        onPostUpdate({ ...post, likes: updatedLikes });
+
         try {
             const { data } = await api.put(`/api/posts/like/${post._id}`);
             if (data.error) throw new Error(data.error);
-
-            const updatedPost = {
-                ...post,
-                likes: liked
-                    ? post.likes.filter(id => id !== user._id)
-                    : [...(post.likes || []), user._id],
-            };
-
-            onPostUpdate(updatedPost);
-            setLiked(!liked);
         } catch (error) {
+            setLiked(wasLiked);
+            const rollbackLikes = wasLiked
+                ? [...(post.likes || []), user._id]
+                : post.likes.filter(id => id !== user._id);
+            onPostUpdate({ ...post, likes: rollbackLikes });
+
             const message = error.response?.data?.message || error.message;
             showToast("Error", message || "Failed to like post", "error");
         } finally {
             setIsLiking(false);
         }
     };
+
 
     const handleReply = () => {
         if (!user) {
@@ -132,28 +137,46 @@ const Actions = ({ post, onPostUpdate }) => {
             return;
         }
 
-        setIsReposting(true);
+        // 1. Optimistic update
+        const newReposted = !reposted;
+        setReposted(newReposted);
+
+        const updatedPost = {
+            ...post,
+            repostedBy: newReposted
+                ? [...(post.repostedBy || []), user._id]
+                : post.repostedBy.filter(id => id !== user._id),
+        };
+
+        onPostUpdate(updatedPost);
+
         try {
+            if (isReposting) return;
+            setIsReposting(true);
+            // 2. Call API
             const { data } = await api.put(`/api/posts/repost/${post._id}`);
             if (data.error) throw new Error(data.error);
 
-            const updatedPost = {
+            showToast("Success", newReposted ? "Post reposted" : "Post unreposted", "success");
+        } catch (error) {
+            // 3. Rollback UI nếu lỗi
+            const rolledBackPost = {
                 ...post,
                 repostedBy: reposted
-                    ? post.repostedBy.filter(id => id !== user._id)
-                    : [...(post.repostedBy || []), user._id],
+                    ? [...(post.repostedBy || []), user._id]
+                    : post.repostedBy.filter(id => id !== user._id),
             };
 
-            onPostUpdate(updatedPost);
-            setReposted(!reposted);
-            showToast("Success", reposted ? "Post unreposted" : "Post reposted", "success");
-        } catch (error) {
+            onPostUpdate(rolledBackPost);
+            setReposted(reposted); // quay lại trạng thái cũ
+
             const message = error.response?.data?.message || error.message;
             showToast("Error", message || "Failed to repost", "error");
         } finally {
             setIsReposting(false);
         }
     };
+
 
     return (
         <Flex flexDirection='column'>
@@ -165,8 +188,9 @@ const Actions = ({ post, onPostUpdate }) => {
                         colorScheme="red"
                         variant={"ghost"}
                         onClick={handleLikeAndUnlike}
-                    // isLoading={isLiking}
+                        isDisabled={isLiking}
                     />
+
                     <Text fontSize="sm" color={liked ? "red.500" : "gray.light"}>
                         {post?.likes?.length || 0}
                     </Text>
@@ -204,7 +228,7 @@ const Actions = ({ post, onPostUpdate }) => {
                             colorScheme="purple"
                             variant={"ghost"}
                             onClick={handleRepost}
-                            isLoading={isReposting}
+                            isDisabled={isReposting}
                         />
                         <Text fontSize="sm" color={reposted ? "purple.500" : "gray.light"}>
                             {post?.repostedBy?.length || 0}
@@ -213,7 +237,7 @@ const Actions = ({ post, onPostUpdate }) => {
                 )}
             </Flex>
 
-            <Modal isOpen={isOpen} onClose={onClose}>
+            {isOpen && <Modal isOpen={isOpen} onClose={onClose}>
                 <ModalOverlay />
                 <ModalContent>
                     <ModalHeader></ModalHeader>
@@ -234,7 +258,7 @@ const Actions = ({ post, onPostUpdate }) => {
                         </Button>
                     </ModalFooter>
                 </ModalContent>
-            </Modal>
+            </Modal>}
         </Flex>
     );
 };

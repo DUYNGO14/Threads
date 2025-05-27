@@ -94,15 +94,18 @@ const useMarkSeen = (messages) => {
   const { socket } = useSocket();
 
   useEffect(() => {
-    if (
-      messages.length &&
-      messages[messages.length - 1].sender !== currentUser._id
-    ) {
+    if (!messages.length) return;
+
+    const lastMessage = messages[messages.length - 1];
+
+    // Chỉ mark là seen nếu last message do người kia gửi
+    if (lastMessage.sender === selectedConversation.userId) {
       socket.emit("markMessagesAsSeen", {
         conversationId: selectedConversation._id,
-        userId: selectedConversation.userId,
+        userId: currentUser._id, // chính là người đang seen
       });
     }
-  }, [messages]);
+  }, [messages, selectedConversation, currentUser, socket]);
 };
+
 export { useMarkSeen, useChatSocket };

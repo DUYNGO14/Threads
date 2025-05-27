@@ -8,7 +8,7 @@ import { useRef, useState } from "react";
 import EmojiPicker from "emoji-picker-react";
 import { MdOutlineInsertEmoticon } from "react-icons/md";
 const ModalUpdateMessage = ({ isOpen, onClose, message }) => {
-    const { updateMessage } = useMessageActions();
+    const { updateMessage, isLoading } = useMessageActions();
     const showToast = useShowToast();
     const emojiRef = useRef(null);
     const [selectMessage, setSelectedMessage] = useRecoilState(messagesAtom)
@@ -30,7 +30,7 @@ const ModalUpdateMessage = ({ isOpen, onClose, message }) => {
         onClose();
     }
     const footer = (
-        <Button colorScheme="red" mr={3} onClick={handleUpdate}>
+        <Button colorScheme="red" mr={3} onClick={handleUpdate} isLoading={isLoading}>
             Update
         </Button>
     );

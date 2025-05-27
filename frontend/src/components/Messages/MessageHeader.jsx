@@ -1,10 +1,13 @@
 import { Avatar, AvatarBadge, Badge, Box, Flex, IconButton, Text, WrapItem } from '@chakra-ui/react'
-import React from 'react'
 import ShowAvatarGroup from '../AvatarGroup'
 import { PiWarningCircleBold } from 'react-icons/pi'
 import { CloseIcon } from '@chakra-ui/icons'
-
+import { useNavigate } from 'react-router-dom'
 const MessageHeader = ({ onClose, setShowChatSettings, showChatSettings, selectedConversation, isOnline }) => {
+    const navigate = useNavigate();
+    const handleNavigate = () => {
+        navigate(`/user/${selectedConversation.username}`)
+    }
     return (
         <Flex cursor={"pointer"} w={"full"} alignItems={"center"} gap={2} justifyContent={"space-between"}>
             <Flex >
@@ -18,6 +21,8 @@ const MessageHeader = ({ onClose, setShowChatSettings, showChatSettings, selecte
                             md: "md",
                         }}
                         src={selectedConversation.userProfilePic}
+                        onClick={handleNavigate}
+                        cursor={"pointer"}
                     >
 
                         {isOnline ? <AvatarBadge boxSize='1em' bg='green.500' /> : <AvatarBadge boxSize='1em' bg='red.500' />}

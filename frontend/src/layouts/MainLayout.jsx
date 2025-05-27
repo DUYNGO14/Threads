@@ -17,10 +17,11 @@ const MainLayout = () => {
             <Grid
                 templateColumns={{
                     base: "1fr",
-                    xl: "320px minmax(auto, 800px) 320px",
+                    xl: "320px minmax(0, 800px) 320px",
                 }}
                 gap={{ base: 2, md: 4 }}
-                maxW="1440px"
+                maxW="100vw"
+                overflow="hidden"
                 mx="auto"
             >
                 {/* Left Sidebar (rỗng hoặc tuỳ bạn thêm) */}
@@ -50,12 +51,15 @@ const MainLayout = () => {
                 >
                     {!currentUser && (
                         <Box
-                            pt="100px"
+                            pt="200px"
                             bg={colorMode === "dark" ? "linear-gradient(180deg, #101010, #2a2a2a)" : "linear-gradient(180deg, #f5f5f5, #e0e0e0)"}
                             borderRadius="xl"
                             textAlign="center"
                             boxShadow="md"
                             p={6}
+                            w="full"
+                            mx="auto"
+                            mb={4}
                         >
                             <Text fontSize="2xl" fontWeight="bold" mb={4}>
                                 Log in or sign up to DThreads

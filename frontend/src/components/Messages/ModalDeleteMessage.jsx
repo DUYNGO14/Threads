@@ -5,7 +5,7 @@ import useShowToast from "@hooks/useShowToast";
 import { useRecoilState } from "recoil";
 import { messagesAtom } from "@atoms/messagesAtom";
 const ModalDeleteMessage = ({ isOpen, onClose, message }) => {
-    const { deleteMessage } = useMessageActions();
+    const { deleteMessage, isLoading } = useMessageActions();
     const showToast = useShowToast();
     const [selectMessage, setSelectedMessage] = useRecoilState(messagesAtom)
     const handleDelete = async () => {
@@ -21,7 +21,7 @@ const ModalDeleteMessage = ({ isOpen, onClose, message }) => {
         onClose();
     }
     const footer = (
-        <Button colorScheme="red" mr={3} onClick={handleDelete}>
+        <Button colorScheme="red" mr={3} onClick={handleDelete} isLoading={isLoading}>
             Delete
         </Button>
     );

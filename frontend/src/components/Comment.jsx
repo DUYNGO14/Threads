@@ -12,6 +12,7 @@ import useReplyModalManager from "@hooks/useReplyModalManager";
 import useReport from "@hooks/useReport";
 import useShowToast from "@hooks/useShowToast";
 import ReportDialog from "./ReportDialog";
+import { useNavigate } from "react-router-dom";
 
 const Comment = ({ reply, lastReply, postId, currentUser, onReplyUpdate, onReplyDelete }) => {
     const isMyComment = currentUser?.username === reply.username;
@@ -24,9 +25,8 @@ const Comment = ({ reply, lastReply, postId, currentUser, onReplyUpdate, onReply
     const showToast = useShowToast();
     const { error, createReport } = useReport();
     const [isReportOpen, setIsReportOpen] = useState(false);
-
     const openReportDialog = () => setIsReportOpen(true);
-
+    const navigate = useNavigate();
     const submitReport = async (reasonToSubmit) => {
         if (!reasonToSubmit) {
             showToast("Error", "Please select a reason.", "error");
@@ -51,15 +51,16 @@ const Comment = ({ reply, lastReply, postId, currentUser, onReplyUpdate, onReply
         }
     };
 
+    const handleNavigator = () => {
+        navigate(`/user/${reply.username}`);
+    };
     return (
         <>
             <Flex gap={4} py={2} my={2} w={"full"}>
-                <Avatar src={reply.userProfilePic} size={"sm"} />
+                <Avatar src={reply.userProfilePic} size={"sm"} cursor={"pointer"} onClick={handleNavigator} />
                 <Flex gap={1} w={"full"} flexDirection={"column"}>
                     <Flex w={"full"} justifyContent={"space-between"} alignItems={"center"}>
-                        <Link to={`/${reply.username}`}>
-                            <Text fontSize='sm' fontWeight='bold'>{reply.username}</Text>
-                        </Link>
+                        <Text fontSize='sm' fontWeight='bold' _hover={{ textDecoration: "underline" }} cursor={"pointer"} onClick={handleNavigator}>{reply.username}</Text>
                         <Text fontSize={"xs"} color={"gray.500"}>
                             {reply.createdAt ? formatDistanceToNow(new Date(reply.createdAt)) : "Just now"} ago
                         </Text>

@@ -37,7 +37,7 @@ export default function UpdateProfilePage() {
     const [updating, setUpdating] = useState(false);
     const showToast = useShowToast();
     const { handleImageChange, setImgUrl, imgUrl } = usePreviewImg();
-
+    console.log(user);
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (updating) return;
@@ -85,6 +85,8 @@ export default function UpdateProfilePage() {
 
             // ✅ Clear ảnh đã chọn
             setImgUrl(null);
+            fileRef.current.value = "";
+            navigate(`/user/${data.username}`);
         } catch (error) {
             showToast("Error", error.response?.data?.error || error.message || "Something went wrong", "error");
         } finally {

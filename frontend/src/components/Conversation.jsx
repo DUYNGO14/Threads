@@ -2,33 +2,20 @@ import {
     Avatar,
     AvatarBadge,
     Badge,
-    Box,
     Flex,
-    IconButton,
     Stack,
     Text,
     WrapItem,
     useColorMode,
     useColorModeValue,
-    Menu,
-    MenuButton,
-    MenuItem,
-    MenuList,
-    useDisclosure,
-    Icon,
 } from "@chakra-ui/react";
-import moment from "moment";
-import { useState } from "react";
 import PropTypes from 'prop-types';
 import { useRecoilState, useRecoilValue } from "recoil";
-import { BsFillImageFill, BsThreeDotsVertical } from "react-icons/bs";
+import { BsFillImageFill } from "react-icons/bs";
 import { TiTick } from "react-icons/ti";
 import { selectedConversationAtom } from "../atoms/messagesAtom";
 import userAtom from "../atoms/userAtom";
 import { useSocket } from "@context/SocketContext";
-import { useNavigate } from "react-router-dom";
-import useShowToast from "@hooks/useShowToast";
-import api from "../services/api.js";
 import ShowAvatarGroup from "./AvatarGroup.jsx";
 
 const Conversation = ({ conversation, isOnline, onDelete }) => {
@@ -38,8 +25,6 @@ const Conversation = ({ conversation, isOnline, onDelete }) => {
     const [selectedConversation, setSelectedConversation] = useRecoilState(selectedConversationAtom);
     const colorMode = useColorMode();
     const { socket } = useSocket();
-    const navigate = useNavigate();
-    const showToast = useShowToast();
 
     const getLastMessageText = () => {
         if (!lastMessage?.text) return <BsFillImageFill size={16} />;
@@ -55,7 +40,7 @@ const Conversation = ({ conversation, isOnline, onDelete }) => {
             ...(conversation.isGroup
                 ? {
                     groupName: conversation.groupName,
-                    participants: conversation.participants, // danh sách tất cả user
+                    participants: conversation.participants,
                     groupAdmin: conversation.groupAdmin,
                 }
                 : {
@@ -76,6 +61,7 @@ const Conversation = ({ conversation, isOnline, onDelete }) => {
     return (
         <>
             <Flex
+                mt={2}
                 gap={4}
                 alignItems={"center"}
                 p={"1"}
@@ -91,6 +77,7 @@ const Conversation = ({ conversation, isOnline, onDelete }) => {
                 }
                 borderRadius={"md"}
                 justifyContent="space-between"
+
             >
                 <Flex gap={4} alignItems={"center"}>
                     <WrapItem>
