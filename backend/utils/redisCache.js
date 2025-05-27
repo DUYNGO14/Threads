@@ -24,10 +24,13 @@ export const deleteRedis = async (key) => {
 };
 
 export const appendToCache = async (redisKey, newData) => {
-  const data = await getRedis(redisKey);
+  const data = (await getRedis(redisKey)) || [];
 
-  if (!data) return;
-  const updated = [newData, ...data];
+  const set = new Set(data);
+  set.add(newData);
+
+  // Chuyển lại thành mảng
+  const updated = Array.from(set);
   await setRedis(redisKey, updated);
 };
 
