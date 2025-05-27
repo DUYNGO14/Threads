@@ -88,5 +88,21 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+    build: {
+      chunkSizeWarningLimit: 1500, // tăng giới hạn cảnh báo lên 1.5MB
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes("node_modules")) {
+              if (id.includes("react")) return "react";
+              if (id.includes("firebase")) return "firebase";
+              if (id.includes("lodash")) return "lodash";
+              if (id.includes("chart.js")) return "chartjs";
+              return "vendor";
+            }
+          },
+        },
+      },
+    },
   };
 });
