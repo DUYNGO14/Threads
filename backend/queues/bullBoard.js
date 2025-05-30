@@ -4,6 +4,7 @@ import { BullMQAdapter } from "@bull-board/api/bullMQAdapter.js"; // ✅ thêm .
 import { notificationQueue } from "./notification.producer.js";
 import { emailQueue } from "./email.producer.js";
 import { interactionQueue } from "./userInteraction.producer.js";
+import { moderationQueue } from "./moderation.producer.js";
 
 // Adapter cho Express
 const serverAdapter = new ExpressAdapter();
@@ -15,6 +16,7 @@ createBullBoard({
     new BullMQAdapter(notificationQueue),
     new BullMQAdapter(emailQueue),
     new BullMQAdapter(interactionQueue),
+    new BullMQAdapter(moderationQueue),
   ],
   serverAdapter,
 });

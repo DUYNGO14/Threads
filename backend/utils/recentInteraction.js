@@ -1,33 +1,37 @@
 // utils/recentInteraction.js
-import User from "../models/userModel.js";
+import RecentInteraction from "../models/recentInteractionModel.js";
 import Post from "../models/postModel.js";
 
 export const updateRecentInteractions = async (userId, postId, type) => {
   try {
-    const [user, post] = await Promise.all([
-      User.findById(userId).select("recentInteractions"),
-      Post.findById(postId).select("postedBy tags"),
-    ]);
+    const post = await Post.findById(postId).select("postedBy tags");
+    if (!post) return;
 
-    if (!user || !post) return;
+    // Xóa bản ghi cũ (nếu đã tương tác với post này)
+    await RecentInteraction.deleteMany({ user: userId, postId });
 
-    user.recentInteractions = user.recentInteractions.filter(
-      (entry) => entry.postId.toString() !== postId.toString()
-    );
-
-    user.recentInteractions.unshift({
+    // Tạo bản ghi mới
+    await RecentInteraction.create({
+      user: userId,
       postId,
       type,
-      interactedAt: new Date(),
       postOwner: post.postedBy,
       postTags: post.tags || [],
+      interactedAt: new Date(),
     });
 
-    if (user.recentInteractions.length > 100) {
-      user.recentInteractions = user.recentInteractions.slice(0, 100);
-    }
+    // Giới hạn tối đa 100 tương tác gần nhất
+    const count = await RecentInteraction.countDocuments({ user: userId });
+    if (count > 100) {
+      const toDelete = await RecentInteraction.find({ user: userId })
+        .sort({ interactedAt: 1 }) // cũ nhất trước
+        .limit(count - 100)
+        .select("_id");
 
-    await user.save();
+      await RecentInteraction.deleteMany({
+        _id: { $in: toDelete.map((i) => i._id) },
+      });
+    }
   } catch (err) {
     console.error("updateRecentInteractions error:", err.message);
   }

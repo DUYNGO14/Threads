@@ -5,7 +5,14 @@ const notificationSchema = new mongoose.Schema(
     sender: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      // Custom validator: nếu type != 'system' thì bắt buộc có sender
+      validate: {
+        validator: function (v) {
+          if (this.type === "system") return v == null;
+          return v != null;
+        },
+        message: "Sender is required unless the type is 'system'.",
+      },
     },
     receiver: {
       type: mongoose.Schema.Types.ObjectId,
@@ -27,10 +34,10 @@ const notificationSchema = new mongoose.Schema(
         "post",
         "report",
         "repost",
+        "system",
       ],
       required: true,
     },
-
     post: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Post",
@@ -46,7 +53,6 @@ const notificationSchema = new mongoose.Schema(
       ref: "Message",
       default: null,
     },
-
     isRead: {
       type: Boolean,
       default: false,
@@ -64,5 +70,16 @@ const notificationSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+// Middleware: tự động set sender = null nếu là system
+notificationSchema.pre("validate", function (next) {
+  if (this.type === "system") {
+    this.sender = null;
+  }
+  next();
+});
+
+// Index phục vụ truy vấn nhanh các thông báo chưa đọc
 notificationSchema.index({ receiver: 1, isRead: 1, createdAt: -1 });
+
 export default mongoose.model("Notification", notificationSchema);

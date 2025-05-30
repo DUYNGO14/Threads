@@ -20,6 +20,7 @@ import Tabs from "@components/Tabs";
 import { useLocation, useNavigate } from "react-router-dom";
 import { IoArrowBackOutline } from "react-icons/io5";
 import api from "../services/api.js";
+import { useSocket } from "../context/SocketContext.jsx";
 const POST_LIMIT = 10;
 
 const UserPage = () => {
@@ -35,6 +36,7 @@ const UserPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [refreshKey, setRefreshKey] = useState(Date.now());
+    const { socket } = useSocket();
     const myTabs = [
         { value: "threads", label: "Threads" },
         { value: "reposts", label: "Reposts" },
@@ -61,6 +63,20 @@ const UserPage = () => {
         },
         [setPosts, feedType, user?._id]
     );
+    useEffect(() => {
+        const handleUpdate = (postId) => {
+            setPosts((prev) => prev.filter((p) => p._id !== postId));
+            console.log("post rejected")
+        };
+
+        if (socket) {
+            socket.on("post-rejected", handleUpdate);
+            return () => {
+                socket.off("post-rejected", handleUpdate);
+            };
+        }
+    }, [socket, setPosts]);
+
 
     const fetchPosts = useCallback(async () => {
         if (!user) return;

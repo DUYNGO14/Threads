@@ -21,7 +21,7 @@ export const logUserInteraction = async ({ userId, postId, actionType }) => {
       },
       jobId: `${userId}:${postId}:${actionType}`, // để tránh trùng job nếu muốn
       priority: 2,
-      removeOnComplete: true,
+      removeOnComplete: { count: 10 },
       removeOnFail: { count: 3 },
     }
   );

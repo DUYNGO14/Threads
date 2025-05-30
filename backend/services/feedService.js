@@ -1,17 +1,19 @@
 import Post from "../models/postModel.js";
 import User from "../models/userModel.js";
-import redis from "../config/redis.config.js";
+import RecentInteraction from "../models/recentInteractionModel.js";
 import { setRedis } from "../utils/redisCache.js";
 
 export const generateFeedForUser = async (userId) => {
-  const user = await User.findById(userId).select(
-    "following recentInteractions"
-  );
+  const user = await User.findById(userId).select("following");
   if (!user) return [];
 
-  const tags = user.recentInteractions
-    .flatMap((i) => i.postTags)
-    .filter(Boolean);
+  // ✅ Lấy recent interactions từ model mới
+  const recentInteractions = await RecentInteraction.find({ user: userId })
+    .sort({ interactedAt: -1 })
+    .limit(100)
+    .select("postTags");
+
+  const tags = recentInteractions.flatMap((i) => i.postTags).filter(Boolean);
   const tagCount = tags.reduce((acc, tag) => {
     acc[tag] = (acc[tag] || 0) + 1;
     return acc;

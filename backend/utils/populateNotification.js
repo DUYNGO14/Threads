@@ -1,36 +1,39 @@
 import Notification from "../models/notificationModel.js";
 
 const populateMap = {
-  like: ["post"],
-  repost: ["post"],
-  comment: ["post"],
-  reply: ["post", "reply"],
-  message: ["message"],
+  like: [{ path: "post", select: "text media" }],
+  repost: [{ path: "post", select: "text media" }],
+  comment: [{ path: "post", select: "text media" }],
+  reply: [
+    { path: "post", select: "text media" },
+    { path: "reply", select: "text" },
+  ],
+  message: [{ path: "message", select: "text media" }],
   follow: [],
+  tag: [{ path: "post", select: "text media" }],
+  post: [{ path: "post", select: "text media" }],
+  system: [], // Không cần populate gì đặc biệt
 };
 
 export const populateNotification = async (notificationId) => {
   const notification = await Notification.findById(notificationId);
   if (!notification) return null;
 
-  let query = Notification.findById(notificationId).populate(
-    "sender",
-    "username profilePic"
+  const population = [];
+
+  // Chỉ populate sender nếu có
+  if (notification.sender) {
+    population.push({ path: "sender", select: "username profilePic" });
+  }
+
+  // Populate các liên kết tùy theo loại thông báo
+  const extraPopulates = populateMap[notification.type] || [];
+  population.push(...extraPopulates);
+
+  // Thực hiện populate 1 lần duy nhất
+  const populated = await Notification.findById(notificationId).populate(
+    population
   );
 
-  const fields = populateMap[notification.type] || [];
-  fields.forEach((field) => {
-    if (field === "post") {
-      query = query.populate("post", "text media");
-    }
-    if (field === "reply") {
-      query = query.populate("reply", "text");
-    }
-    if (field === "message") {
-      query = query.populate("message", "text media");
-    }
-  });
-
-  const populated = await query;
   return populated;
 };

@@ -58,7 +58,6 @@ const NotificationPage = () => {
     const bg = useColorModeValue("gray.50", "gray.800");
     const borderColor = useColorModeValue("gray.200", "gray.600");
     const hoverBg = useColorModeValue("gray.100", "gray.600");
-
     // Tính toán danh sách thông báo chưa đọc
     const unreadNotifications = useMemo(() => notifications.filter((n) => !n.isRead), [notifications]);
 
@@ -146,7 +145,7 @@ const NotificationPage = () => {
                 navigate(`/${currentUser.username}/post/${noti.post?._id || noti.post}`);
             } else if (noti.type === "follow") {
                 navigate(`/user/${noti.sender.username}`);
-            } else if (["report", "block", "unblock"].includes(noti.type)) {
+            } else if (["report", "block", "unblock", "system"].includes(noti.type)) {
                 // Không làm gì với các loại này
                 return;
             } else {
@@ -191,17 +190,20 @@ const NotificationPage = () => {
                     >
                         <HStack justify="space-between" align="start">
                             <HStack spacing={3} align="start" cursor="pointer" onClick={() => handleNavigate(noti)}>
-                                <Avatar size="md" name={noti.sender.username} src={noti.sender.profilePic} />
+                                {noti.sender ? (<Avatar size="md" name={noti.sender?.username} src={noti.sender?.profilePic} />
+                                ) : (
+                                    <Avatar size="md" name="System" src="/logo-favicon.png" />
+                                )}
                                 <Box>
                                     <HStack>
-                                        <Text fontWeight="semibold">{noti.sender.username}</Text>
+                                        <Text fontWeight="semibold">{noti.sender?.username || "System"}</Text>
                                         {!noti.isRead && (
                                             <Badge colorScheme="red" fontSize="0.6em">
                                                 New
                                             </Badge>
                                         )}
                                     </HStack>
-                                    <Text fontSize="sm" color="gray.500">
+                                    <Text fontSize="sm" color="gray.500" whiteSpace="pre-wrap" wordBreak="break-word">
                                         {noti.content}
                                     </Text>
                                 </Box>

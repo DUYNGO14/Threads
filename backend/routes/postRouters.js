@@ -11,9 +11,9 @@ import {
   repost,
   getReposts,
   getTags,
-  getRecommendedFeed,
   updatePost,
   getFeed,
+  getRecommendPost,
 } from "../controllers/postController.js";
 import protectRoute from "../middlewares/protectRoute.js";
 import multer from "multer";
@@ -26,8 +26,8 @@ router.get("/propose", protectRoute, getAllPosts);
 router.get("/tags", protectRoute, getTags);
 router.get("/reposts/:username", getReposts);
 router.get("/user/:username", getUserPosts);
-router.get("/recommended", protectRoute, getRecommendedFeed);
 router.get("/feed", protectRoute, getFeed);
+router.get("/recommended", protectRoute, getRecommendPost);
 router.get("/:id", getPost);
 
 router.post("/create", protectRoute, uploadMedia, createPost);

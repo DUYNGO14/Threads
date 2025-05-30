@@ -11,17 +11,34 @@ const notificationWorker = new Worker(
     const { sender, receivers, type, content, post, reply, message } = job.data;
 
     const receiverList = Array.isArray(receivers) ? receivers : [receivers];
+
     for (const receiverId of receiverList) {
-      const query = {
-        sender,
-        receiver: receiverId,
+      if (!receiverId) continue;
+
+      const notificationData = {
         type,
-        ...(type !== "reply" && reply && { reply }),
+        receiver: receiverId,
+        content,
+        ...(type !== "system" && { sender }),
         ...(post && { post }),
+        ...(reply && type !== "reply" && { reply }),
         ...(message && { message }),
       };
 
-      const existing = await Notification.findOne(query).lean();
+      let existing = null;
+
+      if (type !== "system") {
+        const query = {
+          type,
+          receiver: receiverId,
+          ...(sender && { sender }),
+          ...(post && { post }),
+          ...(reply && type !== "reply" && { reply }),
+          ...(message && { message }),
+        };
+
+        existing = await Notification.findOne(query).lean();
+      }
 
       if (existing) {
         await Notification.updateOne(
@@ -34,15 +51,7 @@ const notificationWorker = new Worker(
         continue;
       }
 
-      const notification = await Notification.create({
-        sender,
-        receiver: receiverId,
-        type,
-        content,
-        ...(post && { post }),
-        ...(reply && { reply }),
-        ...(message && { message }),
-      });
+      const notification = await Notification.create(notificationData);
 
       const recipientSocketId = getRecipientSocketId(receiverId.toString());
       if (recipientSocketId) {
@@ -53,15 +62,14 @@ const notificationWorker = new Worker(
   },
   {
     connection: redisConnection,
-    removeOnComplete: true,
-    removeOnFail: true,
   }
 );
 
+// Logging
 notificationWorker.on("completed", (job) => {
-  console.log(`Notification job ${job.id} completed`);
+  console.log(`✅ Notification job ${job.id} completed`);
 });
 
 notificationWorker.on("failed", (job, err) => {
-  console.error(`Notification job ${job.id} failed:`, err);
+  console.error(`❌ Notification job ${job.id} failed:`, err);
 });

@@ -18,18 +18,19 @@ import { moderateMedia } from "../utils/moderate/moderateMediaWithSightengine.js
 import { moderateTextWithSightengine } from "../utils/moderate/moderateTextWithSightengine.js";
 import { formatResponse } from "../utils/formatResponse.js";
 import { isMutualOrOneWayFollow } from "./userController.js";
-import { getRecommendedPosts } from "../services/recommendationService.js";
 import { updateRecentInteractions } from "../utils/recentInteraction.js";
 import { getTrendingPosts } from "../services/feedService.js";
 import shuffleArray from "../utils/helpers/shuffleArray.js";
 import { generateFeedForUser } from "../services/feedService.js";
 import { addNotificationJob } from "../queues/notification.producer.js";
+import { scorePost } from "../utils/helpers/scorePost.js";
+import RecentInteraction from "../models/recentInteractionModel.js";
+import { addModerationJob } from "../queues/moderation.producer.js";
 
 const createPost = async (req, res) => {
   try {
     const { postedBy, text, tags, notification } = req.body;
     const user = await User.findById(postedBy);
-    const redisKey = `posts:${user.username}`;
     if (!user)
       return res.status(404).json(formatResponse("error", "User not found"));
 
@@ -44,16 +45,7 @@ const createPost = async (req, res) => {
         );
     }
 
-    const moderationResult = await moderateTextWithSightengine(text || "");
-    if (!moderationResult.ok) {
-      return res
-        .status(400)
-        .json(formatResponse("error", moderationResult.message));
-    }
-
-    const cleanedText = moderationResult.cleanedText || text || "";
     let mediaFiles = [];
-
     if (req.files?.length > 0) {
       if (req.files.length > MAX_FILES) {
         return res
@@ -72,70 +64,36 @@ const createPost = async (req, res) => {
           .status(400)
           .json(formatResponse("error", "All media uploads failed"));
       }
-
-      for (const file of mediaFiles) {
-        if (
-          file.type === "audio" ||
-          file.type === "gif" ||
-          file.type === "video"
-        )
-          continue;
-        const moderation = await moderateMedia(file.url, file.type);
-
-        if (!moderation.ok) {
-          await deleteMediaFiles(mediaFiles);
-          return res
-            .status(400)
-            .json(
-              formatResponse(
-                "error",
-                `Media moderation failed: ${file.type} contains unsafe content`
-              )
-            );
-        }
-      }
     }
 
     const newPost = new Post({
       postedBy,
-      text: cleanedText,
+      text,
       media: mediaFiles,
-      status: "approved",
       tags: tags || "",
+      status: "pending",
     });
     await newPost.save();
     const populatedPost = await Post.findById(newPost._id).populate(
       "postedBy",
       "_id username name profilePic"
     );
-    await appendToCache(`posts:${user.username}`, populatedPost._id);
-    if (notification) {
-      let receivers = [];
-      if (notification === "all") {
-        receivers = [...user.following, ...user.followers];
-      } else if (notification === "following") {
-        receivers = user.following;
-      } else if (notification === "followers") {
-        receivers = user.followers;
-      } else if (notification === "nobody") {
-        receivers = [];
-      }
+    await addModerationJob({
+      postId: newPost._id,
+      text,
+      media: mediaFiles,
+      senderId: req.user?._id || null,
+      notification,
+    });
 
-      if (receivers.length > 0) {
-        await addNotificationJob({
-          sender: req.user._id,
-          receivers,
-          type: "post",
-          content: `Just posted a new post`,
-          post: populatedPost._id,
-        });
-      }
-    }
-    await appendToCache(redisKey, populatedPost._id);
     return res
       .status(201)
       .json(
-        formatResponse("success", "Post created successfully", populatedPost)
+        formatResponse(
+          "success",
+          "Post created (pending moderation)",
+          populatedPost
+        )
       );
   } catch (err) {
     console.error("createPost error:", err);
@@ -144,7 +102,6 @@ const createPost = async (req, res) => {
       .json(formatResponse("error", "Something went wrong. Try again."));
   }
 };
-
 const updatePost = async (req, res) => {
   try {
     const { postId } = req.params;
@@ -555,7 +512,9 @@ const getAllPosts = async (req, res) => {
 const getUserPosts = async (req, res) => {
   try {
     const { username } = req.params;
-    const redisKey = `posts:${username}`;
+    const user = await User.findOne({ username }).select("_id");
+    if (!user) return res.status(404).json({ error: "User not found" });
+    const redisKey = `posts:${user._id}`;
     const { page, limit, skip } = getPaginationParams(req);
 
     // Check cache
@@ -566,9 +525,6 @@ const getUserPosts = async (req, res) => {
     if (cachedIds) {
       postIds = cachedIds;
     } else {
-      const user = await User.findOne({ username }).select("_id");
-      if (!user) return res.status(404).json({ error: "User not found" });
-
       const posts = await Post.find({ postedBy: user._id })
         .sort({ createdAt: -1 })
         .select("_id");
@@ -711,25 +667,6 @@ const getTags = async (req, res) => {
   }
 };
 
-const getRecommendedFeed = async (req, res) => {
-  try {
-    const { page, limit, skip } = getPaginationParams(req);
-    const userId = req.user?._id ?? null;
-
-    const posts = await getRecommendedPosts(userId, {
-      limit: parseInt(limit),
-      page: parseInt(page),
-    });
-
-    return res.json(formatResponse(200, "success", posts));
-  } catch (err) {
-    console.error("Feed recommendation error:", err);
-    return res
-      .status(500)
-      .json(formatResponse(500, "error", "Internal Server Error"));
-  }
-};
-
 const getFeed = async (req, res) => {
   try {
     const userId = req.user?._id;
@@ -756,7 +693,7 @@ const getFeed = async (req, res) => {
     }
 
     let postIds = cachedIds || "[]";
-    postIds = shuffleArray(postIds);
+    // postIds = shuffleArray(postIds);
     const paginatedIds = postIds.slice(skip, skip + parseInt(limit));
 
     const posts = await Post.find({ _id: { $in: paginatedIds } })
@@ -770,6 +707,70 @@ const getFeed = async (req, res) => {
   }
 };
 
+const getRecommendPost = async (req, res) => {
+  try {
+    const userId = req.user._id.toString();
+    // const cacheKey = `feed:user:${userId}:recommended`;
+
+    // 1. Lấy tương tác gần đây
+    const recentInteractions = await RecentInteraction.find({ user: userId })
+      .sort({ interactedAt: -1 })
+      .limit(50)
+      .lean();
+
+    const interactedPostOwners = new Set();
+    const interactedTags = new Set();
+
+    for (const interaction of recentInteractions) {
+      if (interaction.postOwner)
+        interactedPostOwners.add(interaction.postOwner.toString());
+      for (const tag of interaction.postTags || []) {
+        interactedTags.add(tag);
+      }
+    }
+
+    // 2. Lấy danh sách người đang follow
+    const user = await User.findById(userId).select("following").lean();
+    const followingIds = new Set(user.following.map((id) => id.toString()));
+
+    // 3. Truy vấn bài viết đã duyệt gần đây
+    const candidatePosts = await Post.find({ status: "approved" })
+      .select("postedBy tags createdAt likes repostedBy")
+      .limit(200)
+      .lean();
+
+    const result = [];
+
+    // 4. Tính điểm từng bài viết
+    for (const post of candidatePosts) {
+      const score = scorePost({
+        post,
+        userFollowingSet: followingIds,
+        interactedUserSet: interactedPostOwners,
+        interactedTagsSet: interactedTags,
+      });
+
+      if (score > 0) {
+        result.push({ postId: post._id.toString(), score });
+      }
+    }
+
+    // 5. Sắp xếp và lưu vào Redis
+    const sortedPostIds = result
+      .sort((a, b) => b.score - a.score)
+      .map((item) => item.postId);
+
+    // await redis.set(cacheKey, JSON.stringify(sortedPostIds), {
+    //   ex: 60 * 60, // TTL 1 tiếng
+    // });
+
+    // 6. Trả về kết quả
+    return res.status(200).json({ postIds: sortedPostIds });
+  } catch (err) {
+    console.error("Error generating recommended feed:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
 export {
   createPost,
   getPost,
@@ -783,6 +784,6 @@ export {
   updatePost,
   repost,
   getTags,
-  getRecommendedFeed,
   getFeed,
+  getRecommendPost,
 };

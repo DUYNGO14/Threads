@@ -12,6 +12,7 @@ import createDefaultAdmin from "../utils/createDefaultAdmin.js";
 import "../workers/notificationWorker.js";
 import "../workers/emailWorker.js";
 import "../workers/userInteractionWorker.js";
+import "../workers/moderation.worker.js";
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {

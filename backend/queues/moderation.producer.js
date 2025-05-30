@@ -1,16 +1,16 @@
 import { Queue } from "bullmq";
 import { redisConnection } from "../config/redis.config.js";
 
-export const notificationQueue = new Queue("notifications", {
+export const moderationQueue = new Queue("moderation-queue", {
   connection: redisConnection,
 });
 
-export const addNotificationJob = async (notificationData) => {
-  await notificationQueue.add("send-notifications", notificationData, {
+export const addModerationJob = async (data) => {
+  await moderationQueue.add("moderate-post", data, {
     attempts: 3,
     backoff: {
       type: "exponential",
-      delay: 5000,
+      delay: 3000,
     },
     removeOnComplete: { count: 10 },
     removeOnFail: { count: 3 },

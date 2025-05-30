@@ -84,21 +84,6 @@ const userSchema = mongoose.Schema(
       of: String, // Lưu trữ liên kết dạng chuỗi (URL)
       default: {},
     },
-    recentInteractions: {
-      type: [
-        {
-          postId: { type: mongoose.Schema.Types.ObjectId, ref: "Post" },
-          type: {
-            type: String,
-            enum: ["like", "reply", "repost"],
-          },
-          interactedAt: { type: Date, default: Date.now },
-          postOwner: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-          postTags: [String],
-        },
-      ],
-      default: [],
-    },
   },
   {
     timestamps: true,

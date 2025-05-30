@@ -58,33 +58,33 @@ const useSocketSetup = (user, socketRef, setOnlineUsers) => {
     });
 
     socket.on("notification:new", (notification) => {
+      console.log(notification);
       setNotification((prev) => [notification, ...prev]);
       setUnreadNotificationCount((prev) => prev + 1);
-      console.log("New notification:", notification);
       if (Notification.permission === "granted") {
         const browserNotification = new Notification(
-          notification.sender.username || "New notification",
+          notification.sender?.username || "New notification",
           {
             body: notification.content,
-            icon: notification.sender.profilePic || "/default-avatar.png",
+            icon: notification.sender?.profilePic || "/default-avatar.png",
           }
         );
 
         browserNotification.onclick = () => {
           window.focus();
           if (notification.type === "follow" && notification.sender) {
-            navigate(`/${notification.sender.username}`); // ✅ dùng navigate mượt hơn
+            navigate(`/user/${notification.sender.username}`);
           } else if (notification.post) {
             navigate(
               `/${currentUser.username}/post/${
                 notification.post?._id || notification.post
               }`
-            ); // ✅ dùng navigate mượt hơn
+            );
           }
         };
       }
 
-      showToast("🔔 Bạn có thông báo mới!");
+      showToast("🔔 You have a new notification!");
     });
 
     socket.on("markNotificationsAsSeen", (updatedNotification) => {
