@@ -2,10 +2,11 @@
 import { Box, List, useColorModeValue } from "@chakra-ui/react";
 
 
-import { IoHomeOutline, IoSettingsOutline } from "react-icons/io5";
+import { IoHomeOutline } from "react-icons/io5";
 import { GoReport } from "react-icons/go";
 import { FaRegUser } from "react-icons/fa";
 import { MdPostAdd } from "react-icons/md";
+import { HiMiniQueueList } from "react-icons/hi2";
 import SidebarItem from "./SidebarItem";
 
 const listItems = [
@@ -13,6 +14,7 @@ const listItems = [
     { text: "Users", icon: FaRegUser, href: "/admin/users" },
     { text: "Posts", icon: MdPostAdd, href: "/admin/posts" },
     { text: "Reports", icon: GoReport, href: "/admin/reports" },
+    { text: "Queue", icon: HiMiniQueueList, href: "/admin/queues", newTab: true },
 ];
 
 
@@ -35,6 +37,7 @@ export default function Sidebar({ isOpen }) {
                         icon={item.icon}
                         text={isOpen ? item.text : ""}
                         href={item.href}
+                        newTab={item.newTab}
                     />
                 ))}
             </List>
