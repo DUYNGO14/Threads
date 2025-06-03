@@ -5,6 +5,7 @@ import {
     Divider,
     Flex,
     IconButton,
+    Image,
     Spinner,
     Text,
     useColorMode
@@ -35,6 +36,7 @@ const PostPage = () => {
     const [replies, setReplies] = useState([]);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
+    const [totalReply, setTotalReply] = useState(0);
     const [isPostLoading, setIsPostLoading] = useState(true);
     const { colorMode } = useColorMode();
 
@@ -42,11 +44,11 @@ const PostPage = () => {
         setIsPostLoading(true);
         try {
             const res = await api.get(`/api/posts/${pid}?page=${page}&limit=5`);
-            const { post, replies: newReplies, totalPages } = res.data;
-
+            const { post, replies: newReplies, totalPages, totalReplies } = res.data;
+            console.log(res.data);
             setPost(post);
             setTotalPages(totalPages);
-
+            setTotalReply(totalReplies);
             setReplies(prev => {
                 if (page === 1) return newReplies;
 
@@ -55,7 +57,7 @@ const PostPage = () => {
             });
         } catch (err) {
             const msg = err.response?.data?.error || err.message;
-            showToast("Error", msg, "error");
+            // showToast("Error", msg, "error");
         } finally {
             setIsPostLoading(false);
         }
@@ -128,19 +130,6 @@ const PostPage = () => {
         );
     }
 
-    if (!post) {
-        return (
-            <Box textAlign="center" mt={10}>
-                <Text fontSize="lg" fontWeight="bold" color="gray.600">
-                    No Post Found
-                </Text>
-                <Button mt={4} colorScheme="teal" onClick={() => navigate("/")}>
-                    Go to Home
-                </Button>
-            </Box>
-        );
-    }
-
     return (
         <>
             {/* Header */}
@@ -178,56 +167,75 @@ const PostPage = () => {
                 </Flex>
             </Box>
 
-            <Box height="60px" />
-            <Flex mt={5}>
-                <Flex w="full" alignItems="center" gap={3} onClick={() => navigate(`/user/${post.postedBy.username}`)} cursor="pointer">
-                    <Avatar src={post.postedBy.profilePic} size="md" name={post.postedBy.username} />
-                    <Flex>
-                        <Text fontSize="sm" fontWeight="bold">
-                            {post.postedBy.username}
+            <Box height="65px" />
+            {post ? (<>
+                <Flex mt={5}>
+                    <Flex w="full" alignItems="center" gap={3} onClick={() => navigate(`/user/${post.postedBy.username}`)} cursor="pointer">
+                        <Avatar src={post.postedBy.profilePic} size="md" name={post.postedBy.username} />
+                        <Flex>
+                            <Text fontSize="sm" fontWeight="bold">
+                                {post.postedBy.username}
+                            </Text>
+                        </Flex>
+                    </Flex>
+                    <Flex gap={4} alignItems="center">
+                        <Text fontSize="xs" width={36} textAlign="right" color="gray.light">
+                            {formatDistanceToNow(new Date(post.createdAt))} ago
                         </Text>
+                        {currentUser?._id === post.postedBy._id && (
+                            <DeleteIcon size={20} cursor="pointer" onClick={handleDeletePost} color="red.300" _hover={{ color: "red.500" }} />
+                        )}
                     </Flex>
                 </Flex>
-                <Flex gap={4} alignItems="center">
-                    <Text fontSize="xs" width={36} textAlign="right" color="gray.light">
-                        {formatDistanceToNow(new Date(post.createdAt))} ago
-                    </Text>
-                    {currentUser?._id === post.postedBy._id && (
-                        <DeleteIcon size={20} cursor="pointer" onClick={handleDeletePost} color="red.300" _hover={{ color: "red.500" }} />
-                    )}
+
+                <Text whiteSpace="pre-line" my={3}>
+                    {renderMentionText(post.text)}
+                </Text>
+
+                {post.media?.length > 0 && (
+                    <Carousels medias={post.media} />
+                )}
+
+                <Flex gap={3} my={3}>
+                    <Actions post={post} onPostUpdate={setReplies} totalReply={totalReply} setTotalReply={setTotalReply} />
                 </Flex>
-            </Flex>
 
-            <Text whiteSpace="pre-line" my={3}>
-                {renderMentionText(post.text)}
-            </Text>
+                <Divider my={4} />
+                {replies.map(reply => (
+                    <Comment
+                        key={reply._id}
+                        postId={post._id}
+                        reply={reply}
+                        lastReply={reply._id === replies[replies.length - 1]._id}
+                        currentUser={currentUser}
+                        onReplyUpdate={handleReplyUpdate}
+                        onReplyDelete={handleDeleteReply}
+                    />
+                ))}
 
-            {post.media?.length > 0 && (
-                <Carousels medias={post.media} />
+                {page < totalPages && (
+                    <Button onClick={handleLoadMoreReplies} mt={4}>
+                        Show more replies
+                    </Button>
+                )}
+            </>) : (
+                <Box textAlign="center" mt={10}>
+                    <Image
+                        src="https://cdn-icons-png.flaticon.com/512/4076/4076549.png" // ví dụ ảnh minh họa
+                        alt="No post found"
+                        mx="auto"
+                        boxSize="150px"
+                        mb={6}
+                    />
+                    <Text fontSize="lg" fontWeight="semibold" color="gray.500" mb={4}>
+                        The post does not exist or has been deleted.
+                    </Text>
+                    <Button colorScheme="teal" onClick={() => navigate(-1)}>
+                        Back
+                    </Button>
+                </Box>
             )}
 
-            <Flex gap={3} my={3}>
-                <Actions post={post} onPostUpdate={setPost} />
-            </Flex>
-
-            <Divider my={4} />
-            {replies.map(reply => (
-                <Comment
-                    key={reply._id}
-                    postId={post._id}
-                    reply={reply}
-                    lastReply={reply._id === replies[replies.length - 1]._id}
-                    currentUser={currentUser}
-                    onReplyUpdate={handleReplyUpdate}
-                    onReplyDelete={handleDeleteReply}
-                />
-            ))}
-
-            {page < totalPages && (
-                <Button onClick={handleLoadMoreReplies} mt={4}>
-                    Xem thêm bình luận
-                </Button>
-            )}
         </>
     );
 };

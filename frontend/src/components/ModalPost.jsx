@@ -103,7 +103,6 @@ const ModalPost = ({ medias, initialIndex, isOpen, onClose }) => {
                                             loading="lazy"
                                             sx={{
                                                 transition: "transform 0.3s",
-                                                _hover: { transform: "scale(1.02)" },
                                             }}
                                         />
                                     ) : media.type === "video" ? (

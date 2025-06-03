@@ -1,21 +1,23 @@
 import Notification from "../models/notificationModel.js";
 export const getNotifications = async (req, res) => {
   try {
-    const notifications = await Notification.find({
-      receiver: req.user._id,
-    })
+    const userId = req.user._id;
+
+    const notifications = await Notification.find({ receiver: userId })
       .populate("sender", "username profilePic")
-      .populate("post", "content")
-      .populate("reply", "text")
-      .populate("message", "text")
-      .sort({ createdAt: -1 });
+      .populate("post", "_id") // chỉ lấy _id của post
+      .populate("reply", "_id text")
+      .populate("message", "_id text")
+      .sort({ createdAt: -1 })
+      .lean();
 
     return res.status(200).json(notifications);
   } catch (err) {
-    console.error(err.message);
+    console.error("Error in getNotifications:", err.message);
     return res.status(500).json({ error: "Error fetching notifications" });
   }
 };
+
 export const markNotificationsAsRead = async (req, res) => {
   try {
     const updatedNotifications = await Notification.updateMany(

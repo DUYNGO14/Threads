@@ -7,18 +7,17 @@ import userAtom from "../atoms/userAtom";
 import api from "../services/api.js";
 const useFollowUnfollow = (user, onSuccess) => {
   const currentUser = useRecoilValue(userAtom);
-  const setFollowers = useSetRecoilState(followersAtom);
   const setFollowing = useSetRecoilState(followingAtom);
   const navigate = useNavigate();
   const showToast = useShowToast();
-
-  const [following, setFollowingLocal] = useState(
-    user.followers?.includes(currentUser?._id) || false
-  );
+  const isMyself = currentUser?._id === user._id;
+  const [following, setFollowingLocal] = useState(() => {
+    if (isMyself) return true;
+    return currentUser?.following?.includes(user._id) || false;
+  });
   const [updating, setUpdating] = useState(false);
 
   const handleFollowUnfollow = async () => {
-    // 👉 Kiểm tra đăng nhập
     if (!currentUser) {
       showToast("Warning", "You need to login first", "warning");
       return navigate("/auth");

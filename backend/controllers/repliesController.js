@@ -24,7 +24,6 @@ const updateComment = async (req, res) => {
   try {
     const { id } = req.params;
     const { text } = req.body;
-    console.log(text);
     if (!text || text.trim() === "") {
       return res.status(400).json({ error: "Text field is required" });
     }

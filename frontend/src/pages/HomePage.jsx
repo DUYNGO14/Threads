@@ -31,7 +31,7 @@ const HomePage = () => {
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
-    const [refreshKey, setRefreshKey] = useState(Date.now()); // Dùng để force reload
+    const [refreshKey, setRefreshKey] = useState(Date.now());
 
     const emptyBg = useColorModeValue('white', 'gray.dark');
     const emptyBorder = useColorModeValue('gray.200', 'gray.700');

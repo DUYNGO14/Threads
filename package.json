@@ -32,6 +32,7 @@
     "cross-env": "^7.0.3",
     "dayjs": "^1.11.13",
     "dotenv": "^16.4.7",
+    "emoji-regex": "^10.4.0",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
     "fluent-ffmpeg": "^2.1.3",

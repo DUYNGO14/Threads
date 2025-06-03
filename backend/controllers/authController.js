@@ -101,6 +101,8 @@ const loginUser = async (req, res) => {
         role: user.role,
         isVerified: user.isVerified,
         isFrozen: user.isFrozen,
+        followers: user.followers || [],
+        following: user.following || [],
       },
     });
   } catch (error) {

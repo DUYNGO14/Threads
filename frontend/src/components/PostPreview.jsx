@@ -22,7 +22,6 @@ const PostPreview = ({
             const fetchFollowings = async () => {
                 const res = await api.get(`/api/users/${user.username}/following`);
                 setFollowings(res.data);
-                console.log(res.data);
             };
             fetchFollowings();
         } catch (err) {

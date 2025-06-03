@@ -24,7 +24,7 @@ import { BsHeart, BsHeartFill, BsChat, BsShare, BsRepeat } from "react-icons/bs"
 import { FaRepeat } from "react-icons/fa6";
 import api from "../services/api.js";
 
-const Actions = ({ post, onPostUpdate }) => {
+const Actions = ({ post, onPostUpdate, totalReply, setTotalReply }) => {
     const user = useRecoilValue(userAtom);
     const [liked, setLiked] = useState(post?.likes?.includes(user?._id) || false);
     const [reposted, setReposted] = useState(post?.repostedBy?.includes(user?._id) || false);
@@ -94,18 +94,18 @@ const Actions = ({ post, onPostUpdate }) => {
         setIsReplying(true);
         try {
             const res = await api.put(`/api/posts/reply/${post._id}`, { text: reply });
+            const newReply = res.data.reply;
             const updatedPost = {
                 ...post,
                 replies: [
                     ...post.replies,
-                    {
-                        userId: user._id,
-                        text: reply,
-                        userProfilePic: user.profilePic,
-                        username: user.username,
-                    },
+                    newReply,
                 ],
             };
+
+            if (totalReply) {
+                setTotalReply(totalReply + 1);
+            }
 
             onPostUpdate(updatedPost);
             setReply("");
@@ -206,7 +206,7 @@ const Actions = ({ post, onPostUpdate }) => {
                         isLoading={isReplying}
                     />
                     <Text fontSize="sm" color="gray.light">
-                        {post?.replies?.length || 0}
+                        {post?.replies?.length || totalReply || 0}
                     </Text>
                 </Flex>
 

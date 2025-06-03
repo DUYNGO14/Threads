@@ -60,7 +60,7 @@ const NotificationPage = () => {
     const hoverBg = useColorModeValue("gray.100", "gray.600");
     // Tính toán danh sách thông báo chưa đọc
     const unreadNotifications = useMemo(() => notifications.filter((n) => !n.isRead), [notifications]);
-
+    console.log(notifications);
     // Fetch notifications từ server khi component mount
     useEffect(() => {
         const fetchNotifications = async () => {

@@ -19,7 +19,6 @@ import { FaSquareFacebook } from "react-icons/fa6";
 import { useState } from 'react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import { useSetRecoilState } from 'recoil';
-import { useDebouncedCallback } from 'use-debounce';
 import { authScreenAtom } from '../atoms/authAtom';
 import useShowToast from '@hooks/useShowToast';
 import userAtom from '../atoms/userAtom';
@@ -61,6 +60,7 @@ const LoginCard = () => {
             });
             const data = await res.data;
             localStorage.setItem("access-token", data.accessToken);
+            console.log(data.user)
             setUser(data.user);
             await Promise.resolve();
             if (data.user.role === "admin") {
@@ -70,9 +70,9 @@ const LoginCard = () => {
             }
         } catch (error) {
             const errorMessage =
-                error.response?.data?.error || // Lấy thông báo từ phản hồi API
-                error.message || // Lấy thông báo mặc định từ Axios
-                "An unexpected error occurred"; // Thông báo mặc định nếu không có thông tin
+                error.response?.data?.error ||
+                error.message ||
+                "An unexpected error occurred";
             showToast("Error", errorMessage || "Something went wrong", "error");
         } finally {
             setState((prev) => ({ ...prev, isLoading: false }));

@@ -1,10 +1,14 @@
 import {
     Avatar, Box, Flex, Text, IconButton, Divider, Modal, ModalOverlay, ModalContent,
     ModalHeader, ModalBody, ModalFooter, Button, useDisclosure, Menu, MenuButton, MenuList, MenuItem,
-    useColorModeValue
+    useColorModeValue,
+    Stack,
+    AvatarBadge,
+    Tooltip
 } from "@chakra-ui/react";
 import { Link, useNavigate } from "react-router-dom";
 import { CgMoreO } from "react-icons/cg";
+import { AddIcon, CheckIcon } from "@chakra-ui/icons";
 import { formatDistanceToNow } from "date-fns";
 import React, { useState, useCallback, useEffect } from "react";
 import { MdNavigateNext } from "react-icons/md";
@@ -20,6 +24,7 @@ import ReportDialog from "./ReportDialog";
 import UpdatePostModal from "./UpdatePostModal";
 import CountdownUpdatePost from "./CountdownUpdatePost";
 import { renderMentionText } from "./renderMentionText.jsx";
+import useFollowUnfollow from "@hooks/useFollowUnfollow";
 
 const Post = ({ post, postedBy, onPostUpdate, type, referrer, }) => {
     const showToast = useShowToast();
@@ -31,6 +36,7 @@ const Post = ({ post, postedBy, onPostUpdate, type, referrer, }) => {
     const [posts, setPosts] = useRecoilState(postsAtom);
     const [isUpdatePostOpen, setIsUpdatePostOpen] = useState(false);
     const [timeLeft, setTimeLeft] = useState(0);
+    const { handleFollowUnfollow, following, updating } = useFollowUnfollow(postedBy);
 
     useEffect(() => {
         const expireTime = new Date(post.createdAt).getTime() + 10 * 60 * 1000;
@@ -99,13 +105,33 @@ const Post = ({ post, postedBy, onPostUpdate, type, referrer, }) => {
                 )}
 
                 <Flex gap={4}>
-                    <Avatar
-                        size="md"
-                        name={postedBy.username}
-                        src={postedBy.profilePic}
-                        onClick={navigateToProfile}
-                        cursor="pointer"
-                    />
+                    <Stack direction="row" spacing={4}>
+                        <Avatar
+                            size="md"
+                            name={postedBy.username}
+                            src={postedBy.profilePic}
+                            onClick={navigateToProfile}
+                            cursor="pointer"
+                            position="relative"
+                        >
+                            {!following && <AvatarBadge boxSize="1.25em" bg="transparent">
+                                <Tooltip label={following ? "Unfollow" : "Follow"} hasArrow>
+                                    <IconButton
+                                        borderRadius={"full"}
+                                        icon={following ? <CheckIcon /> : <AddIcon />}
+                                        size="xs"
+                                        colorScheme={following ? "green" : "blue"}
+                                        aria-label={following ? "Unfollow" : "Follow"}
+                                        isLoading={updating}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleFollowUnfollow();
+                                        }}
+                                    />
+                                </Tooltip>
+                            </AvatarBadge>}
+                        </Avatar>
+                    </Stack>
                     <Flex flex={1} flexDirection="column" gap={2}>
                         <Flex justify="space-between" align="center">
                             <Flex align="center" gap={2}>

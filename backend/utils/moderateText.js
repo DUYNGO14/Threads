@@ -3,7 +3,7 @@ import {
   badWordsVietnameseStrict,
   badWordsVietnameseSoft,
 } from "../constants/badWords.js";
-
+import emojiRegex from "emoji-regex";
 // Regex phát hiện biến thể như đjt, c*c, l0n...
 const variantRegexPatterns = [
   /l[^\w]*[o0][^\w]*n(?![a-z])/i, // Chỉ khớp với "lon", "l0n", không khớp với các từ khác
@@ -17,11 +17,15 @@ const variantRegexPatterns = [
 ];
 
 const normalizeText = (text) => {
-  return text
-    .normalize("NFC") // Chuẩn hóa Unicode
-    .toLowerCase() // Chuyển thành chữ thường
-    .replace(/[^\w\s]/g, "") // Loại bỏ ký tự đặc biệt
-    .trim(); // Xóa khoảng trắng thừa
+  const regex = emojiRegex();
+  const emojiMatches = text.match(regex) || [];
+  const withoutSpecialChars = text
+    .normalize("NFC")
+    .toLowerCase()
+    .replace(/[^\w\s]/g, "") // loại ký tự đặc biệt nhưng giữ lại emoji phía dưới
+    .trim();
+
+  return withoutSpecialChars + " " + emojiMatches.join(" ");
 };
 
 // Setup filters
