@@ -41,7 +41,7 @@ export const generateFeedForUser = async (userId) => {
   const allPosts = [...followingPosts, ...tagBasedPosts, ...trendingPosts];
   const uniquePostIds = [...new Set(allPosts.map((p) => p._id.toString()))];
 
-  await setRedis(`feed:user:${userId}:recommended`, uniquePostIds, 300);
+  await setRedis(`feed:user:${userId}:recommended`, uniquePostIds, 120);
   await setRedis(
     `feed:user:${userId}:recommended:updatedAt`,
     Date.now().toString(),

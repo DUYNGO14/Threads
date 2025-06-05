@@ -357,13 +357,11 @@ const replyToPost = async (req, res) => {
       });
     }
 
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "Reply added successfully",
-        reply: newReply,
-      });
+    return res.status(200).json({
+      success: true,
+      message: "Reply added successfully",
+      reply: newReply,
+    });
   } catch (err) {
     return res.status(500).json({ message: "Internal Server Error" });
   }
@@ -697,7 +695,6 @@ const getFeed = async (req, res) => {
     }
 
     let postIds = cachedIds || "[]";
-    // postIds = shuffleArray(postIds);
     const paginatedIds = postIds.slice(skip, skip + parseInt(limit));
 
     const posts = await Post.find({ _id: { $in: paginatedIds } })
