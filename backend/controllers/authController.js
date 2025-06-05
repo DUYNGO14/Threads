@@ -88,7 +88,6 @@ const loginUser = async (req, res) => {
     const accessToken = generateTokenAndSetCookie(user._id, res);
 
     await User.findByIdAndUpdate(user._id, { isFrozen: false });
-
     return res.status(200).json({
       accessToken,
       user: {

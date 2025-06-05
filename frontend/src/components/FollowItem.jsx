@@ -24,7 +24,7 @@ const FollowItem = ({ user, activeTab, setFollowing, handleNavigate }) => {
                     <Text fontSize="sm" color="gray.500">
                         {user.name}
                         <Text as="span" ml={1}>
-                            {user.followers.length < 1000 ? user.followers.length : numeral(10).format('0.0a')} followers
+                            {user.followers?.length < 1000 ? user.followers?.length : numeral(10).format('0.0a')} followers
                         </Text>
                     </Text>
                 </Box>
