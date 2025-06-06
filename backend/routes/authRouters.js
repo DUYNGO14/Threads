@@ -16,8 +16,23 @@ import {
   verifyEmail,
 } from "../controllers/authController.js";
 import protectRoute from "../middlewares/protectRoute.js";
+import {
+  loginLimiter,
+  registerLimiter,
+  otpLimiter,
+} from "../middlewares/rateLimiter.js";
+
 const router = express.Router();
-//passport login google
+
+// 🌐 Determine frontend client URL
+const clientUrl =
+  process.env.NODE_ENV === "production"
+    ? "https://threads-0m08.onrender.com"
+    : process.env.CLIENT_URL;
+
+// ------------------------
+// 🔐 Google OAuth Login
+// ------------------------
 router.get(
   "/google",
   passport.authenticate("google", {
@@ -28,25 +43,11 @@ router.get(
 
 router.get("/google/callback", (req, res, next) => {
   passport.authenticate("google", (err, user, info) => {
-    const clientUrl =
-      process.env.NODE_ENV === "production"
-        ? "https://threads-0m08.onrender.com"
-        : process.env.CLIENT_URL;
-
-    if (err) {
-      return res.redirect(
-        `${clientUrl}/oauth-failure?error=${encodeURIComponent(
-          "Đăng nhập thất bại. Vui lòng thử lại."
-        )}`
+    if (err || !user) {
+      const errorMsg = encodeURIComponent(
+        err?.message || info?.message || "Login failed. Please try again."
       );
-    }
-
-    if (!user) {
-      return res.redirect(
-        `${clientUrl}/oauth-failure?error=${encodeURIComponent(
-          info?.message || "Đăng nhập thất bại."
-        )}`
-      );
+      return res.redirect(`${clientUrl}/oauth-failure?error=${errorMsg}`);
     }
 
     req.logIn(user, (loginErr) => {
@@ -57,72 +58,64 @@ router.get("/google/callback", (req, res, next) => {
           )}`
         );
       }
+
       const accessToken = generateTokenAndSetCookie(user._id, res);
       res.redirect(`${clientUrl}/oauth-success?accessToken=${accessToken}`);
     });
   })(req, res, next);
 });
 
-//passport login facebook
+// ------------------------
+// 🔐 Facebook OAuth Login
+// ------------------------
 router.get(
   "/facebook",
   passport.authenticate("facebook", {
-    scope: ["email"], // ✅ Lấy email từ Facebook
+    scope: ["email"],
   })
 );
 
 router.get("/facebook/callback", (req, res, next) => {
-  const clientUrl =
-    process.env.NODE_ENV === "production"
-      ? "https://threads-0m08.onrender.com"
-      : process.env.CLIENT_URL;
   passport.authenticate("facebook", (err, user, info) => {
-    if (err) {
-      console.error("🔥 Lỗi OAuth Facebook:", err.message || err);
-      return res.redirect(
-        `${clientUrl}/oauth-failure?error=${encodeURIComponent(
-          err.message || "Đăng nhập thất bại."
-        )}`
+    if (err || !user) {
+      const errorMsg = encodeURIComponent(
+        err?.message || info?.message || "Login failed. Please try again."
       );
-    }
-
-    if (!user) {
-      console.warn("⚠ OAuth Facebook thất bại:", info?.message);
-      return res.redirect(
-        `${clientUrl}/oauth-failure?error=${encodeURIComponent(
-          info?.message || "Đăng nhập thất bại."
-        )}`
-      );
+      return res.redirect(`${clientUrl}/oauth-failure?error=${errorMsg}`);
     }
 
     req.logIn(user, (loginErr) => {
       if (loginErr) {
-        console.error("🔥 Lỗi đăng nhập:", loginErr);
         return res.redirect(
           `${clientUrl}/oauth-failure?error=${encodeURIComponent(
-            "Đăng nhập thất bại."
+            "Login failed."
           )}`
         );
       }
 
       const accessToken = generateTokenAndSetCookie(user._id, res);
-
       res.redirect(`${clientUrl}/oauth-success?accessToken=${accessToken}`);
     });
   })(req, res, next);
 });
 
+// ------------------------
+// 🧾 Standard Auth Routes
+// ------------------------
 router.get("/me", getUserFromToken);
 
-router.post("/signup", signupUser);
-router.post("/login", loginUser);
+router.post("/signup", registerLimiter, signupUser);
+router.post("/login", loginLimiter, loginUser);
 router.post("/logout", logoutUser);
 router.get("/refresh-token", refreshToken);
 router.get("/check", checkToken);
-router.post("/verify-account", verifyEmail);
-router.post("/forgot-password", forgotPassword);
+
+router.post("/verify-account", otpLimiter, verifyEmail);
+router.post("/resend-otp", otpLimiter, resendOTP);
+router.post("/forgot-password", otpLimiter, forgotPassword);
 router.post("/reset-password/:resetToken", resetPassword);
-router.post("/resend-otp", resendOTP);
+
 router.put("/change-password", protectRoute, changePassword);
 router.get("/user", protectRoute, getMe);
+
 export default router;

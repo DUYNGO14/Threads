@@ -7,10 +7,11 @@ import {
   deleteReport,
 } from "../controllers/reportController.js";
 import { requireAdmin } from "../middlewares/requireAdmin.js";
+import { reportLimiter } from "../middlewares/rateLimiter.js";
 
 const router = express.Router();
 
-router.post("/", protectRoute, createReport);
+router.post("/", protectRoute, reportLimiter, createReport);
 router.get("/", protectRoute, requireAdmin, getReports);
 router.put("/:reportId/status", protectRoute, requireAdmin, updateReportStatus);
 router.delete("/:reportId", protectRoute, requireAdmin, deleteReport);

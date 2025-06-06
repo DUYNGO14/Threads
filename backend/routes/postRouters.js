@@ -18,7 +18,7 @@ import {
 import protectRoute from "../middlewares/protectRoute.js";
 import multer from "multer";
 import { uploadMedia } from "../middlewares/multer.js";
-
+import { createPostLimiter } from "../middlewares/rateLimiter.js";
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 router.get("/followed", protectRoute, getFollowingPosts);
@@ -30,7 +30,13 @@ router.get("/feed", protectRoute, getFeed);
 router.get("/recommended", protectRoute, getRecommendPost);
 router.get("/:id", getPost);
 
-router.post("/create", protectRoute, uploadMedia, createPost);
+router.post(
+  "/create",
+  protectRoute,
+  uploadMedia,
+  createPostLimiter,
+  createPost
+);
 router.delete("/:id", protectRoute, deletePost);
 router.put("/like/:id", protectRoute, likeUnlikePost);
 router.put("/reply/:id", protectRoute, replyToPost);

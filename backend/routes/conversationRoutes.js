@@ -11,11 +11,17 @@ import {
   updateNameGroup,
 } from "../controllers/conversationController.js";
 import protectRoute from "../middlewares/protectRoute.js";
+import { createGroupLimiter } from "../middlewares/rateLimiter.js";
 
 const router = express.Router();
 
 router.get("/", protectRoute, getConversations);
-router.post("/group", protectRoute, createGroupConversation);
+router.post(
+  "/group",
+  protectRoute,
+  createGroupLimiter,
+  createGroupConversation
+);
 router.post("/initiate", protectRoute, initiateConversation);
 router.delete("/delete/:conversationId", protectRoute, deleteConversation);
 router.put(
