@@ -26,7 +26,7 @@ const io = new Server(server, {
     credentials: true,
   },
 });
-
+app.set("trust proxy", 1);
 // Attach to app if needed elsewhere
 app.set("io", io);
 
